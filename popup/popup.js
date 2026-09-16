@@ -1,43 +1,87 @@
+/* Popup = lecteur : interroge l'onglet SoundCloud toutes les 500 ms tant qu'il est ouvert. */
 const $ = (s) => document.querySelector(s);
 const send = (msg) => chrome.runtime.sendMessage(msg).catch(() => null);
+const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>';
+const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
-function fmtDate(ts) {
-    const d = new Date(ts);
-    return d.toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-}
+let state = null, tabId = null, timer = null;
 
-async function refreshState() {
-    const state = await send({ type: 'popup-get-state' });
+const fmtTime = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const fmtRate = (r) => `${parseFloat((r || 1).toFixed(2))}×`;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function render() {
     const has = state && state.sce === 'state' && state.title;
-    $('#now').hidden = !has;
-    $('#controls').hidden = !has;
-    $('#controls2').hidden = !has;
+    $('#player').hidden = !has;
     $('#empty').hidden = !!has;
     if (!has) return;
+    $('#art').style.backgroundImage = state.artwork ? `url("${state.artwork}")` : '';
     $('#title').textContent = state.title;
     $('#artist').textContent = state.artist || '';
-    if (state.artwork) $('#artwork').src = state.artwork;
-    $('#play').textContent = state.playing ? '⏸' : '▶';
+    $('#play').innerHTML = state.playing ? ICON_PAUSE : ICON_PLAY;
+    const pct = state.duration ? Math.min(100, (state.position / state.duration) * 100) : 0;
+    $('#fill').style.width = `${pct}%`;
+    $('#knob').style.left = `${pct}%`;
+    $('#cur').textContent = fmtTime(state.position);
+    $('#dur').textContent = fmtTime(state.duration);
+    $('#repeat').classList.toggle('on', state.repeat && state.repeat !== 'off');
+    $('#repeat-n').textContent = state.repeat === 'one' ? '1' : '';
+    $('#speed').textContent = fmtRate(state.rate);
+    $('#speed').classList.toggle('on', Math.abs((state.rate || 1) - 1) > 1e-6);
 }
 
-async function refreshHistory() {
-    const { history = [] } = await chrome.storage.local.get('history');
-    if (!history.length) return;
-    $('#history').innerHTML = history.slice(0, 8).map((h) =>
-        `<li><span>${escapeHtml(h.source)} · ${h.count}${h.total > h.count ? `/${h.total}` : ''}</span><span>${fmtDate(h.at)}</span></li>`).join('');
+async function poll() {
+    const r = await send({ type: 'popup-get-state' });
+    if (r && r.sce === 'state') { state = r; tabId = r.tabId ?? tabId; }
+    else if (!state) state = null;
+    render();
 }
 
-const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function command(cmd, extra = {}) {
+    await send({ type: 'popup-command', command: cmd, ...extra });
+    setTimeout(poll, 120);
+}
 
 document.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', async (e) => {
-    await send({ type: 'popup-command', command: b.dataset.cmd, force: e.shiftKey });
-    if (b.dataset.cmd === 'shuffle' || b.dataset.cmd === 'pip') window.close();
-    else setTimeout(refreshState, 300);
+    const cmd = b.dataset.cmd;
+    if (cmd === 'shuffle') { b.classList.add('busy'); await command('shuffle', { force: e.shiftKey }); setTimeout(() => window.close(), 400); return; }
+    if (cmd === 'pip') { await command('pip'); window.close(); return; }
+    command(cmd);
 }));
 
-$('#open-options').addEventListener('click', (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
-$('#open-shortcuts').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }); });
-$('#version').textContent = `v${chrome.runtime.getManifest().version}`;
+$('#bar').addEventListener('click', (e) => {
+    if (!state?.duration) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    command('seek', { value: frac * state.duration });
+});
 
-refreshState();
-refreshHistory();
+$('#speed').addEventListener('click', (e) => {
+    const cur = state?.rate || 1;
+    let i = SPEEDS.findIndex((s) => Math.abs(s - cur) < 1e-6);
+    if (i < 0) i = 1;
+    i = (i + (e.shiftKey ? -1 : 1) + SPEEDS.length) % SPEEDS.length;
+    command('speed', { value: SPEEDS[i] });
+});
+
+const focusTab = async () => { const r = await send({ type: 'popup-focus-tab' }); if (r?.ok) window.close(); };
+$('#open-tab').addEventListener('click', focusTab);
+$('#title').addEventListener('click', focusTab);
+$('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
+$('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
+
+async function history() {
+    const { history = [] } = await chrome.storage.local.get('history');
+    if (!history.length) return;
+    $('#history').hidden = false;
+    $('#history-list').innerHTML = history.slice(0, 4).map((h) => {
+        const d = new Date(h.at).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        return `<li><span>${esc(h.source)}</span><span>${h.count}${h.total > h.count ? ` / ${h.total}` : ''} · ${d}</span></li>`;
+    }).join('');
+}
+
+poll();
+history();
+timer = setInterval(poll, 500);
+window.addEventListener('unload', () => clearInterval(timer));
