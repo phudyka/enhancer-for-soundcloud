@@ -11,10 +11,11 @@
  *   · Analyse en direct : BPM et tonalité (+ code Camelot), affinés sur ~30 s,
  *     mémorisés par titre. Corrigés de la vitesse et du décalage de hauteur.
  *
- * Traitement : Web Audio API sur l'<audio> capté par media-hook.js. SoundCloud
- * l'alimente par MediaSource (blob: même origine) : le routage ne teinte pas
- * la sortie. Le graphe n'est créé qu'à la première activation (effet ou
- * analyse) ; à vide il est transparent.
+ * Traitement : SoundCloud branche déjà son <audio> sur un AudioContext.
+ * media-hook.js intercepte ce branchement et y insère une chaîne transparente
+ * (window.__sceAudioTap) ; nos effets et l'analyseur s'y logent, dans le
+ * contexte de SoundCloud. Repli sur notre propre contexte si l'élément n'est
+ * pas branché.
  *
  *   source ─┬→ lowshelf(bass) ─┬─ dry ──────────────┐
  *           │                  └─ lowpass → convolver → wet ┴→ sortie
@@ -57,33 +58,53 @@
     const rateToPos = (r) => (Math.log(r) - LOG_MIN) / (LOG_MAX - LOG_MIN);
     const snap = (r) => (Math.abs(r - 1) < 0.035 ? 1 : Math.abs(r - 0.5) < 0.02 ? 0.5 : Math.abs(r - 2) < 0.05 ? 2 : r);
 
-    // ── Graphe Web Audio (paresseux) ─────────────────────────────
-    const graph = { ctx: null, el: null, src: null, bass: null, dry: null, wet: null, conv: null, an: null };
+    // ── Graphe Web Audio ─────────────────────────────────────────
+    // Priorité : la chaîne transparente que media-hook.js a insérée dans le
+    // graphe de SoundCloud (window.__sceAudioTap). Repli : notre propre contexte
+    // si SoundCloud ne branche pas l'élément.
+    const graph = { ctx: null, el: null, bass: null, dry: null, wet: null, conv: null, an: null, mode: null };
 
     function impulse(ctx, seconds = 2.4, decay = 3) {
         const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate);
         for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
         return buf;
     }
+    /** Construit bass → (dry | lowpass → convolver → wet) entre `input` et `output`, plus l'analyseur sur `input`. */
+    function buildChain(ctx, input, output) {
+        const bass = ctx.createBiquadFilter(); bass.type = 'lowshelf'; bass.frequency.value = 90; bass.gain.value = 0;
+        const dry = ctx.createGain(), wet = ctx.createGain(); wet.gain.value = 0;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500;
+        const conv = ctx.createConvolver(); conv.buffer = (graph.conv && graph.ctx === ctx) ? graph.conv.buffer : impulse(ctx);
+        const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
+        input.connect(bass); bass.connect(dry); dry.connect(output);
+        bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(output);
+        input.connect(an);
+        return { bass, dry, wet, conv, an };
+    }
     function ensureGraph(el) {
-        if (!el || graph.el === el) return !!graph.el;
-        try {
-            const ctx = graph.ctx || (graph.ctx = new AudioContext());
+        if (!el) return false;
+        const tap = window.__sceAudioTap;
+        if (tap && tap.el === el) {
+            if (graph.el === el && graph.mode === 'tap') return true;
+            try {
+                tap.input.disconnect(tap.output);                     // on remplace le passe-plat par la chaîne d'effets
+                Object.assign(graph, { ctx: tap.ctx, el, mode: 'tap', ...buildChain(tap.ctx, tap.input, tap.output) });
+                Analysis.attach();
+                return true;
+            } catch (e) { console.warn('[SCE] insertion dans le graphe SoundCloud', e); return false; }
+        }
+        if (graph.el === el && graph.mode === 'own') return true;
+        try {                                                          // repli : élément non branché par SoundCloud
+            const ctx = graph.ctx && graph.mode === 'own' ? graph.ctx : new AudioContext();
             const src = ctx.createMediaElementSource(el);
-            const bass = ctx.createBiquadFilter(); bass.type = 'lowshelf'; bass.frequency.value = 90; bass.gain.value = 0;
-            const dry = ctx.createGain(), wet = ctx.createGain(); wet.gain.value = 0;
-            const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500;
-            const conv = ctx.createConvolver(); conv.buffer = graph.conv?.buffer || impulse(ctx);
-            const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
-            src.connect(bass); bass.connect(dry); dry.connect(ctx.destination);
-            bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(ctx.destination);
-            src.connect(an);
-            Object.assign(graph, { el, src, bass, dry, wet, conv, an });
+            const input = ctx.createGain(); src.connect(input);
+            Object.assign(graph, { ctx, el, mode: 'own', ...buildChain(ctx, input, ctx.destination) });
             if (ctx.state === 'suspended') ctx.resume().catch(() => {});
             Analysis.attach();
             return true;
         } catch (e) { console.warn('[SCE] audio graph', e); return false; }
     }
+    if (typeof window.__sceOnAudioTap === 'function') window.__sceOnAudioTap((tap) => { if (media === tap.el || !media) { media = tap.el; apply(tap.el); } });
 
     function apply(el = media) {
         if (!el) return;
@@ -91,6 +112,7 @@
         if ('preservesPitch' in el) el.preservesPitch = cfg.preservePitch;
         if (effectsOn() || cfg.analysis || graph.el === el) {
             if (ensureGraph(el)) {
+                if (graph.ctx.state === 'suspended') graph.ctx.resume().catch(() => {});
                 const t = graph.ctx.currentTime;
                 graph.bass.gain.setTargetAtTime(cfg.bass, t, 0.05);
                 graph.wet.gain.setTargetAtTime(cfg.reverb * 0.9, t, 0.05);
@@ -195,10 +217,14 @@
         .${NS}-btn div { width: 16px; height: 16px; }
         .${NS}-btn svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
         .${NS}-btn.m-active { color: #f50; }
+        .${NS}-btn.m-open { color: #fff; opacity: 1; }
         .${NS}-panel { position: fixed; bottom: 52px; width: 256px; padding: 12px 14px 10px; border-radius: 2px; background: #333; color: #ccc;
                        box-shadow: 0 2px 8px rgba(0,0,0,.4); font: 12px/1.3 ${FONT}; z-index: 99999; user-select: none; }
         .${NS}-panel::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: #333; transform: translateX(-50%) rotate(45deg); }
         .${NS}-panel h4 { margin: 0 0 6px; font-size: 12px; font-weight: 400; color: #999; display: flex; justify-content: space-between; }
+        .${NS}-close { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: #999; cursor: pointer; font: 16px/22px ${FONT}; padding: 0; }
+        .${NS}-close:hover { color: #fff; background: #444; }
+        .${NS}-panel h4:first-child { padding-right: 22px; }
         .${NS}-panel h4 b { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
         /* Curseur SoundCloud : piste 2 px, remplissage orange jusqu'au curseur, poignée 12 px */
         .${NS}-panel input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; margin: 2px 0 2px; background: transparent; cursor: pointer; }
@@ -241,6 +267,7 @@
         p.className = `${NS}-panel`;
         const ticks = [0.1, 0.25, 0.5, 1, 1.5, 2, 3].map((r) => `<span style="left:${rateToPos(r) * 100}%">${r}×</span>`).join('');
         p.innerHTML = `
+            <button type="button" class="${NS}-close" title="Fermer (Échap)">×</button>
             <h4><span>${L.speed}</span><b class="v-rate"></b></h4>
             <input type="range" class="r-rate" min="0" max="1" step="0.001" title="${L.speed} — double-clic : 1×, molette : ±1 %">
             <div class="${NS}-ticks">${ticks}</div>
@@ -265,7 +292,9 @@
         p.querySelector('.c-pitch').addEventListener('change', (e) => set({ preservePitch: e.target.checked }));
         p.querySelector('.r-bass').addEventListener('input', (e) => set({ bass: parseFloat(e.target.value) }));
         p.querySelector('.r-reverb').addEventListener('input', (e) => set({ reverb: parseFloat(e.target.value) }));
-        p.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => set({ ...PRESETS[b.dataset.p] })));
+        // Re-cliquer le preset actif revient à Normal
+        p.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => set({ ...(b.classList.contains('m-on') && b.dataset.p !== 'normal' ? PRESETS.normal : PRESETS[b.dataset.p]) })));
+        p.querySelector(`.${NS}-close`).addEventListener('click', closePanel);
         p.querySelector('.c-analysis').addEventListener('change', (e) => { set({ analysis: e.target.checked }); if (e.target.checked) { ensureGraph(media); Analysis.attach(); } else Analysis.stop(); });
         return p;
     }
@@ -283,15 +312,14 @@
         a.className = `v-analysis ${r ? (r.cached ? 'm-cached' : 'm-live') : ''}`;
         a.title = r ? `confiance BPM ${Math.round(r.conf * 100)} %${r.cached ? ' · mémorisé' : ' · en cours'}` : '';
     }
-    function closePanel() { panel?.remove(); panel = null; }
+    function closePanel() { panel?.remove(); panel = null; btn?.classList.remove('m-open'); }
     function togglePanel() {
         if (panel) { closePanel(); return; }
-        panel = buildPanel(); document.body.appendChild(panel);
+        panel = buildPanel(); document.body.appendChild(panel); btn.classList.add('m-open');
         const r = btn.getBoundingClientRect();
         panel.style.left = `${Math.max(8, Math.min(window.innerWidth - 272, r.left + r.width / 2 - 128))}px`;
         syncPanel();
-        const close = (e) => { if (panel && !panel.contains(e.target) && !btn.contains(e.target)) { closePanel(); document.removeEventListener('mousedown', close, true); } };
-        document.addEventListener('mousedown', close, true);
+        // Le panneau reste ouvert pendant la navigation dans le titre ; fermeture par le bouton, la croix ou Échap
         document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { closePanel(); document.removeEventListener('keydown', esc); } });
     }
 
