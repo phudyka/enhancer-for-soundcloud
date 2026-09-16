@@ -17,7 +17,14 @@
   label input[type=checkbox] { margin-top: 4px; accent-color: var(--accent); flex: 0 0 auto; }
   label small { display: block; color: var(--muted); }
   .row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
-  .row span { flex: 1; }
+  .row > span { flex: 1; }
+  .block { padding: 7px 0; }
+  .block .lbl { display: block; margin-bottom: 8px; }
+  .block .ctl { display: flex; align-items: center; gap: 8px; }
+  .custom { position: relative; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; border: 2px solid transparent; background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  .custom.on { border-color: #fff; }
+  .custom input { position: absolute; inset: -8px; width: 40px; height: 40px; opacity: 0; cursor: pointer; }
+  .block + .row { border-top: 1px solid #262626; }
   select { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; }
   input[type=color] { width: 36px; height: 28px; border: 0; padding: 0; background: transparent; cursor: pointer; }
   .swatches { display: flex; gap: 6px; }
@@ -60,10 +67,13 @@
 
 <fieldset>
   <legend>Apparence</legend>
-  <div class="row"><span>Couleur d'accent<br><small style="color:var(--muted)">Remplace l'orange sur les boutons de lecture, la progression, les états actifs.</small></span>
-    <div class="swatches" id="swatches"></div>
-    <input type="color" id="accent" value="#ff5500" title="Couleur personnalisée">
-    <button class="link" id="accent-reset" title="Revenir à l'orange SoundCloud">Défaut</button>
+  <div class="block">
+    <span class="lbl">Couleur d'accent<br><small style="color:var(--muted)">Remplace l'orange sur les boutons de lecture, la progression, les états actifs, et sur les composants de l'extension.</small></span>
+    <div class="ctl">
+      <div class="swatches" id="swatches"></div>
+      <span class="custom" id="custom" title="Couleur personnalisée"><input type="color" id="accent" value="#ff5500"></span>
+      <button class="link" id="accent-reset" title="Revenir à l'orange SoundCloud" style="margin-left:4px">Défaut</button>
+    </div>
   </div>
   <div class="row"><span>Page d'accueil<br><small style="color:var(--muted)">Page ouverte à l'arrivée sur soundcloud.com, à la place de Découvrir.</small></span>
     <select id="homePage">

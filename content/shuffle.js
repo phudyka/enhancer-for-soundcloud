@@ -524,7 +524,7 @@
         .sc-button.${NS}-btn[data-state="error"] { color: #ff6b6b; animation: ${NS}-shake .32s ease; }
         .${NS}-btn .${NS}-count {
             position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px;
-            border-radius: 8px; background: #f50; color: #fff; font: 700 9px/16px sans-serif; text-align: center;
+            border-radius: 8px; background: var(--sce-accent, #f50); color: #fff; font: 700 9px/16px sans-serif; text-align: center;
             display: none; pointer-events: none;
         }
         .${NS}-btn[data-state="loading"] .${NS}-count:not(:empty) { display: block; }
@@ -535,7 +535,7 @@
         .shuffleControl.${NS}-player { position: relative; }
         .shuffleControl.${NS}-player::before {
             content: ''; position: absolute; top: 3px; right: 3px; width: 5px; height: 5px;
-            border-radius: 50%; background: #f50; pointer-events: none;
+            border-radius: 50%; background: var(--sce-accent, #f50); pointer-events: none;
         }
         .shuffleControl.${NS}-player.${NS}-loading svg { animation: ${NS}-spin .9s linear infinite; }
 

@@ -74,6 +74,7 @@ $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPag
 $('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
 
 
+chrome.storage.sync.get('settings').then(({ settings }) => { if (settings?.accent) document.documentElement.style.setProperty('--accent', settings.accent); });
 poll();
 timer = setInterval(poll, 500);
 window.addEventListener('unload', () => clearInterval(timer));

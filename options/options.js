@@ -12,6 +12,7 @@ let settings = { ...DEFAULTS };
 function paintSwatches() {
     $('swatches').innerHTML = SWATCHES.map((c) => `<button type="button" data-c="${c}" style="background:${c}" class="${(settings.accent || '#ff5500').toLowerCase() === c ? 'on' : ''}" title="${c}"></button>`).join('');
     $('accent').value = settings.accent || '#ff5500';
+    $('custom').classList.toggle('on', !!settings.accent && !SWATCHES.includes(settings.accent.toLowerCase()));
 }
 
 async function load() {

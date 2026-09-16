@@ -32,7 +32,7 @@
         hideGoPlus:        ['.searchList__item:has([class*="tierIndicator"]:not(.sc-hidden))', '.soundList__item:has([class*="tierIndicator"]:not(.sc-hidden))', '.audibleTile:has([class*="tierIndicator"]:not(.sc-hidden))', '.trackList__item:has([class*="tierIndicator"]:not(.sc-hidden))', '.badgeList__item:has([class*="tierIndicator"]:not(.sc-hidden))'],
     };
     /** L'en-tête est en flex : quand des éléments sont masqués, la recherche prend l'espace libéré. */
-    const WIDE_SEARCH = `.header__middle form, .header__search, .headerSearch, .headerSearch__input { width: 100% !important; max-width: none !important; }`;
+    const WIDE_SEARCH = `.header__middle form, .header__search, .headerSearch { width: 100% !important; max-width: 520px !important; } .headerSearch__input { width: 100% !important; }`;
 
     /** Accent : éléments où SoundCloud durcit son orange #ff5500 */
     const accentCSS = (c) => `
@@ -68,6 +68,8 @@
         for (const [key, sels] of Object.entries(HIDE)) if (s[key]) css += `${sels.join(', ')} { display: none !important; }\n`;
         if (s.hideUpsell || s.hideUpload || s.hideArtistStudio || s.wideSearch) css += WIDE_SEARCH;
         if (s.accent && /^#[0-9a-f]{6}$/i.test(s.accent) && s.accent.toLowerCase() !== '#ff5500') css += accentCSS(s.accent);
+        // Nos propres composants (panneau Audio, Bibliothèque, lecteur épinglable, toasts) suivent la même couleur
+        document.documentElement.style.setProperty('--sce-accent', /^#[0-9a-f]{6}$/i.test(s.accent || '') ? s.accent : '#ff5500');
         if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = `${NS}-styles`; (document.head || document.documentElement).appendChild(styleEl); }
         if (styleEl.textContent !== css) styleEl.textContent = css;
     }

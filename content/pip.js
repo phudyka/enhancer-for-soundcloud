@@ -78,21 +78,21 @@
         .${NS}-title:hover { text-decoration: underline; cursor: pointer; }
         .${NS}-bar { position: relative; height: 12px; cursor: pointer; }
         .${NS}-bar::before { content: ''; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: #444; }
-        .${NS}-fill { position: absolute; left: 0; top: 5px; height: 2px; background: #f50; width: 0; }
-        .${NS}-knob { position: absolute; top: 2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #f50; opacity: 0; transition: opacity .12s; }
+        .${NS}-fill { position: absolute; left: 0; top: 5px; height: 2px; background: var(--sce-accent, #f50); width: 0; }
+        .${NS}-knob { position: absolute; top: 2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--sce-accent, #f50); opacity: 0; transition: opacity .12s; }
         .${NS}-bar:hover .${NS}-knob { opacity: 1; }
         .${NS}-times { display: flex; justify-content: space-between; color: #999; font-size: 11px; font-variant-numeric: tabular-nums; margin-top: -6px; }
-        .${NS}-times .cur { color: #f50; }
+        .${NS}-times .cur { color: var(--sce-accent, #f50); }
         .${NS}-ctl { display: flex; align-items: center; justify-content: center; gap: 4px; }
         .${NS}-ctl button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #ccc; cursor: pointer; display: grid; place-items: center; padding: 0; position: relative; }
         .${NS}-ctl button svg { width: 16px; height: 16px; fill: currentColor; display: block; }
         .${NS}-ctl button:hover { color: #fff; background: rgba(255,255,255,.06); }
         .${NS}-ctl button.m-play { width: 40px; height: 40px; background: #fff; color: #111; margin: 0 6px; }
         .${NS}-ctl button.m-play:hover { background: #f2f2f2; color: #111; }
-        .${NS}-ctl button.m-on { color: #f50; }
-        .${NS}-ctl button.m-on::after { content: ''; position: absolute; bottom: 5px; left: 50%; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: #f50; }
+        .${NS}-ctl button.m-on { color: var(--sce-accent, #f50); }
+        .${NS}-ctl button.m-on::after { content: ''; position: absolute; bottom: 5px; left: 50%; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--sce-accent, #f50); }
         .${NS}-ctl button.m-busy svg { animation: ${NS}-spin .9s linear infinite; }
-        .${NS}-ctl button .n { position: absolute; top: 4px; right: 4px; font-size: 8px; font-weight: 700; color: #f50; }
+        .${NS}-ctl button .n { position: absolute; top: 4px; right: 4px; font-size: 8px; font-weight: 700; color: var(--sce-accent, #f50); }
         @keyframes ${NS}-spin { to { transform: rotate(360deg); } }
     `;
 
@@ -146,6 +146,7 @@
         const d = pipWin.document;
         d.documentElement.lang = document.documentElement.lang || 'fr';
         const style = d.createElement('style'); style.textContent = CSS; d.head.appendChild(style);
+        d.documentElement.style.setProperty('--sce-accent', getComputedStyle(document.documentElement).getPropertyValue('--sce-accent') || '#ff5500');
         const root = d.createElement('div'); root.className = NS;
         root.innerHTML = `
             <div class="${NS}-art"></div>
@@ -210,7 +211,7 @@
         .${NS}-pin div { width: 16px; height: 16px; }
         .${NS}-pin svg { width: 16px; height: 16px; display: block; }
         .${NS}-pin:hover { color: #fff; }
-        .${NS}-pin.m-on { color: #f50; }
+        .${NS}-pin.m-on { color: var(--sce-accent, #f50); }
     `;
     function mount() {
         if (pinBtn?.isConnected) return;

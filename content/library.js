@@ -130,18 +130,18 @@
             font: 500 13px ${FONT}; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; position: relative; }
         .${NS}-menu > button::after { content: ''; position: absolute; right: 11px; top: 13px; border: 4px solid transparent; border-top: 5px solid #ccc; }
         .${NS}-menu > button:hover { background: #3a3a3a; }
-        .${NS}-menu > button.m-on { color: #f50; padding-right: 30px; }
+        .${NS}-menu > button.m-on { color: var(--sce-accent, #f50); padding-right: 30px; }
         .${NS}-menu > button.m-on::after { display: none; }
         /* Filtre actif : la flèche laisse place à une croix qui retire le filtre d'un clic */
-        .${NS}-clear { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: #f50; cursor: pointer; display: none; font: 16px/24px ${FONT}; text-align: center; padding: 0; }
-        .${NS}-clear:hover { background: rgba(255,85,0,.18); color: #fff; }
+        .${NS}-clear { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--sce-accent, #f50); cursor: pointer; display: none; font: 16px/24px ${FONT}; text-align: center; padding: 0; }
+        .${NS}-clear:hover { background: color-mix(in srgb, var(--sce-accent, #f50) 18%, transparent); color: #fff; }
         .${NS}-menu.m-on .${NS}-clear { display: block; }
         .${NS}-list-menu { position: absolute; top: 36px; left: 0; min-width: 180px; max-height: 320px; overflow: auto; background: #333; border-radius: 2px;
             box-shadow: 0 2px 8px rgba(0,0,0,.45); padding: 4px 0; z-index: 1000; display: none; font: 13px ${FONT}; }
         .${NS}-menu.m-open .${NS}-list-menu { display: block; }
         .${NS}-list-menu button { display: flex; justify-content: space-between; gap: 12px; width: 100%; height: 32px; padding: 0 12px; border: 0; background: transparent; color: #ccc; cursor: pointer; text-align: left; font: inherit; white-space: nowrap; }
         .${NS}-list-menu button:hover { background: #404040; color: #fff; }
-        .${NS}-list-menu button.m-on { color: #f50; }
+        .${NS}-list-menu button.m-on { color: var(--sce-accent, #f50); }
         .${NS}-list-menu button small { color: #888; font-variant-numeric: tabular-nums; }
         .${NS}-list-menu hr { border: 0; border-top: 1px solid #444; margin: 4px 0; }
         .${NS}-search { margin-left: 8px; }
@@ -156,7 +156,7 @@
         .${NS}-tile { cursor: pointer; min-width: 0; }
         .${NS}-tile .${NS}-art { width: 100%; height: auto; aspect-ratio: 1; border-radius: 2px; }
         .${NS}-tile:hover .${NS}-art::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.25); }
-        .${NS}-tile .${NS}-play { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: #f50 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3E%3Cpath d='M5 3v10l8-5z'/%3E%3C/svg%3E") center/26px no-repeat; opacity: 0; transition: opacity .12s; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+        .${NS}-tile .${NS}-play { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: var(--sce-accent, #f50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3E%3Cpath d='M5 3v10l8-5z'/%3E%3C/svg%3E") center/26px no-repeat; opacity: 0; transition: opacity .12s; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
         .${NS}-tile:hover .${NS}-play { opacity: 1; }
         .${NS}-tile .${NS}-title { margin-top: 8px; font-size: 14px; }
         .${NS}-tile .${NS}-artist { font-size: 14px; }
@@ -168,10 +168,10 @@
         .${NS}-row:hover .${NS}-art::after { content: ''; position: absolute; inset: 0; border-radius: 2px; background: rgba(0,0,0,.45) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3E%3Cpath d='M4 2v12l9-6z'/%3E%3C/svg%3E") center/16px no-repeat; }
         .${NS}-meta { min-width: 0; }
         .${NS}-title { color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .${NS}-title .snip { color: #f50; font-size: 10px; font-weight: 700; margin-left: 6px; vertical-align: 1px; }
+        .${NS}-title .snip { color: var(--sce-accent, #f50); font-size: 10px; font-weight: 700; margin-left: 6px; vertical-align: 1px; }
         .${NS}-artist { color: #999; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .${NS}-artist a { color: inherit; text-decoration: none; } .${NS}-artist a:hover { color: #fff; text-decoration: underline; }
-        .${NS}-genre { color: #999; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; } .${NS}-genre:hover { color: #f50; }
+        .${NS}-genre { color: #999; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; } .${NS}-genre:hover { color: var(--sce-accent, #f50); }
         .${NS}-num { color: #999; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
         .${NS}-more { height: 8px; }
         .${NS}-empty { color: #999; padding: 40px 0; text-align: center; }

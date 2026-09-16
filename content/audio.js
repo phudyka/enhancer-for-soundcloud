@@ -203,7 +203,7 @@
         return {
             attach() { clearInterval(timer); if (cfg.analysis) timer = setInterval(tick, FRAME_MS); },
             stop() { clearInterval(timer); timer = null; },
-            label, get result() { return result; },
+            label, camelot: (r) => CAMELOT[r.mode][r.key], get result() { return result; },
         };
     })();
 
@@ -216,38 +216,45 @@
         .${NS}-btn { width: 24px; height: 48px; padding: 16px 4px; border: 0; background: transparent; color: #fff; cursor: pointer; display: block; }
         .${NS}-btn div { width: 16px; height: 16px; }
         .${NS}-btn svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-        .${NS}-btn.m-active { color: #f50; }
+        .${NS}-btn.m-active { color: var(--sce-accent, #f50); }
         .${NS}-btn.m-open { color: #fff; opacity: 1; }
         .${NS}-panel { position: fixed; bottom: 52px; width: 256px; padding: 12px 14px 10px; border-radius: 2px; background: #333; color: #ccc;
                        box-shadow: 0 2px 8px rgba(0,0,0,.4); font: 12px/1.3 ${FONT}; z-index: 99999; user-select: none; }
         .${NS}-panel::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: #333; transform: translateX(-50%) rotate(45deg); }
         .${NS}-panel h4 { margin: 0 0 6px; font-size: 12px; font-weight: 400; color: #999; display: flex; justify-content: space-between; }
-        .${NS}-close { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: #999; cursor: pointer; font: 16px/22px ${FONT}; padding: 0; }
+        .${NS}-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 8px 0; }
+        .${NS}-head span { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #999; }
+        .${NS}-close { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: #999; cursor: pointer; font: 16px/22px ${FONT}; padding: 0; }
         .${NS}-close:hover { color: #fff; background: #444; }
-        .${NS}-panel h4:first-child { padding-right: 22px; }
         .${NS}-panel h4 b { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
         /* Curseur SoundCloud : piste 2 px, remplissage orange jusqu'au curseur, poignée 12 px */
         .${NS}-panel input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; margin: 2px 0 2px; background: transparent; cursor: pointer; }
-        .${NS}-panel input[type=range]::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: linear-gradient(90deg, #f50 var(--p, 0%), #555 var(--p, 0%)); }
+        .${NS}-panel input[type=range]::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: linear-gradient(90deg, var(--sce-accent, #f50) var(--p, 0%), #555 var(--p, 0%)); }
         .${NS}-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -5px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.5); transition: transform .1s; }
         .${NS}-panel input[type=range]:hover::-webkit-slider-thumb, .${NS}-panel input[type=range]:active::-webkit-slider-thumb { transform: scale(1.25); }
         .${NS}-panel input[type=range]::-moz-range-track { height: 2px; background: #555; }
-        .${NS}-panel input[type=range]::-moz-range-progress { height: 2px; background: #f50; }
+        .${NS}-panel input[type=range]::-moz-range-progress { height: 2px; background: var(--sce-accent, #f50); }
         .${NS}-panel input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 0; }
         .${NS}-ticks { position: relative; height: 12px; margin: -2px 6px 6px; color: #777; font-size: 9px; font-variant-numeric: tabular-nums; }
         .${NS}-ticks span { position: absolute; transform: translateX(-50%); }
         .${NS}-ticks span::before { content: ''; position: absolute; left: 50%; top: -6px; width: 1px; height: 4px; background: #666; }
         .${NS}-panel label { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; cursor: pointer; color: #999; font-size: 11px; }
-        .${NS}-panel label input { accent-color: #f50; margin: 0; }
+        .${NS}-panel label input { accent-color: var(--sce-accent, #f50); margin: 0; }
         .${NS}-sep { height: 1px; background: #444; margin: 2px 0 10px; }
         .${NS}-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; }
         .${NS}-presets button { height: 26px; border-radius: 2px; border: 0; background: #444; color: #ccc; cursor: pointer; font: 500 11px ${FONT}; }
         .${NS}-presets button:hover { background: #555; color: #fff; }
-        .${NS}-presets button.m-on { background: #f50; color: #fff; }
-        .${NS}-analysis { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid #444; color: #999; font-size: 11px; }
-        .${NS}-analysis b { color: #fff; font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; }
-        .${NS}-analysis b.m-cached { color: #fff; } .${NS}-analysis b.m-live { color: #f50; }
-        .${NS}-analysis label { margin: 0; }
+        .${NS}-presets button.m-on { background: var(--sce-accent, #f50); color: #fff; }
+        /* Analyse : titre + interrupteur, puis trois tuiles BPM / tonalité / Camelot */
+        .${NS}-analysis { padding-top: 8px; border-top: 1px solid #444; }
+        .${NS}-analysis h4 { margin-bottom: 8px; }
+        .${NS}-analysis h4 label { margin: 0; display: inline-flex; align-items: center; gap: 6px; color: #999; font-size: 11px; }
+        .${NS}-tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+        .${NS}-tile { background: #2a2a2a; border-radius: 3px; padding: 7px 6px 6px; text-align: center; }
+        .${NS}-tile b { display: block; color: #fff; font-size: 15px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .${NS}-tile small { display: block; margin-top: 3px; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+        .${NS}-tiles.m-live b { color: var(--sce-accent, #f50); }
+        .${NS}-tiles.m-off b { color: #666; }
     `;
     function injectStyles() { if (document.getElementById(`${NS}-styles`)) return; const s = document.createElement('style'); s.id = `${NS}-styles`; s.textContent = CSS; document.head.appendChild(s); }
 
@@ -267,7 +274,7 @@
         p.className = `${NS}-panel`;
         const ticks = [0.1, 0.25, 0.5, 1, 1.5, 2, 3].map((r) => `<span style="left:${rateToPos(r) * 100}%">${r}×</span>`).join('');
         p.innerHTML = `
-            <button type="button" class="${NS}-close" title="Fermer (Échap)">×</button>
+            <div class="${NS}-head"><span>Audio</span><button type="button" class="${NS}-close" title="Fermer (Échap)">×</button></div>
             <h4><span>${L.speed}</span><b class="v-rate"></b></h4>
             <input type="range" class="r-rate" min="0" max="1" step="0.001" title="${L.speed} — double-clic : 1×, molette : ±1 %">
             <div class="${NS}-ticks">${ticks}</div>
@@ -284,7 +291,10 @@
                 <button type="button" data-p="slowed">${L.slowed}</button>
                 <button type="button" data-p="nightcore">${L.nightcore}</button>
             </div>
-            <div class="${NS}-analysis"><span>${L.analysis}</span><b class="v-analysis"></b><label title="BPM et tonalité en direct"><input type="checkbox" class="c-analysis"></label></div>`;
+            <div class="${NS}-analysis">
+                <h4><span>${L.analysis}</span><label title="BPM et tonalité en direct"><input type="checkbox" class="c-analysis"> <span class="v-state"></span></label></h4>
+                <div class="${NS}-tiles"><div class="${NS}-tile"><b class="v-bpm">–</b><small>BPM</small></div><div class="${NS}-tile"><b class="v-key">–</b><small>${L.key}</small></div><div class="${NS}-tile"><b class="v-cam">–</b><small>Camelot</small></div></div>
+            </div>`;
         const rate = p.querySelector('.r-rate');
         rate.addEventListener('input', () => { const r = snap(clampRate(posToRate(parseFloat(rate.value)))); set({ rate: r }); rate.value = rateToPos(r); paint(rate, rateToPos(r)); });
         rate.addEventListener('dblclick', () => set({ rate: 1 }));
@@ -307,10 +317,13 @@
         q('.v-reverb').textContent = cfg.reverb > 0.01 ? `${Math.round(cfg.reverb * 100)} %` : 'off'; q('.r-reverb').value = cfg.reverb; paint(q('.r-reverb'), cfg.reverb);
         panel.querySelectorAll('[data-p]').forEach((b) => { const P = PRESETS[b.dataset.p]; b.classList.toggle('m-on', Math.abs(P.rate - cfg.rate) < 1e-6 && P.preservePitch === cfg.preservePitch && Math.abs(P.bass - cfg.bass) < .26 && Math.abs(P.reverb - cfg.reverb) < .06); });
         q('.c-analysis').checked = !!cfg.analysis;
-        const a = q('.v-analysis'); const r = Analysis.result;
-        a.textContent = !cfg.analysis ? 'off' : Analysis.label();
-        a.className = `v-analysis ${r ? (r.cached ? 'm-cached' : 'm-live') : ''}`;
-        a.title = r ? `confiance BPM ${Math.round(r.conf * 100)} %${r.cached ? ' · mémorisé' : ' · en cours'}` : '';
+        const r = Analysis.result, tiles = q(`.${NS}-tiles`);
+        q('.v-bpm').textContent = r ? r.bpm : '–';
+        q('.v-key').textContent = r ? `${r.key}${r.mode === 'minor' ? 'm' : ''}` : '–';
+        q('.v-cam').textContent = r ? Analysis.camelot(r) : '–';
+        q('.v-state').textContent = !cfg.analysis ? 'off' : (r ? (r.cached ? '' : L.listening) : L.listening);
+        tiles.className = `${NS}-tiles ${!cfg.analysis ? 'm-off' : r && !r.cached ? 'm-live' : ''}`;
+        tiles.title = r ? `confiance BPM ${Math.round(r.conf * 100)} %${r.cached ? ' · mémorisé' : ' · en cours'}` : '';
     }
     function closePanel() { panel?.remove(); panel = null; btn?.classList.remove('m-open'); }
     function togglePanel() {
