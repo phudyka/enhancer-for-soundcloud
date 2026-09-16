@@ -52,6 +52,12 @@
   .tools .speed { font-variant-numeric: tabular-nums; font-weight: 500; }
   .tools .speed.on { color: var(--accent); }
 
+  .sleep-wrap { position: relative; }
+  .tools #sleep.on { color: var(--accent); }
+  .menu { position: absolute; bottom: 32px; left: 0; min-width: 170px; background: var(--bg2); border: 1px solid var(--line); border-radius: 3px; padding: 4px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+  .menu button { display: block; width: 100%; height: 28px; text-align: left; padding: 0 8px; border-radius: 2px; color: #ddd; }
+  .menu button:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .menu[hidden] { display: none; }
   .empty { padding: 36px 20px 30px; text-align: center; color: var(--muted); }
   .empty button { display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 3px; background: var(--accent); color: #fff; font-weight: 600; }
   .player[hidden], .empty[hidden] { display: none; }
@@ -74,6 +80,18 @@
   <div class="tools">
     <div class="left">
       <button class="speed" id="speed" title="Vitesse de lecture (clic : suivante, Maj+clic : précédente)">1×</button>
+      <span class="sleep-wrap">
+        <button id="sleep" title="Minuteur d'arrêt"><svg viewBox="0 0 16 16"><path d="M9.2 1.3a6.7 6.7 0 1 0 5.5 9.9 5.4 5.4 0 0 1-5.5-9.9z"/></svg><span id="sleep-left"></span></button>
+        <div class="menu" id="sleep-menu" hidden>
+          <button data-sleep="15">Arrêter dans 15 min</button>
+          <button data-sleep="30">Arrêter dans 30 min</button>
+          <button data-sleep="45">Arrêter dans 45 min</button>
+          <button data-sleep="60">Arrêter dans 1 h</button>
+          <button data-sleep="90">Arrêter dans 1 h 30</button>
+          <button data-sleep="end">À la fin du titre</button>
+          <button data-sleep="0" id="sleep-cancel" hidden>Annuler le minuteur</button>
+        </div>
+      </span>
       <button data-cmd="pip" title="Lecteur épinglable, toujours au premier plan"><svg viewBox="0 0 16 16"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7.25" width="5" height="3.75" rx=".5"/></svg></button>
     </div>
     <div class="right">

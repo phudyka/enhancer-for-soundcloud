@@ -4,6 +4,7 @@ const send = (msg) => chrome.runtime.sendMessage(msg).catch(() => null);
 const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>';
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
+const T = (s) => (window.SCE_T || ((x) => x))(s);
 
 let state = null, tabId = null, timer = null;
 
@@ -29,6 +30,10 @@ function render() {
     $('#repeat-n').textContent = state.repeat === 'one' ? '1' : '';
     $('#speed').textContent = fmtRate(state.rate);
     $('#speed').classList.toggle('on', Math.abs((state.rate || 1) - 1) > 1e-6);
+    const sleep = state.sleep;
+    $('#sleep').classList.toggle('on', sleep != null);
+    $('#sleep-left').textContent = sleep === 'end' ? T('fin') : typeof sleep === 'number' ? fmtTime(sleep) : '';
+    $('#sleep-cancel').hidden = sleep == null;
 }
 
 async function poll() {
@@ -64,6 +69,14 @@ $('#speed').addEventListener('click', (e) => {
     i = (i + (e.shiftKey ? -1 : 1) + SPEEDS.length) % SPEEDS.length;
     command('speed', { value: SPEEDS[i] });
 });
+
+$('#sleep').addEventListener('click', (e) => { e.stopPropagation(); $('#sleep-menu').hidden = !$('#sleep-menu').hidden; });
+$('#sleep-menu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sleep]'); if (!b) return;
+    $('#sleep-menu').hidden = true;
+    command('sleep', { value: b.dataset.sleep === 'end' ? 'end' : Number(b.dataset.sleep) });
+});
+document.addEventListener('click', () => { $('#sleep-menu').hidden = true; });
 
 const focusTab = async () => { await send({ type: 'popup-focus-tab' }); };
 $('#open-tab').addEventListener('click', focusTab);

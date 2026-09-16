@@ -145,6 +145,16 @@ const SCE_I18N = {
  "titres": "tracks",
  "L'historique se désactive dans les": "History can be turned off in the",
  ". Il conserve au plus 24 mois d'écoutes.": ". It keeps at most 24 months of plays.",
+ "Minuteur d'arrêt": "Sleep timer",
+ "Arrêter dans 15 min": "Stop in 15 min",
+ "Arrêter dans 30 min": "Stop in 30 min",
+ "Arrêter dans 45 min": "Stop in 45 min",
+ "Arrêter dans 1 h": "Stop in 1 h",
+ "Arrêter dans 1 h 30": "Stop in 1 h 30",
+ "À la fin du titre": "At the end of the track",
+ "Annuler le minuteur": "Cancel the timer",
+ "fin": "end",
+ "Guide des fonctions": "Feature guide",
  "Brave bloque déjà les publicités avec ses Shields : laissez désactivé.": "Brave already blocks ads with Shields: leave this off."
 };
 

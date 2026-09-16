@@ -169,7 +169,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
         await chrome.storage.sync.set({ settings: { hijackPlayerShuffle: true, speedControl: true, library: true } });
-        chrome.runtime.openOptionsPage();
+        chrome.tabs.create({ url: chrome.runtime.getURL('guide/guide.html') }).catch(() => chrome.runtime.openOptionsPage());
     }
     // Réaligne le blocage des pubs sur le réglage (au cas où le navigateur l'aurait réinitialisé)
     const { settings } = await chrome.storage.sync.get('settings');

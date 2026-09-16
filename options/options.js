@@ -62,4 +62,5 @@ $('accent-reset').addEventListener('click', () => { save({ accent: '' }); paintS
 $('swatches').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; save({ accent: b.dataset.c === '#ff5500' ? '' : b.dataset.c }); paintSwatches(); });
 $('shortcuts').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }); });
 $('open-stats').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('stats/stats.html') }));
+$('open-guide').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: chrome.runtime.getURL('guide/guide.html') }); });
 load();

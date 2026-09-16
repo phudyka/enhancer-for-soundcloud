@@ -5,8 +5,12 @@
  * isolé), qui les relaie au popup, au service worker (raccourcis globaux) et
  * au futur lecteur épinglable (Document Picture-in-Picture).
  *
- *   ← { sce: 'command', command: 'toggle-play' | 'next-track' | 'prev-track' | 'repeat' | 'seek' | 'speed', value? }
- *   → { sce: 'state', playing, title, artist, artwork, position, duration, url }
+ *   ← { sce: 'command', command: 'toggle-play' | 'next-track' | 'prev-track' | 'repeat' | 'seek' | 'speed' | 'sleep', value? }
+ *   → { sce: 'state', playing, title, artist, artwork, position, duration, url, rate, repeat, sleep }
+ *
+ * Minuteur d'arrêt ('sleep') : value = minutes → fondu de 8 s puis pause ;
+ * value = 'end' → pause à la fin du titre en cours ; value = 0 → annulation.
+ * L'état expose `sleep` : secondes restantes, 'end', ou null.
  */
 (() => {
     'use strict';
@@ -42,7 +46,60 @@
             duration: media ? media.duration    : Number(prog?.getAttribute('aria-valuemax') || 0),
             rate:     media ? media.playbackRate : 1,
             repeat:   $(SEL.repeat)?.classList.contains('m-one') ? 'one' : $(SEL.repeat)?.classList.contains('m-all') ? 'all' : 'off',
+            sleep:    sleep.at ? Math.max(0, Math.round((sleep.at - Date.now()) / 1000)) : sleep.endOfTrack ? 'end' : null,
         };
+    }
+
+    /* ── Minuteur d'arrêt ─────────────────────────────────────────── */
+    const sleep = { at: null, endOfTrack: false, timer: null, fading: false };
+    const FADE_SECONDS = 8;
+    const isPlaying = () => !!$(SEL.play)?.classList.contains('playing');
+    const pauseIfPlaying = () => { if (isPlaying()) $(SEL.play)?.click(); };
+
+    function cancelSleep(publish = true) {
+        clearTimeout(sleep.timer); sleep.timer = null;
+        sleep.at = null; sleep.endOfTrack = false;
+        if (sleep.fading) restoreGain();
+        if (publish) window.postMessage(state(), location.origin);
+    }
+    function restoreGain() {
+        sleep.fading = false;
+        const tap = window.__sceAudioTap;
+        if (tap) { const g = tap.output.gain; g.cancelScheduledValues(tap.ctx.currentTime); g.setValueAtTime(1, tap.ctx.currentTime); }
+        else if (window.__sceMedia) window.__sceMedia.volume = sleep.volume ?? 1;
+    }
+    /** Fondu vers le silence (gain de la chaîne audio, sinon volume du média), puis pause et retour au niveau initial. */
+    function fadeAndPause() {
+        sleep.timer = null; sleep.at = null;
+        if (!isPlaying()) { cancelSleep(); return; }
+        sleep.fading = true;
+        const tap = window.__sceAudioTap, media = window.__sceMedia;
+        if (tap) {
+            const g = tap.output.gain, now = tap.ctx.currentTime;
+            g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0.0001, now + FADE_SECONDS);
+        } else if (media) {
+            sleep.volume = media.volume;
+            const steps = FADE_SECONDS * 10, start = media.volume;
+            let i = 0;
+            const iv = setInterval(() => { i++; media.volume = Math.max(0, start * (1 - i / steps)); if (i >= steps || !sleep.fading) clearInterval(iv); }, 100);
+        }
+        setTimeout(() => { if (!sleep.fading) return; pauseIfPlaying(); setTimeout(() => { restoreGain(); window.postMessage(state(), location.origin); }, 250); }, FADE_SECONDS * 1000 + 200);
+    }
+    function setSleep(value) {
+        cancelSleep(false);
+        if (value === 'end') sleep.endOfTrack = true;
+        else if (Number.isFinite(Number(value)) && Number(value) > 0) {
+            sleep.at = Date.now() + Number(value) * 60000;
+            sleep.timer = setTimeout(fadeAndPause, Math.max(0, sleep.at - Date.now() - FADE_SECONDS * 1000));
+        }
+        window.postMessage(state(), location.origin);
+    }
+    /** Fin du titre : SoundCloud enchaîne sur le suivant ; on le met en pause dès qu'il démarre. */
+    function onTrackEnded() {
+        if (!sleep.endOfTrack) return;
+        sleep.endOfTrack = false;
+        let tries = 0;
+        const iv = setInterval(() => { tries++; if (isPlaying()) { pauseIfPlaying(); clearInterval(iv); window.postMessage(state(), location.origin); } else if (tries > 30) clearInterval(iv); }, 200);
     }
 
     function command(cmd, value) {
@@ -53,6 +110,7 @@
             case 'seek':        if (window.__sceMedia && Number.isFinite(value)) window.__sceMedia.currentTime = value; break;
             case 'repeat':      $(SEL.repeat)?.click(); break;
             case 'speed':       window.dispatchEvent(new CustomEvent('sce:speed', { detail: { rate: value } })); break;
+            case 'sleep':       setSleep(value); return;
             case 'get-state':   break;
         }
         window.postMessage(state(), location.origin);
@@ -84,5 +142,5 @@
     }
     new MutationObserver(() => { if (!bar?.isConnected) attach(); }).observe(document.body, { childList: true, subtree: true });
     attach();
-    if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', schedule); el.addEventListener('pause', schedule); });
+    if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', schedule); el.addEventListener('pause', schedule); el.addEventListener('ended', onTrackEnded); });
 })();

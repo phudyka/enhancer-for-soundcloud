@@ -1,5 +1,10 @@
 # Journal des versions
 
+## 0.13.0 — 16/09/2026
+- Minuteur d'arrêt dans le panneau latéral : arrêt dans 15 à 90 minutes avec fondu de 8 s avant la pause, ou pause à la fin du titre en cours ; temps restant affiché.
+- Guide intégré (français / anglais) ouvert à l'installation et accessible depuis les réglages.
+- Publication : script d'empaquetage `scripts/package.sh` et politique de confidentialité `PRIVACY.md`.
+
 ## 0.12.0 — 16/09/2026
 - Historique et statistiques d'écoute locaux : temps réellement écouté par titre, mesuré sur le flux audio et conservé dans le navigateur (24 mois au plus). Page Statistiques : période, temps d'écoute, écoutes, titres et artistes distincts, écoute par jour, par heure et par jour de semaine, top titres, top artistes, dernières écoutes, export CSV et JSON, effacement. Accessible depuis les réglages et le panneau latéral ; désactivable.
 - Apparence : fond noir (OLED) pour le thème sombre natif de SoundCloud.
