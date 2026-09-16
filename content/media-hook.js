@@ -27,6 +27,23 @@
     if (window.__sceMediaHooked) return;
     window.__sceMediaHooked = true;
 
+    // ── 0. volume natif à 100 % ────────────────────────────────────
+    // Le panneau Audio porte un volume linéaire (gain de notre chaîne). Pour qu'il
+    // soit la seule atténuation, le volume SoundCloud (relu ici au chargement depuis
+    // localStorage) est fixé à 100 % ; l'ancienne valeur devient notre volume initial.
+    try {
+        const settings = JSON.parse(localStorage.getItem('scsp:settings') || '{}');
+        if (settings.speedControl !== false) {
+            const KEY = 'V2::local::settings';
+            const native = JSON.parse(localStorage.getItem(KEY) || '{}');
+            if (native && typeof native === 'object' && ((typeof native.volume === 'number' && native.volume < 1) || native.muted)) {
+                const ours = JSON.parse(localStorage.getItem('sce:audio') || '{}') || {};
+                if (ours.volume == null) { ours.volume = typeof native.volume === 'number' ? Math.round(native.volume * 100) / 100 : 1; ours.muted = !!native.muted; localStorage.setItem('sce:audio', JSON.stringify(ours)); }
+                localStorage.setItem(KEY, JSON.stringify({ ...native, volume: 1, muted: false }));
+            }
+        }
+    } catch {}
+
     // ── 1. élément média actif ─────────────────────────────────────
     const mediaListeners = new Set();
     const media = { el: null };

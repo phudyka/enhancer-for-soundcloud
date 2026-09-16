@@ -1,10 +1,13 @@
 /*
  * Enhancer for SoundCloud™ — Audio : vitesse, effets, analyse (monde principal)
  *
- * Bouton « jauge » à gauche du volume (mêmes cotes que les icônes SoundCloud).
- * Panneau dans le style du popover de volume :
+ * Le bouton haut-parleur de SoundCloud ouvre notre panneau (son popover de
+ * volume est masqué) :
+ *   · Volume linéaire 0 → 100 % (gain de notre chaîne, le volume natif est
+ *     fixé à 100 % au chargement par media-hook.js), sourdine, molette sur le bouton
  *   · Vitesse 0,1× → 3× : curseur logarithmique (même sensation sur toute la
- *     plage), aimant sur 1×, double-clic = 1×, molette = ±1 %
+ *     plage), aimant étroit sur 1×, boutons ±0,01, flèches, saisie directe,
+ *     double-clic = 1×, molette = ±1 %
  *   · Conservation de la hauteur
  *   · Bass boost (low-shelf 90 Hz, 0 → +12 dB) · Réverb (convolution, 0 → 100 %)
  *   · Presets : Normal · Bass boost · Slowed + Reverb · Nightcore
@@ -35,14 +38,16 @@
     };
     const T = {
         fr: { speed: 'Vitesse', pitch: 'Conserver la hauteur', bass: 'Bass boost', reverb: 'Réverb', normal: 'Normal', slowed: 'Slowed + Reverb', nightcore: 'Nightcore', bassp: 'Bass boost',
-              tip: 'Vitesse, effets et analyse audio', unavailable: 'Effets indisponibles sur ce titre', analysis: 'Analyse', listening: 'écoute…', key: 'tonalité', at: 'à' },
+              tip: 'Volume, vitesse, effets et analyse audio', unavailable: 'Effets indisponibles sur ce titre', analysis: 'Analyse', listening: 'écoute…', key: 'tonalité', at: 'à',
+              volume: 'Volume', mute: 'Sourdine', muted: 'sourdine', typeRate: 'Cliquer pour saisir une valeur' },
         en: { speed: 'Speed', pitch: 'Preserve pitch', bass: 'Bass boost', reverb: 'Reverb', normal: 'Normal', slowed: 'Slowed + Reverb', nightcore: 'Nightcore', bassp: 'Bass boost',
-              tip: 'Speed, effects and audio analysis', unavailable: 'Effects unavailable for this track', analysis: 'Analysis', listening: 'listening…', key: 'key', at: 'at' },
+              tip: 'Volume, speed, effects and audio analysis', unavailable: 'Effects unavailable for this track', analysis: 'Analysis', listening: 'listening…', key: 'key', at: 'at',
+              volume: 'Volume', mute: 'Mute', muted: 'muted', typeRate: 'Click to type a value' },
     };
     const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
 
     const store = {
-        get() { try { return { ...PRESETS.normal, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch { return { ...PRESETS.normal }; } },
+        get() { try { return { ...PRESETS.normal, volume: 1, muted: false, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch { return { ...PRESETS.normal, volume: 1, muted: false }; } },
         set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
     };
     let cfg = store.get();
@@ -56,7 +61,8 @@
     const LOG_MIN = Math.log(RATE.min), LOG_MAX = Math.log(RATE.max);
     const posToRate = (p) => Math.exp(LOG_MIN + (LOG_MAX - LOG_MIN) * p);
     const rateToPos = (r) => (Math.log(r) - LOG_MIN) / (LOG_MAX - LOG_MIN);
-    const snap = (r) => (Math.abs(r - 1) < 0.035 ? 1 : Math.abs(r - 0.5) < 0.02 ? 0.5 : Math.abs(r - 2) < 0.05 ? 2 : r);
+    const snap = (r) => (Math.abs(r - 1) < 0.02 ? 1 : Math.abs(r - 0.5) < 0.01 ? 0.5 : Math.abs(r - 2) < 0.02 ? 2 : r);
+    const clampVolume = (v) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
 
     // ── Graphe Web Audio ─────────────────────────────────────────
     // Priorité : la chaîne transparente que media-hook.js a insérée dans le
@@ -78,12 +84,13 @@
         const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
         // Étage DJ : égaliseur bas (kill) + gain master de la platine A, avant la sortie
         const eqLow = ctx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 200; eqLow.gain.value = 0;
-        const master = ctx.createGain();
+        const master = ctx.createGain();                       // volume linéaire de l'utilisateur
+        const xfade = ctx.createGain();                        // réservé aux transitions automatiques
         input.connect(bass); bass.connect(dry); dry.connect(eqLow);
         bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(eqLow);
-        eqLow.connect(master); master.connect(output);
+        eqLow.connect(master); master.connect(xfade); xfade.connect(output);
         input.connect(an);
-        return { bass, dry, wet, conv, an, eqLow, master };
+        return { bass, dry, wet, conv, an, eqLow, master, xfade };
     }
     function ensureGraph(el) {
         if (!el) return false;
@@ -119,10 +126,14 @@
             graph.bass.gain.setTargetAtTime(cfg.bass, t, 0.05);
             graph.wet.gain.setTargetAtTime(cfg.reverb * 0.9, t, 0.05);
             graph.dry.gain.setTargetAtTime(1 - cfg.reverb * 0.35, t, 0.05);
-        } else if (effectsOn()) window.__scsp?.toast?.(L.unavailable, { error: true });
+            graph.master.gain.setTargetAtTime(cfg.muted ? 0 : cfg.volume, t, 0.02);
+        } else {
+            try { el.volume = cfg.muted ? 0 : cfg.volume; } catch {}    // repli : volume de l'élément
+            if (effectsOn()) window.__scsp?.toast?.(L.unavailable, { error: true });
+        }
         updateBtn();
     }
-    function set(patch) { cfg = { ...cfg, ...patch }; store.set(cfg); apply(); if (panel) syncPanel(); window.dispatchEvent(new Event('sce:audio-change')); }
+    function set(patch) { cfg = { ...cfg, ...patch }; store.set(cfg); apply(); updateBtn(); if (panel) syncPanel(); window.dispatchEvent(new Event('sce:audio-change')); }
     function setSettings(patch) {
         if (!patch || typeof patch !== 'object') return false;
         const next = {};
@@ -130,6 +141,8 @@
         if (typeof patch.preservePitch === 'boolean') next.preservePitch = patch.preservePitch;
         if (Number.isFinite(patch.bass)) next.bass = Math.min(12, Math.max(0, patch.bass));
         if (Number.isFinite(patch.reverb)) next.reverb = Math.min(1, Math.max(0, patch.reverb));
+        if (Number.isFinite(patch.volume)) next.volume = clampVolume(patch.volume);
+        if (typeof patch.muted === 'boolean') next.muted = patch.muted;
         if (!Object.keys(next).length) return false;
         set(next);
         return true;
@@ -225,12 +238,14 @@
         };
     })();
 
-    /** Exposé au mode DJ : contexte, gain master et égaliseur bas de la platine A, analyse courante. */
+    /** Exposé aux autres modules (transitions, lecteur épinglable) : graphe, analyse, réglages. */
     window.__sceAudio = Object.freeze({
-        get ctx() { return graph.ctx; }, get master() { return graph.master; }, get eqLow() { return graph.eqLow; },
+        get ctx() { return graph.ctx; }, get master() { return graph.master; }, get eqLow() { return graph.eqLow; }, get xfade() { return graph.xfade; },
         get analysis() { return Analysis.result; }, ensure: () => ensureGraph(media), get media() { return media; },
         get rate() { return cfg.rate; }, setRate: (r) => set({ rate: clampRate(r) }), closePanel,
-        get settings() { return { rate: cfg.rate, preservePitch: cfg.preservePitch, bass: cfg.bass, reverb: cfg.reverb }; },
+        get volume() { return cfg.volume; }, get muted() { return cfg.muted; },
+        setVolume: (v) => set({ volume: clampVolume(v), muted: false }), toggleMute: () => set({ muted: !cfg.muted }),
+        get settings() { return { rate: cfg.rate, preservePitch: cfg.preservePitch, bass: cfg.bass, reverb: cfg.reverb, volume: cfg.volume, muted: cfg.muted }; },
         setSettings, applyPreset,
     });
     if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { media = el; apply(el); });
@@ -239,14 +254,24 @@
 
     // ── UI ────────────────────────────────────────────────────────
     const CSS = `
-        .${NS}-btn { width: 24px; height: 48px; padding: 16px 4px; border: 0; background: transparent; color: #fff; cursor: pointer; display: block; }
-        .${NS}-btn div { width: 16px; height: 16px; }
-        .${NS}-btn svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-        .${NS}-btn.m-active { color: var(--sce-accent, #f50); }
-        .${NS}-btn.m-open { color: #fff; opacity: 1; }
+        /* Bouton haut-parleur natif : popover SoundCloud masqué, point accent = effets actifs, atténué = sourdine */
+        .playControls__volume .volume__sliderWrapper { display: none !important; }
+        .playControls__volume .volume__button { position: relative; }
+        .playControls__volume .volume__button.${NS}-active::after { content: ''; position: absolute; top: 13px; right: 1px; width: 5px; height: 5px; border-radius: 50%; background: var(--sce-accent, #f50); }
+        .playControls__volume .volume__button.${NS}-muted { opacity: .45; }
+        .${NS}-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .${NS}-mute { width: 22px; height: 22px; flex: 0 0 auto; border: 0; border-radius: 2px; background: transparent; color: #ccc; cursor: pointer; padding: 0; display: grid; place-items: center; }
+        .${NS}-mute:hover { color: #fff; background: #444; }
+        .${NS}-mute.m-on { color: var(--sce-accent, #f50); }
+        .${NS}-mute svg { width: 15px; height: 15px; fill: currentColor; }
+        .${NS}-rate-ctl { display: flex; align-items: center; gap: 4px; }
+        .${NS}-step { width: 18px; height: 18px; border: 0; border-radius: 2px; background: #444; color: #fff; cursor: pointer; padding: 0; font: 700 13px/18px ${FONT}; }
+        .${NS}-step:hover { background: #555; }
+        .${NS}-panel .v-rate { cursor: text; border-bottom: 1px dotted #777; min-width: 40px; text-align: right; display: inline-block; }
+        .${NS}-panel .i-rate { width: 58px; height: 18px; box-sizing: border-box; background: #222; color: #fff; border: 1px solid #666; border-radius: 2px; font: 700 12px ${FONT}; text-align: right; padding: 0 4px; }
         .${NS}-panel { position: fixed; bottom: 52px; width: 256px; padding: 12px 14px 10px; border-radius: 2px; background: #333; color: #ccc;
                        box-shadow: 0 2px 8px rgba(0,0,0,.4); font: 12px/1.3 ${FONT}; z-index: 99999; user-select: none; }
-        .${NS}-panel::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: #333; transform: translateX(-50%) rotate(45deg); }
+        .${NS}-panel::after { content: ''; position: absolute; left: var(--arrow, 50%); bottom: -5px; width: 10px; height: 10px; background: #333; transform: translateX(-50%) rotate(45deg); }
         .${NS}-panel h4 { margin: 0 0 6px; font-size: 12px; font-weight: 400; color: #999; display: flex; justify-content: space-between; }
         .${NS}-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 8px 0; }
         .${NS}-head span { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #999; }
@@ -282,14 +307,16 @@
     `;
     function injectStyles() { if (document.getElementById(`${NS}-styles`)) return; const s = document.createElement('style'); s.id = `${NS}-styles`; s.textContent = CSS; document.head.appendChild(s); }
 
+    const ICON_SPEAKER = '<svg viewBox="0 0 16 16"><path d="M2 6h3l4-3v10l-4-3H2z"/><path d="M11 5.5a3 3 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
     function updateBtn() {
         if (!btn) return;
-        const bits = [fmtRate(cfg.rate)];
+        const bits = [cfg.muted ? L.muted : `${L.volume} ${Math.round(cfg.volume * 100)} %`, fmtRate(cfg.rate)];
         if (cfg.bass > 0.01) bits.push(`bass +${Math.round(cfg.bass)} dB`);
         if (cfg.reverb > 0.01) bits.push(`réverb ${Math.round(cfg.reverb * 100)} %`);
         if (Analysis.result) bits.push(Analysis.label());
         btn.title = `${L.tip} : ${bits.join(' · ')}`;
-        btn.classList.toggle('m-active', anyOn());
+        btn.classList.toggle(`${NS}-active`, anyOn());
+        btn.classList.toggle(`${NS}-muted`, cfg.muted);
     }
     const paint = (input, pct) => input.style.setProperty('--p', `${pct * 100}%`);
 
@@ -299,8 +326,11 @@
         const ticks = [0.1, 0.25, 0.5, 1, 1.5, 2, 3].map((r) => `<span style="left:${rateToPos(r) * 100}%">${r}×</span>`).join('');
         p.innerHTML = `
             <div class="${NS}-head"><span>Audio</span><button type="button" class="${NS}-close" title="Fermer (Échap)">×</button></div>
-            <h4><span>${L.speed}</span><b class="v-rate"></b></h4>
-            <input type="range" class="r-rate" min="0" max="1" step="0.001" title="${L.speed} — double-clic : 1×, molette : ±1 %">
+            <h4><span>${L.volume}</span><b class="v-vol"></b></h4>
+            <div class="${NS}-row"><button type="button" class="${NS}-mute" title="${L.mute}">${ICON_SPEAKER}</button><input type="range" class="r-vol" min="0" max="100" step="1" title="${L.volume} — molette : ±2 %"></div>
+            <div class="${NS}-sep"></div>
+            <h4><span>${L.speed}</span><span class="${NS}-rate-ctl"><button type="button" class="${NS}-step s-dec" title="−0,01">−</button><b class="v-rate" title="${L.typeRate}"></b><button type="button" class="${NS}-step s-inc" title="+0,01">+</button></span></h4>
+            <input type="range" class="r-rate" min="0" max="1" step="0.001" title="${L.speed} — double-clic : 1×, molette : ±1 %, flèches : ±0,01 (Maj : ±0,1)">
             <div class="${NS}-ticks">${ticks}</div>
             <label><input type="checkbox" class="c-pitch"> ${L.pitch}</label>
             <div class="${NS}-sep"></div>
@@ -319,10 +349,30 @@
                 <h4><span>${L.analysis}</span></h4>
                 <div class="${NS}-tiles"><div class="${NS}-tile"><b class="v-bpm">–</b><small>BPM</small></div><div class="${NS}-tile"><b class="v-key">–</b><small>${L.key}</small></div><div class="${NS}-tile"><b class="v-cam">–</b><small>Camelot</small></div></div>
             </div>`;
+        const vol = p.querySelector('.r-vol');
+        vol.addEventListener('input', () => set({ volume: clampVolume(parseInt(vol.value, 10) / 100), muted: false }));
+        vol.addEventListener('wheel', (e) => { e.preventDefault(); set({ volume: clampVolume(cfg.volume + (e.deltaY < 0 ? 0.02 : -0.02)), muted: false }); }, { passive: false });
+        p.querySelector(`.${NS}-mute`).addEventListener('click', () => set({ muted: !cfg.muted }));
         const rate = p.querySelector('.r-rate');
         rate.addEventListener('input', () => { const r = snap(clampRate(posToRate(parseFloat(rate.value)))); set({ rate: r }); rate.value = rateToPos(r); paint(rate, rateToPos(r)); });
         rate.addEventListener('dblclick', () => set({ rate: 1 }));
         rate.addEventListener('wheel', (e) => { e.preventDefault(); set({ rate: clampRate(cfg.rate * (e.deltaY < 0 ? 1.01 : 1 / 1.01)) }); }, { passive: false });
+        // Précision : flèches ±0,01 (Maj ±0,1), boutons ±0,01, saisie directe de la valeur
+        rate.addEventListener('keydown', (e) => {
+            const dir = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
+            if (!dir) return;
+            e.preventDefault(); set({ rate: clampRate(cfg.rate + dir * (e.shiftKey ? 0.1 : 0.01)) });
+        });
+        p.querySelector('.s-dec').addEventListener('click', () => set({ rate: clampRate(cfg.rate - 0.01) }));
+        p.querySelector('.s-inc').addEventListener('click', () => set({ rate: clampRate(cfg.rate + 0.01) }));
+        p.querySelector('.v-rate').addEventListener('click', () => {
+            const label = p.querySelector('.v-rate'); if (!label || p.querySelector('.i-rate')) return;
+            const input = document.createElement('input'); input.type = 'number'; input.className = 'i-rate'; input.min = RATE.min; input.max = RATE.max; input.step = '0.01'; input.value = cfg.rate;
+            const done = (commit) => { if (!input.isConnected) return; if (commit) { const r = parseFloat(input.value); if (Number.isFinite(r)) set({ rate: clampRate(r) }); } input.replaceWith(label); };
+            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(true); } if (e.key === 'Escape') { e.preventDefault(); done(false); } e.stopPropagation(); });
+            input.addEventListener('blur', () => done(true));
+            label.replaceWith(input); input.focus(); input.select();
+        });
         p.querySelector('.c-pitch').addEventListener('change', (e) => set({ preservePitch: e.target.checked }));
         p.querySelector('.r-bass').addEventListener('input', (e) => set({ bass: parseFloat(e.target.value) }));
         p.querySelector('.r-reverb').addEventListener('input', (e) => set({ reverb: parseFloat(e.target.value) }));
@@ -333,8 +383,11 @@
     }
     function syncPanel() {
         const q = (s) => panel.querySelector(s);
-        q('.v-rate').textContent = fmtRate(cfg.rate);
+        if (q('.v-rate')) q('.v-rate').textContent = fmtRate(cfg.rate);
         q('.r-rate').value = rateToPos(cfg.rate); paint(q('.r-rate'), rateToPos(cfg.rate));
+        q('.v-vol').textContent = cfg.muted ? L.muted : `${Math.round(cfg.volume * 100)} %`;
+        q('.r-vol').value = Math.round(cfg.volume * 100); paint(q('.r-vol'), cfg.muted ? 0 : cfg.volume);
+        q(`.${NS}-mute`).classList.toggle('m-on', cfg.muted);
         q('.c-pitch').checked = cfg.preservePitch;
         q('.v-bass').textContent = cfg.bass > 0.01 ? `+${cfg.bass} dB` : 'off'; q('.r-bass').value = cfg.bass; paint(q('.r-bass'), cfg.bass / 12);
         q('.v-reverb').textContent = cfg.reverb > 0.01 ? `${Math.round(cfg.reverb * 100)} %` : 'off'; q('.r-reverb').value = cfg.reverb; paint(q('.r-reverb'), cfg.reverb);
@@ -346,28 +399,35 @@
         tiles.className = `${NS}-tiles ${r && !r.cached ? 'm-live' : ''}`;
         tiles.title = r ? `confiance BPM ${Math.round(r.conf * 100)} %${r.cached ? ' · mémorisé' : ' · en cours'}` : '';
     }
-    function closePanel() { panel?.remove(); panel = null; btn?.classList.remove('m-open'); }
+    function closePanel() { panel?.remove(); panel = null; }
     function togglePanel() {
         if (panel) { closePanel(); return; }
-        window.__sceDj?.close();
-        panel = buildPanel(); document.body.appendChild(panel); btn.classList.add('m-open');
-        const r = btn.getBoundingClientRect();
-        panel.style.left = `${Math.max(8, Math.min(window.innerWidth - 272, r.left + r.width / 2 - 128))}px`;
+        panel = buildPanel(); document.body.appendChild(panel);
+        const r = btn.getBoundingClientRect(), width = document.documentElement.clientWidth || window.innerWidth;
+        const left = Math.max(8, Math.min(width - 264, r.left + r.width / 2 - 128));
+        panel.style.left = `${left}px`;
+        panel.style.setProperty('--arrow', `${Math.max(12, Math.min(244, r.left + r.width / 2 - left))}px`);   // la flèche reste sous le bouton
         syncPanel();
         // Le panneau reste ouvert pendant la navigation dans le titre.
     }
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel) closePanel(); });
 
     const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').speedControl !== false; } catch { return true; } };
+    // Le bouton haut-parleur natif devient le nôtre : clic (intercepté avant SoundCloud) = panneau, molette = volume.
+    const onBtnClick = (e) => { e.preventDefault(); e.stopImmediatePropagation(); togglePanel(); };
+    const onBtnWheel = (e) => { e.preventDefault(); e.stopImmediatePropagation(); set({ volume: clampVolume(cfg.volume + (e.deltaY < 0 ? 0.02 : -0.02)), muted: false }); };
+    function unmount() {
+        if (btn) { btn.removeEventListener('click', onBtnClick, true); btn.removeEventListener('wheel', onBtnWheel, true); btn.classList.remove(`${NS}-active`, `${NS}-muted`); btn.title = ''; }
+        btn = null; document.getElementById(`${NS}-styles`)?.remove(); closePanel();
+    }
     function mount() {
         if (btn?.isConnected) return;
-        if (!enabled()) { btn?.remove(); btn = null; return; }
-        const volume = document.querySelector('.playControls__volume'); if (!volume) return;
+        if (!enabled()) { unmount(); return; }
+        const native = document.querySelector('.playControls__volume .volume__button'); if (!native) return;
         injectStyles();
-        btn = document.createElement('button'); btn.type = 'button'; btn.className = `${NS}-btn sc-mr-1x`; btn.setAttribute('aria-label', L.tip);
-        btn.innerHTML = `<div><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 11.25a5.25 5.25 0 1 1 10.5 0"/><path d="M8 11.25l2.6-3.6"/><circle cx="8" cy="11.25" r=".9" fill="currentColor" stroke="none"/></svg></div>`;
-        btn.addEventListener('click', togglePanel);
-        volume.parentElement.insertBefore(btn, volume);
+        btn = native;
+        btn.addEventListener('click', onBtnClick, true);
+        btn.addEventListener('wheel', onBtnWheel, { capture: true, passive: false });
         updateBtn();
     }
 
@@ -381,7 +441,7 @@
     });
     new MutationObserver(() => { if (!btn?.isConnected) mount(); }).observe(document.body, { childList: true, subtree: true });
     // Réglage modifié : 'sce:settings-change' vient du pont (même onglet), 'storage' d'un autre onglet
-    const onSettings = () => { if (!enabled()) { btn?.remove(); btn = null; closePanel(); } else mount(); };
+    const onSettings = () => { if (!enabled()) unmount(); else mount(); };
     window.addEventListener('sce:settings-change', onSettings);
     window.addEventListener('storage', (e) => { if (e.key === 'scsp:settings') onSettings(); });
     mount();

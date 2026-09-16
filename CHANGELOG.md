@@ -1,6 +1,7 @@
 # Journal des versions
 
 ## En cours
+- Audio : le bouton haut-parleur de SoundCloud ouvre un seul panneau réunissant le volume et les réglages audio. Volume linéaire 0–100 % (le volume natif est fixé à 100 %, l'ancienne valeur devient le volume initial), sourdine, molette sur le bouton. Vitesse plus précise : boutons ±0,01, flèches ±0,01 (Maj ±0,1), saisie directe de la valeur, aimant sur 1× réduit.
 - Panneau latéral : file d'attente « À suivre » sous le lecteur, lue depuis la file native de SoundCloud (ouverte invisible le temps de la lecture) ; clic pour lire un titre, croix pour le retirer, bouton d'actualisation.
 - Debloat : les masquages des entrées du menu latéral s'appliquent aussi au menu déroulant de l'avatar.
 
