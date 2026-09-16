@@ -706,7 +706,8 @@
             let pool = ids.filter((id) => !drawnSet.has(id));
             if (!pool.length) { round.drawn = []; round.n += 1; drawnSet.clear(); pool = ids; }
             picked = shuffle(pool).slice(0, CFG.MAX_TRACKS);
-            round.drawn = [...drawnSet, ...picked].filter((id) => ids.includes(id));
+            const idSet = new Set(ids);                                   // O(n) et non O(n²) sur les grandes bibliothèques
+            round.drawn = [...drawnSet, ...picked].filter((id) => idSet.has(id));
             if (round.drawn.length >= ids.length) { round.drawn = []; round.n += 1; }
             store.set(rk, round);
             const remaining = ids.length - (round.drawn.length || 0);

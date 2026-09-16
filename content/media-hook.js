@@ -17,6 +17,9 @@
  *    Exposé : window.__sceAudioTap = { ctx, el, source, input, output },
  *             window.__sceOnAudioTap(fn) — appelé à chaque nouveau branchement.
  *
+ * Un élément marqué `el.__sceIgnore = true` (platine B du mode DJ) est laissé
+ * tel quel : ni mémorisé comme lecteur actif, ni intercepté dans le graphe.
+ *
  * Coût : trois wrappers d'une ligne, rien d'autre.
  */
 (() => {
@@ -31,7 +34,7 @@
     window.__sceOnMedia = (fn) => { mediaListeners.add(fn); if (media.el) fn(media.el); return () => mediaListeners.delete(fn); };
     const origPlay = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function (...args) {
-        if (media.el !== this) { media.el = this; for (const fn of mediaListeners) { try { fn(this); } catch (e) { console.warn('[SCE] media listener', e); } } }
+        if (media.el !== this && !this.__sceIgnore) { media.el = this; for (const fn of mediaListeners) { try { fn(this); } catch (e) { console.warn('[SCE] media listener', e); } } }
         return origPlay.apply(this, args);
     };
 
@@ -45,6 +48,7 @@
     const origCMES = AudioContext.prototype.createMediaElementSource;
     AudioContext.prototype.createMediaElementSource = function (el) {
         const source = origCMES.call(this, el);
+        if (el?.__sceIgnore) return source;
         try {
             const input = this.createGain(), output = this.createGain();
             origConnect.call(input, output);                       // chaîne transparente par défaut

@@ -1,7 +1,13 @@
 const DEFAULTS = {
     hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true,
-    hideUpsell: false, hidePromoted: false, hideUpload: false, hideArtistStudio: false, hideNotifications: false, hideMessages: false,
+    hideUpsell: false, hidePromoted: false, hideUpload: false, hideUploadMeter: false, hideArtistStudio: false, hideArtistTools: false, hideNotifications: false, hideMessages: false,
     hideComments: false, hideRelated: false, hideFooter: false, hideGoPlus: false, wideSearch: false, hideFeedReposts: false, hideFeedPlaylists: false,
+    hideCookieBanner: true,
+    hideProfileInformation: false, hideProfileStation: false, hideProfileAll: false, hideProfilePopular: false,
+    hideProfileTracks: false, hideProfileAlbums: false, hideProfilePlaylists: false, hideProfileReposts: false, hideProfileVinyl: false,
+    hideNavProfile: false, hideNavLikes: false, hideNavPlaylists: false, hideNavStations: false, hideNavFollowing: false,
+    hideNavSuggestions: false, hideNavArtistPro: false, hideNavBenefits: false, hideNavTracks: false, hideNavInsights: false, hideNavDistribute: false,
+    hideArtistProPrompt: false,
     accent: '', homePage: '', blockAds: false,
 };
 const CHECKS = Object.keys(DEFAULTS).filter((k) => typeof DEFAULTS[k] === 'boolean');
@@ -12,6 +18,7 @@ let settings = { ...DEFAULTS };
 function paintSwatches() {
     $('swatches').innerHTML = SWATCHES.map((c) => `<button type="button" data-c="${c}" style="background:${c}" class="${(settings.accent || '#ff5500').toLowerCase() === c ? 'on' : ''}" title="${c}"></button>`).join('');
     $('accent').value = settings.accent || '#ff5500';
+    $('accentHex').value = (settings.accent || '#ff5500').toUpperCase();
     $('custom').classList.toggle('on', !!settings.accent && !SWATCHES.includes(settings.accent.toLowerCase()));
 }
 
@@ -38,6 +45,19 @@ async function save(patch) {
 CHECKS.forEach((k) => $(k).addEventListener('change', () => save({ [k]: $(k).checked })));
 $('homePage').addEventListener('change', () => save({ homePage: $('homePage').value }));
 $('accent').addEventListener('input', () => { save({ accent: $('accent').value.toLowerCase() === '#ff5500' ? '' : $('accent').value }); paintSwatches(); });
+function saveHex() {
+    const value = $('accentHex').value.trim();
+    const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
+    if (!match) { $('accentHex').setCustomValidity('Saisissez une couleur hexadécimale, par exemple #FF5500.'); $('accentHex').reportValidity(); return; }
+    $('accentHex').setCustomValidity('');
+    const digits = match[1].length === 3 ? [...match[1]].map((c) => c + c).join('') : match[1];
+    const color = `#${digits.toLowerCase()}`;
+    save({ accent: color === '#ff5500' ? '' : color });
+    paintSwatches();
+}
+$('accentHex').addEventListener('change', saveHex);
+$('accentHex').addEventListener('input', () => $('accentHex').setCustomValidity(''));
+$('accentHex').addEventListener('blur', () => { if ($('accentHex').validity.customError) { $('accentHex').setCustomValidity(''); paintSwatches(); } });
 $('accent-reset').addEventListener('click', () => { save({ accent: '' }); paintSwatches(); });
 $('swatches').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; save({ accent: b.dataset.c === '#ff5500' ? '' : b.dataset.c }); paintSwatches(); });
 $('shortcuts').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }); });

@@ -9,13 +9,13 @@
  */
 (() => {
     'use strict';
-    const DEFAULTS = { hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true, accent: '', homePage: '', blockAds: false };
-
-    // 1. Réglages → page
+    // 1. Réglages → page (chaque module applique ses propres valeurs par défaut ; une seule source : options.js)
     async function pushSettings() {
         const { settings } = await chrome.storage.sync.get('settings');
-        const merged = { ...DEFAULTS, ...(settings || {}) };
-        try { localStorage.setItem('scsp:settings', JSON.stringify(merged)); } catch {}
+        try {
+            localStorage.setItem('scsp:settings', JSON.stringify(settings || {}));
+            window.dispatchEvent(new Event('sce:settings-change'));
+        } catch {}
     }
     pushSettings();
     chrome.storage.onChanged.addListener((changes, area) => { if (area === 'sync' && changes.settings) pushSettings(); });
@@ -28,14 +28,15 @@
             sendResponse({ ok: true });
         }
         if (msg?.type === 'get-state') {
+            let timer = null;
             const once = (e) => {
                 if (e.source !== window || e.data?.sce !== 'state') return;
-                window.removeEventListener('message', once);
+                clearTimeout(timer); window.removeEventListener('message', once);
                 sendResponse(e.data);
             };
             window.addEventListener('message', once);
             window.postMessage({ sce: 'command', command: 'get-state' }, location.origin);
-            setTimeout(() => { window.removeEventListener('message', once); }, 1500);
+            timer = setTimeout(() => { window.removeEventListener('message', once); sendResponse({ ok: false, reason: 'timeout' }); }, 1500); // jamais de promesse en attente côté popup
             return true; // réponse asynchrone
         }
         return false;

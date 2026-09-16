@@ -42,7 +42,7 @@
     const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
 
     const store = {
-        get() { try { return { ...PRESETS.normal, analysis: true, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch { return { ...PRESETS.normal, analysis: true }; } },
+        get() { try { return { ...PRESETS.normal, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch { return { ...PRESETS.normal }; } },
         set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
     };
     let cfg = store.get();
@@ -113,18 +113,32 @@
         if (!el) return;
         try { el.playbackRate = cfg.rate; el.defaultPlaybackRate = cfg.rate; } catch {}
         if ('preservesPitch' in el) el.preservesPitch = cfg.preservePitch;
-        if (effectsOn() || cfg.analysis || graph.el === el) {
-            if (ensureGraph(el)) {
-                if (graph.ctx.state === 'suspended') graph.ctx.resume().catch(() => {});
-                const t = graph.ctx.currentTime;
-                graph.bass.gain.setTargetAtTime(cfg.bass, t, 0.05);
-                graph.wet.gain.setTargetAtTime(cfg.reverb * 0.9, t, 0.05);
-                graph.dry.gain.setTargetAtTime(1 - cfg.reverb * 0.35, t, 0.05);
-            } else if (effectsOn()) window.__scsp?.toast?.(L.unavailable, { error: true });
-        }
+        if (ensureGraph(el)) {
+            if (graph.ctx.state === 'suspended') graph.ctx.resume().catch(() => {});
+            const t = graph.ctx.currentTime;
+            graph.bass.gain.setTargetAtTime(cfg.bass, t, 0.05);
+            graph.wet.gain.setTargetAtTime(cfg.reverb * 0.9, t, 0.05);
+            graph.dry.gain.setTargetAtTime(1 - cfg.reverb * 0.35, t, 0.05);
+        } else if (effectsOn()) window.__scsp?.toast?.(L.unavailable, { error: true });
         updateBtn();
     }
-    function set(patch) { cfg = { ...cfg, ...patch }; store.set(cfg); apply(); if (panel) syncPanel(); }
+    function set(patch) { cfg = { ...cfg, ...patch }; store.set(cfg); apply(); if (panel) syncPanel(); window.dispatchEvent(new Event('sce:audio-change')); }
+    function setSettings(patch) {
+        if (!patch || typeof patch !== 'object') return false;
+        const next = {};
+        if (Number.isFinite(patch.rate)) next.rate = clampRate(patch.rate);
+        if (typeof patch.preservePitch === 'boolean') next.preservePitch = patch.preservePitch;
+        if (Number.isFinite(patch.bass)) next.bass = Math.min(12, Math.max(0, patch.bass));
+        if (Number.isFinite(patch.reverb)) next.reverb = Math.min(1, Math.max(0, patch.reverb));
+        if (!Object.keys(next).length) return false;
+        set(next);
+        return true;
+    }
+    function applyPreset(name) {
+        if (!Object.hasOwn(PRESETS, name)) return false;
+        set(PRESETS[name]);
+        return true;
+    }
 
     // ── Analyse : BPM (flux spectral + autocorrélation) et tonalité (chroma + profils de Krumhansl) ──
     const Analysis = (() => {
@@ -134,7 +148,7 @@
                           minor: { C: '5A', 'C♯': '12A', D: '7A', 'E♭': '2A', E: '9A', F: '4A', 'F♯': '11A', G: '6A', 'A♭': '1A', A: '8A', 'B♭': '3A', B: '10A' } };
         const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
         const MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        let timer = null, prevMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null;
+        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null;
 
         const currentTrack = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
         const cacheGet = (k) => { try { return JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); } catch { return null; } };
@@ -147,12 +161,13 @@
             for (let i = 1; i < n; i++) { const f = i * sr / (2 * n); if (f < 55 || f > 4200) continue; binNote[i] = Math.round(12 * Math.log2(f / 440)) % 12; if (binNote[i] < 0) binNote[i] += 12; }
         }
         function tick() {
-            const el = graph.el; if (!el || el.paused || !cfg.analysis) return;
+            const el = graph.el; if (!el || el.paused) return;
             const tk = currentTrack();
             if (tk !== trackKey) { trackKey = tk; reset(); const c = tk && cacheGet(tk); if (c) { result = { ...c, cached: true }; render(); } }
             if (result?.cached) return;
             const an = graph.an, n = an.frequencyBinCount;
-            const mag = new Float32Array(n); an.getFloatFrequencyData(mag);
+            const mag = spareMag && spareMag.length === n ? spareMag : new Float32Array(n); // deux tampons en alternance : aucune allocation à 50 Hz
+            an.getFloatFrequencyData(mag);
             if (!binNote || binNote.length !== n) prepareBins();
             // flux spectral (onsets) + chroma pondéré
             let fl = 0;
@@ -162,7 +177,7 @@
                 if (binNote[i] >= 0) chroma[binNote[i]] += m * m;
                 mag[i] = m;
             }
-            prevMag = mag;
+            spareMag = prevMag; prevMag = mag;
             flux.push(fl); if (flux.length > HISTORY_S * 1000 / FRAME_MS) flux.shift();
             frames++;
             if (frames % 100 === 0 && flux.length > 600) { result = estimate(); render(); if (frames >= 1500 && result.conf > 0.35 && tk) cacheSet(tk, { bpm: result.bpm, key: result.key, mode: result.mode, conf: result.conf }); }
@@ -205,8 +220,7 @@
         }
         function render() { if (panel) syncPanel(); updateBtn(); }
         return {
-            attach() { clearInterval(timer); if (cfg.analysis) timer = setInterval(tick, FRAME_MS); },
-            stop() { clearInterval(timer); timer = null; },
+            attach() { clearInterval(timer); timer = setInterval(tick, FRAME_MS); },
             label, camelot: (r) => CAMELOT[r.mode][r.key], get result() { return result; },
         };
     })();
@@ -215,7 +229,9 @@
     window.__sceAudio = Object.freeze({
         get ctx() { return graph.ctx; }, get master() { return graph.master; }, get eqLow() { return graph.eqLow; },
         get analysis() { return Analysis.result; }, ensure: () => ensureGraph(media), get media() { return media; },
-        get rate() { return cfg.rate; }, setRate: (r) => set({ rate: clampRate(r) }),
+        get rate() { return cfg.rate; }, setRate: (r) => set({ rate: clampRate(r) }), closePanel,
+        get settings() { return { rate: cfg.rate, preservePitch: cfg.preservePitch, bass: cfg.bass, reverb: cfg.reverb }; },
+        setSettings, applyPreset,
     });
     if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { media = el; apply(el); });
     if (typeof window.__sceOnAudioTap === 'function') window.__sceOnAudioTap((tap) => { if (media === tap.el || !media) { media = tap.el; apply(tap.el); } });
@@ -255,16 +271,14 @@
         .${NS}-presets button { height: 26px; border-radius: 2px; border: 0; background: #444; color: #ccc; cursor: pointer; font: 500 11px ${FONT}; }
         .${NS}-presets button:hover { background: #555; color: #fff; }
         .${NS}-presets button.m-on { background: var(--sce-accent, #f50); color: #fff; }
-        /* Analyse : titre + interrupteur, puis trois tuiles BPM / tonalité / Camelot */
+        /* Analyse : titre et trois tuiles BPM / tonalité / Camelot */
         .${NS}-analysis { padding-top: 8px; border-top: 1px solid #444; }
         .${NS}-analysis h4 { margin-bottom: 8px; }
-        .${NS}-analysis h4 label { margin: 0; display: inline-flex; align-items: center; gap: 6px; color: #999; font-size: 11px; }
         .${NS}-tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
         .${NS}-tile { background: #2a2a2a; border-radius: 3px; padding: 7px 6px 6px; text-align: center; }
         .${NS}-tile b { display: block; color: #fff; font-size: 15px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
         .${NS}-tile small { display: block; margin-top: 3px; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
         .${NS}-tiles.m-live b { color: var(--sce-accent, #f50); }
-        .${NS}-tiles.m-off b { color: #666; }
     `;
     function injectStyles() { if (document.getElementById(`${NS}-styles`)) return; const s = document.createElement('style'); s.id = `${NS}-styles`; s.textContent = CSS; document.head.appendChild(s); }
 
@@ -273,7 +287,7 @@
         const bits = [fmtRate(cfg.rate)];
         if (cfg.bass > 0.01) bits.push(`bass +${Math.round(cfg.bass)} dB`);
         if (cfg.reverb > 0.01) bits.push(`réverb ${Math.round(cfg.reverb * 100)} %`);
-        if (cfg.analysis && Analysis.result) bits.push(Analysis.label());
+        if (Analysis.result) bits.push(Analysis.label());
         btn.title = `${L.tip} : ${bits.join(' · ')}`;
         btn.classList.toggle('m-active', anyOn());
     }
@@ -302,7 +316,7 @@
                 <button type="button" data-p="nightcore">${L.nightcore}</button>
             </div>
             <div class="${NS}-analysis">
-                <h4><span>${L.analysis}</span><label title="BPM et tonalité en direct"><input type="checkbox" class="c-analysis"> <span class="v-state"></span></label></h4>
+                <h4><span>${L.analysis}</span></h4>
                 <div class="${NS}-tiles"><div class="${NS}-tile"><b class="v-bpm">–</b><small>BPM</small></div><div class="${NS}-tile"><b class="v-key">–</b><small>${L.key}</small></div><div class="${NS}-tile"><b class="v-cam">–</b><small>Camelot</small></div></div>
             </div>`;
         const rate = p.querySelector('.r-rate');
@@ -315,7 +329,6 @@
         // Re-cliquer le preset actif revient à Normal
         p.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => set({ ...(b.classList.contains('m-on') && b.dataset.p !== 'normal' ? PRESETS.normal : PRESETS[b.dataset.p]) })));
         p.querySelector(`.${NS}-close`).addEventListener('click', closePanel);
-        p.querySelector('.c-analysis').addEventListener('change', (e) => { set({ analysis: e.target.checked }); if (e.target.checked) { ensureGraph(media); Analysis.attach(); } else Analysis.stop(); });
         return p;
     }
     function syncPanel() {
@@ -326,25 +339,24 @@
         q('.v-bass').textContent = cfg.bass > 0.01 ? `+${cfg.bass} dB` : 'off'; q('.r-bass').value = cfg.bass; paint(q('.r-bass'), cfg.bass / 12);
         q('.v-reverb').textContent = cfg.reverb > 0.01 ? `${Math.round(cfg.reverb * 100)} %` : 'off'; q('.r-reverb').value = cfg.reverb; paint(q('.r-reverb'), cfg.reverb);
         panel.querySelectorAll('[data-p]').forEach((b) => { const P = PRESETS[b.dataset.p]; b.classList.toggle('m-on', Math.abs(P.rate - cfg.rate) < 1e-6 && P.preservePitch === cfg.preservePitch && Math.abs(P.bass - cfg.bass) < .26 && Math.abs(P.reverb - cfg.reverb) < .06); });
-        q('.c-analysis').checked = !!cfg.analysis;
         const r = Analysis.result, tiles = q(`.${NS}-tiles`);
         q('.v-bpm').textContent = r ? r.bpm : '–';
         q('.v-key').textContent = r ? `${r.key}${r.mode === 'minor' ? 'm' : ''}` : '–';
         q('.v-cam').textContent = r ? Analysis.camelot(r) : '–';
-        q('.v-state').textContent = !cfg.analysis ? 'off' : (r ? (r.cached ? '' : L.listening) : L.listening);
-        tiles.className = `${NS}-tiles ${!cfg.analysis ? 'm-off' : r && !r.cached ? 'm-live' : ''}`;
+        tiles.className = `${NS}-tiles ${r && !r.cached ? 'm-live' : ''}`;
         tiles.title = r ? `confiance BPM ${Math.round(r.conf * 100)} %${r.cached ? ' · mémorisé' : ' · en cours'}` : '';
     }
     function closePanel() { panel?.remove(); panel = null; btn?.classList.remove('m-open'); }
     function togglePanel() {
         if (panel) { closePanel(); return; }
+        window.__sceDj?.close();
         panel = buildPanel(); document.body.appendChild(panel); btn.classList.add('m-open');
         const r = btn.getBoundingClientRect();
         panel.style.left = `${Math.max(8, Math.min(window.innerWidth - 272, r.left + r.width / 2 - 128))}px`;
         syncPanel();
-        // Le panneau reste ouvert pendant la navigation dans le titre ; fermeture par le bouton, la croix ou Échap
-        document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { closePanel(); document.removeEventListener('keydown', esc); } });
+        // Le panneau reste ouvert pendant la navigation dans le titre.
     }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel) closePanel(); });
 
     const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').speedControl !== false; } catch { return true; } };
     function mount() {
@@ -368,6 +380,9 @@
         if (e.code === 'Digit0') { e.preventDefault(); set({ ...PRESETS.normal }); }
     });
     new MutationObserver(() => { if (!btn?.isConnected) mount(); }).observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('storage', (e) => { if (e.key === 'scsp:settings') { if (!enabled()) { btn?.remove(); btn = null; } else mount(); } });
+    // Réglage modifié : 'sce:settings-change' vient du pont (même onglet), 'storage' d'un autre onglet
+    const onSettings = () => { if (!enabled()) { btn?.remove(); btn = null; closePanel(); } else mount(); };
+    window.addEventListener('sce:settings-change', onSettings);
+    window.addEventListener('storage', (e) => { if (e.key === 'scsp:settings') onSettings(); });
     mount();
 })();

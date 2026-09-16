@@ -2,17 +2,18 @@
 
 Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. Tout tourne localement, aucune donnée ne quitte le navigateur.
 
-## Fonctions (v0.10.0)
+## Fonctions (v0.11.0)
 
 - **Shuffle+** : vrai shuffle instantané des Likes, playlists et sets Discover via l'API interne, playlist tampon privée, bouton du lecteur détourné. **Sans répétition** : chaque shuffle tire parmi les titres pas encore joués, tour après tour. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
 - **Audio** : bouton jauge à gauche du volume, orange quand actif. Vitesse 0,1× à 3× sur un curseur logarithmique avec aimant sur 1×, conservation de la hauteur, bass boost jusqu'à +12 dB, réverbération, presets Slowed + Reverb, Nightcore, Bass boost. **Analyse en direct : BPM et tonalité avec code Camelot**, affinés sur les 30 premières secondes, corrigés de la vitesse, mémorisés par titre. Traitement Web Audio sur le flux SoundCloud. Raccourcis Maj+, Maj+. Maj+0.
-- **Lecteur épinglable** : fenêtre Picture-in-Picture toujours au premier plan (Chromium 116+, repli en fenêtre popup ailleurs), pochette, titre, progression cliquable, précédent / lecture / suivant / Shuffle+ / répéter, dans le langage visuel du lecteur SoundCloud. Bouton 📌 dans la barre du lecteur, depuis le popup, ou par raccourci.
-- **Popup** : titre en cours, précédent / lecture / suivant / Shuffle+, historique des derniers shuffles.
+- **Lecteur épinglable** : fenêtre Picture-in-Picture toujours au premier plan (Chromium 116+, repli en fenêtre popup ailleurs), pochette, titre, progression cliquable, précédent / lecture / suivant / Shuffle+ / répéter, vitesse, hauteur, basses, réverbération et presets. Bouton 📌 dans la barre du lecteur, depuis le popup, ou par raccourci.
+- **Panneau latéral** : un clic sur l'icône ouvre ou ferme le lecteur intégré au navigateur, avec pochette, progression, précédent / lecture / suivant, Shuffle+ et vitesse. Si aucun onglet SoundCloud n'existe, le panneau en ouvre un automatiquement pour choisir un titre ; la lecture reste assurée par cet onglet. Il reste accessible pendant la navigation ; les mises à jour d'état sont événementielles, avec un contrôle léger toutes les 5 secondes lorsque le panneau est visible. Repli en petite fenêtre sur les navigateurs sans API de panneau.
 - **Raccourcis globaux** : Shuffle+ et lecture/pause même quand l'onglet n'a pas le focus.
-- **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes ou année, filtre par genre. Résultats en badges ou en liste selon le choix natif « Afficher » ; un clic sur un titre le lit seul. Sur la sélection : lire dans l'ordre, Shuffle+, ou créer une playlist. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement.
+- **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes ou année, filtre par genre. Résultats en badges ou en liste selon le choix natif « Afficher » ; un clic sur un titre le lit seul. Sélection individuelle ou de tous les résultats filtrés (ou de tous les favoris, même non chargés) pour créer une playlist, ajouter à une playlist existante ou retirer des favoris après confirmation. Les playlists sont limitées à 500 titres sans troncature silencieuse. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement.
 - **Loupe de timeline** : molette sur la forme d'onde ou la barre du lecteur, zoom 2× à 32× avec la forme d'onde redessinée, règle de temps, placement au centième de seconde, flèches ±1 s / Maj ±0,1 s / Alt ±0,01 s.
 - **Mode DJ** : bouton « platines » dans la barre du lecteur. Platine A = le lecteur SoundCloud, platine B = un second titre lu en flux, recherche intégrée. Crossfader à puissance constante, kill basses par platine, pitch ±16 %, repères cue, Sync du tempo de B sur A, Auto-mix 8/16/32 s avec bascule des basses et pause de A à la fin.
-- **Apparence** : masquage à la carte (promotions Go+ et Artist Pro, titres sponsorisés, titres Go+ sans abonnement, reposts et playlists du fil d'actualités, Uploader, Studio de l'artiste, notifications, messages, commentaires, modules latéraux, pied de page), couleur d'accent personnalisée, page d'accueil au choix.
+- **Debloat et apparence** : réglages séparés pour les éléments du profil (boutons et onglets), les entrées du menu, la lecture, le fil et les promotions. Chaque masquage est local et réversible ; aucun contenu du compte n'est supprimé. Couleur d'accent personnalisée avec saisie hexadécimale, page d'accueil au choix.
+- **Bandeau cookies** : masque par défaut le dialogue répétitif de SoundCloud sans effacer les cookies ni enregistrer un choix de consentement ; désactivable dans Promotions.
 - **Publicités** : blocage optionnel des domaines publicitaires et traceurs tiers via declarativeNetRequest, sans lecture des pages. Désactivé par défaut, inutile sur Brave.
 - **Réglages** synchronisés entre appareils.
 
@@ -30,7 +31,8 @@ content/
   media-hook.js   document_start, monde principal : capture l'<audio> de SoundCloud (créé hors DOM)
   appearance.js   document_start, monde principal : masquage, couleur d'accent, page d'accueil
   shuffle.js      monde principal : module Shuffle+ (dérivé du userscript), expose window.__scsp aux autres modules
-  library.js      monde principal : bibliothèque des likes (recherche, tri, genres, création de playlists)
+  library.js      monde principal : bibliothèque des likes (recherche, tri, genres, sélection)
+  library-bulk.js sélection et opérations groupées sur favoris et playlists
   audio.js        monde principal : vitesse, effets, analyse BPM/tonalité (inséré dans le graphe SoundCloud)
   scrub.js        monde principal : loupe de timeline
   dj.js           monde principal : mode DJ, deux platines

@@ -64,12 +64,25 @@
     });
 
     // Publie l'état à chaque changement notable (lecture/pause, titre), pas en continu.
-    let last = '';
+    // Les mutations sont regroupées par image, et seules celles de la barre du lecteur
+    // sont observées avec leurs attributs (le reste de la page en change en permanence).
+    let last = '', queued = false, bar = null;
     const publish = () => {
+        queued = false;
         const s = state();
         const sig = `${s.playing}|${s.title}|${s.url}`;
         if (sig !== last) { last = sig; window.postMessage(s, location.origin); }
     };
-    new MutationObserver(publish).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'title'] });
-    if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', publish); el.addEventListener('pause', publish); });
+    const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(publish); } };
+    const barObserver = new MutationObserver(schedule);
+    function attach() {
+        const el = document.querySelector('.playControls');
+        if (!el || el === bar) return;
+        bar = el; barObserver.disconnect();
+        barObserver.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'title'] });
+        schedule();
+    }
+    new MutationObserver(() => { if (!bar?.isConnected) attach(); }).observe(document.body, { childList: true, subtree: true });
+    attach();
+    if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', schedule); el.addEventListener('pause', schedule); });
 })();

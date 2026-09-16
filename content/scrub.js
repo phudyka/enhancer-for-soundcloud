@@ -58,8 +58,6 @@
             panel.innerHTML = `<canvas></canvas><div class="${NS}-hud"><span><b class="t"></b></span><span class="z"></span><span class="r"></span></div>`;
             canvas = panel.querySelector('canvas');
             canvas.addEventListener('mousedown', (e) => { dragging = true; seekAt(e); });
-            window.addEventListener('mousemove', (e) => { if (dragging) seekAt(e); });
-            window.addEventListener('mouseup', () => { dragging = false; });
             panel.addEventListener('wheel', onWheel, { passive: false });
             document.body.appendChild(panel);
         }
@@ -157,6 +155,8 @@
             el.title = (el.title ? el.title + ' · ' : '') + 'Molette : loupe';
         }
     }
+    window.addEventListener('mousemove', (e) => { if (dragging && panel) seekAt(e); });
+    window.addEventListener('mouseup', () => { dragging = false; });
     document.addEventListener('keydown', onKey, true);
     document.addEventListener('mousedown', (e) => { if (panel && !panel.contains(e.target) && !anchor?.contains(e.target)) close(); }, true);
     window.addEventListener('resize', () => { if (panel) place(); });

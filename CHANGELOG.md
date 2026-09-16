@@ -1,5 +1,15 @@
 # Journal des versions
 
+## 0.11.0 — 16/09/2026
+- Bibliothèque des favoris : sélection individuelle, de tous les résultats filtrés ou de tous les favoris indexés ; création et ajout à une playlist (500 titres maximum), retrait des favoris avec confirmation et bilan des échecs.
+- Debloat par catégories : masquage individuel des boutons et onglets du profil, des entrées du menu, du fil et des promotions, sans suppression de données.
+- Le réglage Promotions masque aussi les offres de titres épinglés et les boutons Artist Pro présents dans les listes de titres, sans cacher les morceaux.
+- Les changements de réglages d'apparence sont appliqués à l'onglet SoundCloud sans le recharger.
+- Contrôles Audio dans le lecteur Picture-in-Picture ; lecteur intégré au panneau latéral du navigateur à la place du popup compact, avec actualisation allégée.
+- Contraste automatique du texte des boutons principaux avec la couleur d'accent personnalisée.
+- L'icône de l'extension ouvre et ferme désormais le panneau latéral au lieu de seulement l'ouvrir.
+- Le panneau ouvre automatiquement un onglet SoundCloud si nécessaire, sans en créer de doublon ; un bouton permet d'y revenir pour choisir un titre.
+
 ## 0.10.0 — 16/09/2026
 - Loupe de timeline : zoom 2–32× à la molette, forme d'onde redessinée, placement précis.
 - Mode DJ : deux platines, crossfader, kill basses, pitch, cue, Sync, Auto-mix.

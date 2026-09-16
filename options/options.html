@@ -21,9 +21,11 @@
   .block { padding: 7px 0; }
   .block .lbl { display: block; margin-bottom: 8px; }
   .block .ctl { display: flex; align-items: center; gap: 8px; }
-  .custom { position: relative; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; border: 2px solid transparent; background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  .custom { position: relative; display: inline-block; flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; border: 2px solid transparent; background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
   .custom.on { border-color: #fff; }
-  .custom input { position: absolute; inset: -8px; width: 40px; height: 40px; opacity: 0; cursor: pointer; }
+  .custom input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
+  .hex { width: 82px; height: 28px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 3px; background: #303030; color: var(--text); font: 12px ui-monospace, monospace; text-transform: uppercase; }
+  .hex:focus { outline: 1px solid var(--accent); }
   .block + .row { border-top: 1px solid #262626; }
   select { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; }
   input[type=color] { width: 36px; height: 28px; border: 0; padding: 0; background: transparent; cursor: pointer; }
@@ -41,28 +43,72 @@
 <p class="lead">Tout tourne dans votre navigateur. Aucune donnée n'est envoyée ailleurs. Les changements s'appliquent immédiatement.</p>
 
 <fieldset>
-  <legend>Lecture</legend>
+  <legend>Fonctionnalités de lecture</legend>
   <label><input type="checkbox" id="hijackPlayerShuffle"><span>Le bouton « Aléatoire » du lecteur lance un vrai shuffle<small>Alt+clic conserve le shuffle natif de SoundCloud.</small></span></label>
   <label><input type="checkbox" id="speedControl"><span>Panneau Audio à gauche du volume : vitesse, bass boost, réverb, presets<small>Slowed + Reverb, Nightcore, Bass boost. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
   <label><input type="checkbox" id="noRepeat" data-i18n="opt_noRepeat"><span>Shuffle+ sans répétition<small>Chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque, puis nouveau tour.</small></span></label>
   <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
 </fieldset>
 
+<p class="lead">Debloat : cochez les éléments à masquer. Tous restent visibles par défaut, sauf le bandeau cookies. Ces choix sont réversibles et ne suppriment aucune donnée du compte.</p>
+
 <fieldset>
-  <legend>Masquer</legend>
-  <label><input type="checkbox" id="hideUpsell"><span>Promotions Go+ et Artist Pro<small>Liens de l'en-tête, bannières produit, panneau du lecteur.</small></span></label>
-  <label><input type="checkbox" id="hidePromoted"><span>Titres sponsorisés dans les listes</span></label>
-  <label><input type="checkbox" id="hideGoPlus"><span>Titres Go+ dans les recherches et les listes<small>Utile sans abonnement : ces titres ne jouent que 30 secondes.</small></span></label>
-  <label><input type="checkbox" id="wideSearch"><span>Barre de recherche élargie<small>Automatique dès qu'un élément de l'en-tête est masqué.</small></span></label>
-  <label><input type="checkbox" id="hideUpload"><span>Bouton « Uploader »</span></label>
-  <label><input type="checkbox" id="hideArtistStudio"><span>Lien « Studio de l'artiste »</span></label>
-  <label><input type="checkbox" id="hideNotifications"><span>Cloche des notifications</span></label>
-  <label><input type="checkbox" id="hideMessages"><span>Icône des messages</span></label>
-  <label><input type="checkbox" id="hideComments"><span>Commentaires sous les titres</span></label>
-  <label><input type="checkbox" id="hideRelated"><span>Modules latéraux : titres similaires, dans les playlists, artistes à suivre</span></label>
-  <label><input type="checkbox" id="hideFooter"><span>Liens de pied de page dans la colonne de droite</span></label>
-  <label><input type="checkbox" id="hideFeedReposts"><span>Reposts dans le fil d'actualités<small>Ne garder que les nouveautés des artistes suivis.</small></span></label>
-  <label><input type="checkbox" id="hideFeedPlaylists"><span>Playlists et albums dans le fil d'actualités</span></label>
+  <legend>Profil</legend>
+  <label><input type="checkbox" id="hideArtistTools"><span>Masquer le bloc « Outils pour artistes »<small>La jauge d'uploads se masque séparément.</small></span></label>
+  <label><input type="checkbox" id="hideUploadMeter"><span>Masquer la jauge d'uploads gratuits<small>Cache le titre, la barre et le nombre de minutes utilisées.</small></span></label>
+  <label><input type="checkbox" id="hideProfileInformation"><span>Masquer le bouton « Vos informations »</span></label>
+  <label><input type="checkbox" id="hideProfileStation"><span>Masquer le bouton « Station »</span></label>
+  <p class="note">Onglets du profil :</p>
+  <label><input type="checkbox" id="hideProfileAll"><span>Masquer « Tout »</span></label>
+  <label><input type="checkbox" id="hideProfilePopular"><span>Masquer « Titres populaires »</span></label>
+  <label><input type="checkbox" id="hideProfileTracks"><span>Masquer « Titres »</span></label>
+  <label><input type="checkbox" id="hideProfileAlbums"><span>Masquer « Albums »</span></label>
+  <label><input type="checkbox" id="hideProfilePlaylists"><span>Masquer « Playlists »</span></label>
+  <label><input type="checkbox" id="hideProfileReposts"><span>Masquer « Reposts »</span></label>
+  <label><input type="checkbox" id="hideProfileVinyl"><span>Masquer « Vinyl »</span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Navigation</legend>
+  <label><input type="checkbox" id="wideSearch"><span>Barre de recherche élargie</span></label>
+  <label><input type="checkbox" id="hideUpload"><span>Masquer le bouton « Uploader »</span></label>
+  <label><input type="checkbox" id="hideArtistStudio"><span>Masquer le lien « Studio de l'artiste »</span></label>
+  <label><input type="checkbox" id="hideNotifications"><span>Masquer la cloche des notifications</span></label>
+  <label><input type="checkbox" id="hideMessages"><span>Masquer l'icône des messages</span></label>
+  <label><input type="checkbox" id="hideFooter"><span>Masquer le pied de page latéral</span></label>
+  <p class="note">Entrées du menu latéral :</p>
+  <label><input type="checkbox" id="hideNavProfile"><span>Masquer « Profil »</span></label>
+  <label><input type="checkbox" id="hideNavLikes"><span>Masquer « Favoris »</span></label>
+  <label><input type="checkbox" id="hideNavPlaylists"><span>Masquer « Playlists »</span></label>
+  <label><input type="checkbox" id="hideNavStations"><span>Masquer « Stations »</span></label>
+  <label><input type="checkbox" id="hideNavFollowing"><span>Masquer « Abonnements »</span></label>
+  <label><input type="checkbox" id="hideNavSuggestions"><span>Masquer « Suggestions »</span></label>
+  <label><input type="checkbox" id="hideNavArtistPro"><span>Masquer « Essayer Artist Pro »</span></label>
+  <label><input type="checkbox" id="hideNavBenefits"><span>Masquer « Avantages »</span></label>
+  <label><input type="checkbox" id="hideNavTracks"><span>Masquer « Titres »</span></label>
+  <label><input type="checkbox" id="hideNavInsights"><span>Masquer « Informations »</span></label>
+  <label><input type="checkbox" id="hideNavDistribute"><span>Masquer « Distribuer »</span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Lecture</legend>
+  <label><input type="checkbox" id="hideComments"><span>Masquer les commentaires sous les titres</span></label>
+  <label><input type="checkbox" id="hideRelated"><span>Masquer les modules latéraux : titres similaires, playlists, artistes à suivre</span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Fil</legend>
+  <label><input type="checkbox" id="hideFeedReposts"><span>Masquer les reposts dans le fil d'actualités</span></label>
+  <label><input type="checkbox" id="hideFeedPlaylists"><span>Masquer les playlists et albums dans le fil d'actualités</span></label>
+  <label><input type="checkbox" id="hidePromoted"><span>Masquer les titres sponsorisés dans les listes</span></label>
+  <label><input type="checkbox" id="hideGoPlus"><span>Masquer les titres Go+ dans les recherches et les listes</span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Promotions</legend>
+  <label><input type="checkbox" id="hideUpsell"><span>Masquer les promotions Go+ et Artist Pro<small>Liens de l'en-tête, titres épinglés premium, boutons Artist Pro dans les titres, jauge d'uploads et panneau du lecteur.</small></span></label>
+  <label><input type="checkbox" id="hideArtistProPrompt"><span>Masquer la mention « Essayez Artist Pro » sous la jauge d'uploads<small>Ne masque pas la jauge elle-même.</small></span></label>
+  <label><input type="checkbox" id="hideCookieBanner"><span>Masquer le bandeau cookies répétitif<small>Masque uniquement le bandeau, sans modifier les cookies ni votre consentement.</small></span></label>
 </fieldset>
 
 <fieldset>
@@ -72,6 +118,7 @@
     <div class="ctl">
       <div class="swatches" id="swatches"></div>
       <span class="custom" id="custom" title="Couleur personnalisée"><input type="color" id="accent" value="#ff5500"></span>
+      <input class="hex" id="accentHex" type="text" inputmode="text" maxlength="7" spellcheck="false" aria-label="Couleur hexadécimale" title="Code hexadécimal, par exemple #FF5500" value="#FF5500">
       <button class="link" id="accent-reset" title="Revenir à l'orange SoundCloud" style="margin-left:4px">Défaut</button>
     </div>
   </div>

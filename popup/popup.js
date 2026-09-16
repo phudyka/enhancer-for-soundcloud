@@ -1,4 +1,4 @@
-/* Popup = lecteur : interroge l'onglet SoundCloud toutes les 500 ms tant qu'il est ouvert. */
+/* Lecteur du panneau latéral et de la fenêtre PiP de repli. */
 const $ = (s) => document.querySelector(s);
 const send = (msg) => chrome.runtime.sendMessage(msg).catch(() => null);
 const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg>';
@@ -6,8 +6,6 @@ const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
 let state = null, tabId = null, timer = null;
-const WINDOWED = new URLSearchParams(location.search).has('window'); // repli PiP : fenêtre autonome, ne se ferme pas seule
-const closeIfPopup = () => { if (!WINDOWED) window.close(); };
 
 const fmtTime = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const fmtRate = (r) => `${parseFloat((r || 1).toFixed(2))}×`;
@@ -36,7 +34,7 @@ function render() {
 async function poll() {
     const r = await send({ type: 'popup-get-state' });
     if (r && r.sce === 'state') { state = r; tabId = r.tabId ?? tabId; }
-    else if (!state) state = null;
+    else state = null;
     render();
 }
 
@@ -47,8 +45,8 @@ async function command(cmd, extra = {}) {
 
 document.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', async (e) => {
     const cmd = b.dataset.cmd;
-    if (cmd === 'shuffle') { b.classList.add('busy'); await command('shuffle', { force: e.shiftKey }); setTimeout(() => { b.classList.remove('busy'); closeIfPopup(); }, 400); return; }
-    if (cmd === 'pip') { await command('pip'); closeIfPopup(); return; }
+    if (cmd === 'shuffle') { b.classList.add('busy'); await command('shuffle', { force: e.shiftKey }); setTimeout(() => b.classList.remove('busy'), 400); return; }
+    if (cmd === 'pip') { await command('pip'); return; }
     command(cmd);
 }));
 
@@ -67,14 +65,29 @@ $('#speed').addEventListener('click', (e) => {
     command('speed', { value: SPEEDS[i] });
 });
 
-const focusTab = async () => { const r = await send({ type: 'popup-focus-tab' }); if (r?.ok) closeIfPopup(); };
+const focusTab = async () => { await send({ type: 'popup-focus-tab' }); };
 $('#open-tab').addEventListener('click', focusTab);
 $('#title').addEventListener('click', focusTab);
+$('#show-soundcloud').addEventListener('click', focusTab);
 $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
 
 
-chrome.storage.sync.get('settings').then(({ settings }) => { if (settings?.accent) document.documentElement.style.setProperty('--accent', settings.accent); });
-poll();
-timer = setInterval(poll, 500);
+chrome.storage.sync.get('settings').then(({ settings }) => {
+    if (settings?.accent) document.documentElement.style.setProperty('--accent', settings.accent);
+});
+// L'état arrive à chaque changement important ; seule la position nécessite un rafraîchissement périodique.
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'session' && changes.playerState) {
+        const next = changes.playerState.newValue;
+        if (next && (!tabId || next.tabId === tabId)) { state = next; render(); }
+    }
+    if (area === 'sync' && changes.settings) document.documentElement.style.setProperty('--accent', changes.settings.newValue?.accent || '#ff5500');
+});
+if (!new URLSearchParams(location.search).has('window')) {
+    send({ type: 'popup-ensure-tab' }).then(poll);
+} else {
+    poll();
+}
+timer = setInterval(() => { if (!document.hidden) poll(); }, 5000);
 window.addEventListener('unload', () => clearInterval(timer));

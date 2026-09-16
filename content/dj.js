@@ -31,12 +31,15 @@
 
     // ── Estimateur de BPM compact (flux spectral + autocorrélation), pour la platine B
     function makeBpm(analyser, getRate) {
-        let prev = null, flux = [], timer = null, result = null, frames = 0;
+        let prev = null, flux = [], timer = null, result = null, frames = 0, spare = null;
         const FPS = 50;
         const tick = () => {
-            const n = analyser.frequencyBinCount, mag = new Float32Array(n); analyser.getFloatFrequencyData(mag);
+            if (!B.el || B.el.paused) return;
+            const n = analyser.frequencyBinCount;
+            const mag = spare && spare.length === n ? spare : new Float32Array(n); // deux tampons réutilisés : aucune allocation par image
+            analyser.getFloatFrequencyData(mag);
             let f = 0; for (let i = 1; i < n; i++) { const m = Math.pow(10, mag[i] / 20); if (prev) { const d = m - prev[i]; if (d > 0) f += d; } mag[i] = m; }
-            prev = mag; flux.push(f); if (flux.length > 40 * FPS) flux.shift();
+            spare = prev; prev = mag; flux.push(f); if (flux.length > 40 * FPS) flux.shift();
             if (++frames % 100 === 0 && flux.length > 600) {
                 const N = flux.length, mean = flux.reduce((a, b) => a + b, 0) / N, x = flux.map((v) => v - mean);
                 const lagMin = Math.floor(FPS * 60 / 200), lagMax = Math.ceil(FPS * 60 / 60); let best = lagMin, bv = -Infinity; const ac = [];
@@ -60,7 +63,8 @@
         const res = await S().api(`${tc.url.replace('https://api-v2.soundcloud.com', '')}?track_authorization=${track.track_authorization}`);
         if (!res?.url) { ui.bTitle.textContent = L.unavailable; return; }
         if (!B.el) {
-            B.el = new Audio(); B.el.crossOrigin = 'anonymous'; B.el.preload = 'auto';
+            B.el = new Audio(); B.el.__sceIgnore = true; // media-hook ne doit ni le prendre pour le lecteur SoundCloud ni l'intercepter
+            B.el.crossOrigin = 'anonymous'; B.el.preload = 'auto';
             B.el.addEventListener('timeupdate', renderB); B.el.addEventListener('play', renderB); B.el.addEventListener('pause', renderB); B.el.addEventListener('ended', renderB);
         }
         B.el.src = res.url; B.el.playbackRate = 1 + B.pitch / 100; B.el.preservesPitch = false;
@@ -232,8 +236,11 @@
     let raf = 0;
     const loop = () => { renderA(); renderB(); raf = requestAnimationFrame(loop); };
 
+    function closeDock() { if (dock) { cancelAnimationFrame(raf); dock.remove(); dock = null; btn?.classList.remove('m-on'); } }
+    window.__sceDj = Object.freeze({ close: closeDock });
     function toggle() {
-        if (dock) { cancelAnimationFrame(raf); dock.remove(); dock = null; btn?.classList.remove('m-on'); return; }
+        if (dock) { closeDock(); return; }
+        A()?.closePanel();
         if (!$(`#${NS}-styles`)) { const s = document.createElement('style'); s.id = `${NS}-styles`; s.textContent = CSS; document.head.appendChild(s); }
         A()?.ensure();
         dock = buildDock(); document.body.appendChild(dock); btn?.classList.add('m-on');

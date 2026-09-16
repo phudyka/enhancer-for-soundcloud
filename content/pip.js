@@ -30,6 +30,13 @@
     };
     const $ = (s, r = document) => r.querySelector(s);
     const supported = 'documentPictureInPicture' in window;
+    const T = {
+        fr: { prev: 'Précédent', play: 'Lecture', pause: 'Pause', next: 'Suivant', repeat: 'Répéter', shuffle: 'Shuffle+ de la lecture en cours', audio: 'Vitesse et effets', speed: 'Vitesse', pitch: 'Conserver la hauteur', bass: 'Bass boost', reverb: 'Réverb', normal: 'Normal', slowed: 'Slowed + Reverb', nightcore: 'Nightcore',
+              pin: 'Lecteur épinglable (toujours au premier plan)', pinShort: 'Lecteur épinglable', gesture: 'Le navigateur exige un clic dans la page : utilisez le bouton de la barre du lecteur' },
+        en: { prev: 'Previous', play: 'Play', pause: 'Pause', next: 'Next', repeat: 'Repeat', shuffle: 'True shuffle of what is playing', audio: 'Speed and effects', speed: 'Speed', pitch: 'Preserve pitch', bass: 'Bass boost', reverb: 'Reverb', normal: 'Normal', slowed: 'Slowed + Reverb', nightcore: 'Nightcore',
+              pin: 'Pinnable player (always on top)', pinShort: 'Pinnable player', gesture: 'The browser requires a click in the page: use the button in the player bar' },
+    };
+    const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
 
     // ── Icônes (16×16, currentColor), tracées dans l'esprit des glyphes SoundCloud
     const I = {
@@ -93,10 +100,18 @@
         .${NS}-ctl button.m-on::after { content: ''; position: absolute; bottom: 5px; left: 50%; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--sce-accent, #f50); }
         .${NS}-ctl button.m-busy svg { animation: ${NS}-spin .9s linear infinite; }
         .${NS}-ctl button .n { position: absolute; top: 4px; right: 4px; font-size: 8px; font-weight: 700; color: var(--sce-accent, #f50); }
+        .${NS}-audio { border-top: 1px solid #3b3b3b; padding-top: 6px; color: #bbb; }
+        .${NS}-audio summary { cursor: pointer; color: #ddd; font-weight: 600; }
+        .${NS}-audio label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+        .${NS}-audio input[type=range] { width: 100%; accent-color: var(--sce-accent, #f50); }
+        .${NS}-audio input[type=checkbox] { accent-color: var(--sce-accent, #f50); }
+        .${NS}-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 8px; }
+        .${NS}-presets button { padding: 5px; border: 0; border-radius: 2px; background: #3a3a3a; color: #ddd; cursor: pointer; }
+        .${NS}-presets button:hover { background: #555; }
         @keyframes ${NS}-spin { to { transform: rotate(360deg); } }
     `;
 
-    let pipWin = null, ui = null, media = null, off = [];
+    let pipWin = null, ui = null, media = null, off = [], mediaOff = []; // off : durée de vie de la fenêtre ; mediaOff : élément média courant
 
     function render() {
         if (!pipWin || pipWin.closed) return;
@@ -105,7 +120,7 @@
         ui.title.textContent = s.title;
         ui.artist.textContent = s.artist;
         ui.play.innerHTML = s.playing ? I.pause : I.play;
-        ui.play.title = s.playing ? 'Pause' : 'Lecture';
+        ui.play.title = s.playing ? L.pause : L.play;
         const pct = s.duration ? Math.min(100, (s.position / s.duration) * 100) : 0;
         ui.fill.style.width = `${pct}%`;
         ui.knob.style.left = `${pct}%`;
@@ -113,21 +128,31 @@
         ui.dur.textContent = fmtTime(s.duration);
         ui.repeat.classList.toggle('m-on', s.repeat !== 'off');
         ui.repeat.querySelector('.n').textContent = s.repeat === 'one' ? '1' : '';
+        const audio = window.__sceAudio?.settings;
+        if (audio) {
+            for (const key of ['rate', 'bass', 'reverb']) {
+                const input = ui.audio.querySelector(`[data-audio="${key}"]`);
+                if (input && pipWin.document.activeElement !== input) input.value = audio[key];
+            }
+            ui.audio.querySelector('[data-audio="preservePitch"]').checked = audio.preservePitch;
+            ui.audio.querySelector('[data-value="rate"]').textContent = `${audio.rate}×`;
+            ui.audio.querySelector('[data-value="bass"]').textContent = `${audio.bass} dB`;
+            ui.audio.querySelector('[data-value="reverb"]').textContent = `${Math.round(audio.reverb * 100)} %`;
+        }
         pipWin.document.title = s.title;
     }
 
     function bindMedia(el) {
-        for (const fn of off.splice(0)) fn();
+        for (const fn of mediaOff.splice(0)) fn();
         media = el;
         if (!el) return;
-        const on = (ev, fn) => { el.addEventListener(ev, fn); off.push(() => el.removeEventListener(ev, fn)); };
+        const on = (ev, fn) => { el.addEventListener(ev, fn); mediaOff.push(() => el.removeEventListener(ev, fn)); };
         on('timeupdate', render); on('play', render); on('pause', render); on('durationchange', render);
     }
 
     function seek(e) {
         const r = ui.bar.getBoundingClientRect();
         const frac = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-        const s = readState();
         if (media && Number.isFinite(media.duration)) media.currentTime = frac * media.duration;
         else {
             // Repli : clic proportionnel sur la timeline native
@@ -135,14 +160,13 @@
             const tr = tl.getBoundingClientRect();
             tl.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: tr.left + frac * tr.width, clientY: tr.top + tr.height / 2 }));
         }
-        void s;
         render();
     }
 
     async function open() {
         if (!supported) { window.postMessage({ scsp: 'event', type: 'pip-fallback' }, location.origin); return; } // Firefox : fenêtre popup via le service worker
         if (pipWin && !pipWin.closed) { pipWin.focus(); return; }
-        pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 380 });
+        pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 440 });
         const d = pipWin.document;
         d.documentElement.lang = document.documentElement.lang || 'fr';
         const style = d.createElement('style'); style.textContent = CSS; d.head.appendChild(style);
@@ -154,19 +178,39 @@
             <div class="${NS}-bar"><div class="${NS}-fill"></div><div class="${NS}-knob"></div></div>
             <div class="${NS}-times"><span class="cur">0:00</span><span class="dur">0:00</span></div>
             <div class="${NS}-ctl">
-                <button data-a="shuffle" title="Shuffle+ de la lecture en cours">${I.shuffle}</button>
-                <button data-a="prev" title="Précédent">${I.prev}</button>
+                <button data-a="shuffle" title="${L.shuffle}">${I.shuffle}</button>
+                <button data-a="prev" title="${L.prev}">${I.prev}</button>
                 <button data-a="play" class="m-play">${I.play}</button>
-                <button data-a="next" title="Suivant">${I.next}</button>
-                <button data-a="repeat" title="Répéter">${I.repeat}<span class="n"></span></button>
-            </div>`;
+                <button data-a="next" title="${L.next}">${I.next}</button>
+                <button data-a="repeat" title="${L.repeat}">${I.repeat}<span class="n"></span></button>
+            </div>
+            <details class="${NS}-audio"><summary>${L.audio}</summary>
+                <label>${L.speed} <output data-value="rate">1×</output></label><input data-audio="rate" type="range" min="0.1" max="3" step="0.01">
+                <label><span>${L.pitch}</span><input data-audio="preservePitch" type="checkbox"></label>
+                <label>${L.bass} <output data-value="bass">0 dB</output></label><input data-audio="bass" type="range" min="0" max="12" step="0.5">
+                <label>${L.reverb} <output data-value="reverb">0 %</output></label><input data-audio="reverb" type="range" min="0" max="1" step="0.02">
+                <div class="${NS}-presets"><button data-preset="normal">${L.normal}</button><button data-preset="bass">${L.bass}</button><button data-preset="slowed">${L.slowed}</button><button data-preset="nightcore">${L.nightcore}</button></div>
+            </details>`;
         d.body.appendChild(root);
         ui = {
             art: root.querySelector(`.${NS}-art`), title: root.querySelector(`.${NS}-title`), artist: root.querySelector(`.${NS}-artist`),
             bar: root.querySelector(`.${NS}-bar`), fill: root.querySelector(`.${NS}-fill`), knob: root.querySelector(`.${NS}-knob`),
             cur: root.querySelector('.cur'), dur: root.querySelector('.dur'),
             play: root.querySelector('[data-a=play]'), repeat: root.querySelector('[data-a=repeat]'), shuffle: root.querySelector('[data-a=shuffle]'),
+            audio: root.querySelector(`.${NS}-audio`),
         };
+        ui.audio.addEventListener('input', (e) => {
+            const key = e.target.dataset.audio;
+            if (!key) return;
+            window.__sceAudio?.setSettings({ [key]: key === 'preservePitch' ? e.target.checked : Number(e.target.value) });
+            render();
+        });
+        ui.audio.addEventListener('click', (e) => {
+            const preset = e.target.closest('[data-preset]')?.dataset.preset;
+            if (preset) window.__sceAudio?.applyPreset(preset);
+        });
+        window.addEventListener('sce:audio-change', render);
+        off.push(() => window.removeEventListener('sce:audio-change', render));
         root.addEventListener('click', (e) => {
             const b = e.target.closest('[data-a]'); if (!b) return;
             switch (b.dataset.a) {
@@ -199,7 +243,7 @@
         const playCtl = $(SEL.play); if (playCtl) mo.observe(playCtl, { attributes: true, attributeFilter: ['class'] });
         off.push(() => mo.disconnect());
 
-        pipWin.addEventListener('pagehide', () => { for (const fn of off.splice(0)) fn(); pipWin = null; ui = null; pinBtn?.classList.remove('m-on'); });
+        pipWin.addEventListener('pagehide', () => { for (const fn of [...off.splice(0), ...mediaOff.splice(0)]) fn(); media = null; pipWin = null; ui = null; pinBtn?.classList.remove('m-on'); });
         pinBtn?.classList.add('m-on');
         render();
     }
@@ -220,8 +264,8 @@
         pinBtn = document.createElement('button');
         pinBtn.type = 'button';
         pinBtn.className = `${NS}-pin sc-mr-1x`;
-        pinBtn.title = 'Lecteur épinglable (toujours au premier plan)';
-        pinBtn.setAttribute('aria-label', 'Lecteur épinglable');
+        pinBtn.title = L.pin;
+        pinBtn.setAttribute('aria-label', L.pinShort);
         pinBtn.innerHTML = `<div>${I.pin}</div>`;
         pinBtn.addEventListener('click', () => open().catch((e) => console.warn('[SCE] PiP', e)));
         volume.parentElement.insertBefore(pinBtn, volume);
@@ -229,8 +273,9 @@
     new MutationObserver(() => { if (!pinBtn?.isConnected) mount(); }).observe(document.body, { childList: true, subtree: true });
     mount();
 
-    // Commande externe (popup / raccourci) : { sce: 'command', command: 'pip' }
+    // Commande externe (popup / raccourci) : { sce: 'command', command: 'pip' }.
+    // Chromium n'ouvre une fenêtre PiP que sur activation utilisateur dans la page : sinon, on l'explique.
     window.addEventListener('message', (e) => {
-        if (e.source === window && e.data?.sce === 'command' && e.data.command === 'pip') open().catch(() => {});
+        if (e.source === window && e.data?.sce === 'command' && e.data.command === 'pip') open().catch(() => window.__scsp?.toast?.(L.gesture, { error: true }));
     });
 })();

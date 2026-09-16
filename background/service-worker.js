@@ -20,6 +20,17 @@ async function soundcloudTab() {
     return tabs.find((t) => t.audible) || tabs.find((t) => t.active) || tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
 }
 
+let pendingSoundcloudTab = null;
+async function ensureSoundcloudTab() {
+    const existing = await soundcloudTab();
+    if (existing) return existing;
+    if (!pendingSoundcloudTab) {
+        pendingSoundcloudTab = chrome.tabs.create({ url: 'https://soundcloud.com/you/likes', active: true })
+            .finally(() => { pendingSoundcloudTab = null; });
+    }
+    return pendingSoundcloudTab;
+}
+
 async function sendToPage(message) {
     const tab = await soundcloudTab();
     if (!tab) return { ok: false, reason: 'no-tab' };
@@ -30,6 +41,21 @@ async function sendToPage(message) {
 chrome.commands.onCommand.addListener((command) => {
     sendToPage({ type: 'command', command });
 });
+
+// Le navigateur gère lui-même l'ouverture et la fermeture au clic sur l'icône.
+if (chrome.sidePanel?.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
+        console.warn('Impossible de configurer le panneau SoundCloud', error);
+    });
+} else {
+    chrome.action.onClicked.addListener(() => {
+        if (chrome.sidebarAction?.toggle) {
+            chrome.sidebarAction.toggle().catch((error) => console.warn('Impossible de basculer le panneau SoundCloud', error));
+        } else {
+            chrome.windows.create({ url: chrome.runtime.getURL('popup/popup.html?window=1'), type: 'popup', width: 324, height: 560 }).catch(() => {});
+        }
+    });
+}
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
@@ -47,9 +73,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 sendResponse({ ok: true });
                 break;
             case 'popup-focus-tab': {
-                const tab = await soundcloudTab();
+                const tab = await ensureSoundcloudTab();
                 if (tab) { await chrome.tabs.update(tab.id, { active: true }); await chrome.windows.update(tab.windowId, { focused: true }); }
                 sendResponse({ ok: !!tab });
+                break;
+            }
+            case 'popup-ensure-tab': {
+                const tab = await ensureSoundcloudTab();
+                sendResponse({ ok: !!tab, tabId: tab?.id });
                 break;
             }
             case 'set-ad-blocking':
