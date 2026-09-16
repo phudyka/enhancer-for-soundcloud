@@ -84,6 +84,7 @@
         "https://soundcloud.com/*"
       ],
       "js": [
+        "content/shared.js",
         "content/shuffle.js",
         "content/library-bulk.js",
         "content/library.js",
@@ -92,6 +93,7 @@
         "content/dj.js",
         "content/player-api.js",
         "content/history.js",
+        "content/customize.js",
         "content/pip.js"
       ],
       "run_at": "document_end",

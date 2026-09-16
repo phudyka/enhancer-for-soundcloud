@@ -403,8 +403,8 @@
     function togglePanel() {
         if (panel) { closePanel(); return; }
         panel = buildPanel(); document.body.appendChild(panel);
-        const r = btn.getBoundingClientRect(), width = document.documentElement.clientWidth || window.innerWidth;
-        const left = Math.max(8, Math.min(width - 264, r.left + r.width / 2 - 128));
+        const r = btn.getBoundingClientRect(), width = document.documentElement.clientWidth || window.innerWidth, pw = panel.offsetWidth || 284;
+        const left = Math.max(8, Math.min(width - pw - 8, r.left + r.width / 2 - pw / 2));
         panel.style.left = `${left}px`;
         panel.style.setProperty('--arrow', `${Math.max(12, Math.min(244, r.left + r.width / 2 - left))}px`);   // la flèche reste sous le bouton
         syncPanel();

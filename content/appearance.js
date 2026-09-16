@@ -17,10 +17,17 @@
 
     /** clé de réglage → sélecteurs à masquer */
     const HIDE = {
+        hideArtistTools:   ['.sidebarModule:has(.sidebarModule__webiEmbeddedModule)'],   // module « Outils pour artistes » intégré (iframe) ; le bloc textuel est repéré par son titre
         hideUpsell:        ['.header__upsellWrapper', '.l-product-banners', '.playControls__panel.m-upsell-styling', '.sidebarModule .upsellBanner', '.audibleTile__upsell', '.listenEngagement__upsell', '.spotlight__upsellBanner', '.quotaMeter__upsellText', 'a[href^="https://checkout.soundcloud.com/artist"]'],
         hideUploadMeter:   ['.quotaMeter'],
         hideUpload:        ['.header__soundInput', '.uploadButton'],
         hideArtistStudio:  ['.header__forArtistsButton'],
+        hideLocale:        ['.footer__localeSelector', '.localeSelector'],
+        // Fil d'actualités : modules de la colonne de droite
+        hideSidebarNewTracks:   ['.sidebarModule.artistShortcutsModule'],
+        hideSidebarWhoToFollow: ['.sidebarModule.whoToFollowModule'],
+        hideSidebarLikes:       ['.sidebarModule.likesModule'],
+        hideSidebarHistory:     ['.sidebarModule.historyModule'],
         hideNotifications: ['.header__userNavItem:has(.notificationIcon.activities)'],
         hideMessages:      ['.header__userNavItem:has(.notificationIcon.messages)'],
         hideComments:      ['.listenEngagement__commentForm', '.commentForm', '.commentsList', '.listenEngagement__footer .commentsList', '.listenDetails__comments', '.sidebarModule.commentsModule'],
@@ -52,11 +59,31 @@
         hideProfileInformation: ['Vos informations', 'Your insights'],
         hideProfileStation: ['Station'],
     };
+    // Onglets de l'en-tête (Accueil, Fil, Bibliothèque) : liens .header__navMenuItem
+    const HEADER_LINKS = {
+        hideNavHome: ['Accueil', 'Home'], hideNavStream: ["Fil d'actualités", 'Feed'], hideNavLibrary: ['Bibliothèque', 'Library'],
+    };
+    // Modules repérés par leur titre (fil, Découvrir, colonne de droite)
+    const MODULE_HEADINGS = {
+        hideSidebarMobile: ['Passer sur mobile', 'Go mobile'],
+    };
+    const MODULE_SEL = '.sidebarModule, .mixedSelectionModule, .l-sidebar-right > div, section';
+    const HEADING_SEL = 'h1, h2, h3, h4, h5, h6, [class*="__title"], [class*="Title"]';
+    /** Titre normalisé d'un module : minuscules, sans chiffres ni ponctuation, 40 caractères. */
+    const headingKey = (text) => (text || '').toLocaleLowerCase().replace(/[\d.,'’«»"!?:()]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+    const moduleHeading = (module) => headingKey(module.querySelector(HEADING_SEL)?.textContent);
+    /** Masquages libres (sélecteur d'éléments) : 'sel:<css>', 'text:<css>|<texte>', 'class:<classe>', 'heading:<titre normalisé>'. */
+    const customEntries = (settings) => Array.isArray(settings.hiddenCustom) ? settings.hiddenCustom.filter((entry) => typeof entry === 'string') : [];
+    const CUSTOM_CLASS = `${NS}-custom-hidden`;
     const className = (key) => `${NS}-${key.replace(/^hide/, '').replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`).replace(/^-/, '')}`;
     const sameLabel = (value, labels) => labels.some((label) => value.toLocaleLowerCase() === label.toLocaleLowerCase());
     /** Éléments à examiner : seulement les zones concernées par les réglages actifs, plus ceux déjà marqués (pour retirer la marque). */
     function debloatCandidates(settings) {
         const scopes = [];
+        if (Object.keys(HEADER_LINKS).some((key) => settings[key])) scopes.push('.header__navMenuItem');
+        const custom = customEntries(settings);
+        if (Object.keys(MODULE_HEADINGS).some((key) => settings[key]) || custom.some((entry) => entry.startsWith('heading:'))) scopes.push(MODULE_SEL);
+        for (const entry of custom) if (entry.startsWith('text:')) { const sel = entry.slice(5).split('|')[0]; if (sel) scopes.push(sel); }
         if (Object.keys(PROFILE_TABS).some((key) => settings[key])) scopes.push('.g-tabs-link', '.tabs__tab');
         if (Object.keys(NAV_ITEMS).some((key) => settings[key])) scopes.push('.l-sidebar-left a', '.sidebarNav a', '.userSidebar a', 'nav a', '.l-sidebar-left button', '.sidebarNav button', '.userSidebar button', 'nav button', '.headerMenu__link');
         if (Object.keys(PROFILE_ACTIONS).some((key) => settings[key])) scopes.push('a', 'button');
@@ -66,10 +93,25 @@
         return elements;
     }
     function markDebloat(settings) {
-        const keys = [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), 'hideArtistProPrompt'];
+        const keys = [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), ...Object.keys(HEADER_LINKS), ...Object.keys(MODULE_HEADINGS), 'hideArtistProPrompt'];
+        const custom = customEntries(settings);
+        const customHeadings = new Set(custom.filter((entry) => entry.startsWith('heading:')).map((entry) => entry.slice(8)));
+        const customTexts = custom.filter((entry) => entry.startsWith('text:')).map((entry) => { const [sel, ...text] = entry.slice(5).split('|'); return { sel, text: text.join('|') }; });
         debloatCandidates(settings).forEach((element) => {
             const label = (element.textContent || '').replace(/\s+/g, ' ').trim();
             const active = new Set();
+            let customHit = false;
+            for (const [key, labels] of Object.entries(HEADER_LINKS)) {
+                if (settings[key] && element.matches('.header__navMenuItem') && sameLabel(label, labels)) active.add(key);
+            }
+            if (element.matches(MODULE_SEL)) {
+                const heading = moduleHeading(element);
+                for (const [key, labels] of Object.entries(MODULE_HEADINGS)) if (settings[key] && heading && labels.some((l) => headingKey(l) === heading)) active.add(key);
+                if (heading && customHeadings.has(heading)) customHit = true;
+            }
+            for (const { sel, text } of customTexts) { try { if (element.matches(sel) && label === text) customHit = true; } catch {} }
+            if (customHit && !element.classList.contains(CUSTOM_CLASS)) element.classList.add(CUSTOM_CLASS);
+            if (!customHit && element.classList.contains(CUSTOM_CLASS)) element.classList.remove(CUSTOM_CLASS);
             for (const [key, labels] of Object.entries(PROFILE_TABS)) {
                 if (settings[key] && element.matches('.g-tabs-link, .tabs__tab') && sameLabel(label, labels)) active.add(key);
             }
@@ -177,8 +219,9 @@
         artistObserver = null;
         markArtistTools();
         markDebloat(settings);
-        const dynamicKeys = [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), 'hideArtistProPrompt'];
-        if (!settings.hideArtistTools && !dynamicKeys.some((key) => settings[key])) return;
+        const dynamicKeys = [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), ...Object.keys(HEADER_LINKS), ...Object.keys(MODULE_HEADINGS), 'hideArtistProPrompt'];
+        const custom = customEntries(settings);
+        if (!settings.hideArtistTools && !dynamicKeys.some((key) => settings[key]) && !custom.some((entry) => entry.startsWith('heading:') || entry.startsWith('text:'))) return;
         artistObserver = new MutationObserver(() => {
             if (artistScanQueued) return;
             artistScanQueued = true;
@@ -193,9 +236,17 @@
         // OneTrust injecte le bandeau et un voile séparé ; ne pas cacher le centre de préférences.
         if (s.hideCookieBanner !== false) css += '#onetrust-banner-sdk, #onetrust-consent-sdk > .onetrust-pc-dark-filter { display: none !important; }\n';
         if (s.hideArtistTools) css += `.${NS}-artist-tools { display: none !important; }\n`;
-        for (const key of [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), 'hideArtistProPrompt']) {
+        for (const key of [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), ...Object.keys(HEADER_LINKS), ...Object.keys(MODULE_HEADINGS), 'hideArtistProPrompt']) {
             if (s[key]) css += `.${className(key)} { display: none !important; }\n`;
         }
+        // Masquages libres : sélecteurs directs et classes en CSS, titres et textes via la classe posée par markDebloat
+        const direct = [];
+        for (const entry of customEntries(s)) {
+            if (entry.startsWith('sel:')) direct.push(entry.slice(4));
+            else if (entry.startsWith('class:') && /^[\w-]+$/.test(entry.slice(6))) direct.push(`.${entry.slice(6)}`);
+        }
+        if (direct.length) css += `${direct.join(', ')} { display: none !important; }\n`;
+        css += `.${CUSTOM_CLASS} { display: none !important; }\n`;
         if (s.hideUpsell || s.hideUpload || s.hideArtistStudio || s.wideSearch) css += WIDE_SEARCH;
         if (s.oled) css += OLED_CSS;
         if (s.accent && /^#[0-9a-f]{6}$/i.test(s.accent) && s.accent.toLowerCase() !== '#ff5500') css += accentCSS(s.accent);

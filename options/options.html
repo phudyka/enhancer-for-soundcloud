@@ -33,6 +33,10 @@
   .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
   .swatches button.on { border-color: #fff; }
   .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
+  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 3px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+  .custom-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid #262626; font-size: 13px; }
+  .custom-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .custom-item code { color: var(--muted); font-size: 11px; }
   .saved { color: #2ecc71; font-size: 12px; height: 16px; margin-top: 4px; }
   .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
   a { color: var(--accent); }
@@ -72,12 +76,18 @@
 
 <fieldset>
   <legend>Navigation</legend>
+  <p class="note">Onglets de l'en-tête :</p>
+  <label><input type="checkbox" id="hideNavHome"><span>Masquer « Accueil »</span></label>
+  <label><input type="checkbox" id="hideNavStream"><span>Masquer « Fil d'actualités »</span></label>
+  <label><input type="checkbox" id="hideNavLibrary"><span>Masquer « Bibliothèque »</span></label>
+  <p class="note">Autres éléments :</p>
   <label><input type="checkbox" id="wideSearch"><span>Barre de recherche élargie</span></label>
   <label><input type="checkbox" id="hideUpload"><span>Masquer le bouton « Uploader »</span></label>
   <label><input type="checkbox" id="hideArtistStudio"><span>Masquer le lien « Studio de l'artiste »</span></label>
   <label><input type="checkbox" id="hideNotifications"><span>Masquer la cloche des notifications</span></label>
   <label><input type="checkbox" id="hideMessages"><span>Masquer l'icône des messages</span></label>
   <label><input type="checkbox" id="hideFooter"><span>Masquer le pied de page latéral</span></label>
+  <label><input type="checkbox" id="hideLocale"><span>Masquer le sélecteur de langue</span></label>
   <p class="note">Entrées du menu latéral :</p>
   <label><input type="checkbox" id="hideNavProfile"><span>Masquer « Profil »</span></label>
   <label><input type="checkbox" id="hideNavLikes"><span>Masquer « Favoris »</span></label>
@@ -100,6 +110,13 @@
 
 <fieldset>
   <legend>Fil</legend>
+  <p class="note">Colonne de droite du fil :</p>
+  <label><input type="checkbox" id="hideSidebarNewTracks"><span>Masquer « Nouveaux titres »</span></label>
+  <label><input type="checkbox" id="hideSidebarWhoToFollow"><span>Masquer « Artistes que vous devriez suivre »</span></label>
+  <label><input type="checkbox" id="hideSidebarLikes"><span>Masquer « Mentions J'aime »</span></label>
+  <label><input type="checkbox" id="hideSidebarHistory"><span>Masquer « Historique d'écoute »</span></label>
+  <label><input type="checkbox" id="hideSidebarMobile"><span>Masquer « Passer sur mobile »</span></label>
+  <p class="note">Contenu du fil :</p>
   <label><input type="checkbox" id="hideFeedReposts"><span>Masquer les reposts dans le fil d'actualités</span></label>
   <label><input type="checkbox" id="hideFeedPlaylists"><span>Masquer les playlists et albums dans le fil d'actualités</span></label>
   <label><input type="checkbox" id="hidePromoted"><span>Masquer les titres sponsorisés dans les listes</span></label>
@@ -111,6 +128,14 @@
   <label><input type="checkbox" id="hideUpsell"><span>Masquer les promotions Go+ et Artist Pro<small>Liens de l'en-tête, titres épinglés premium, boutons Artist Pro dans les titres, jauge d'uploads et panneau du lecteur.</small></span></label>
   <label><input type="checkbox" id="hideArtistProPrompt"><span>Masquer la mention « Essayez Artist Pro » sous la jauge d'uploads<small>Ne masque pas la jauge elle-même.</small></span></label>
   <label><input type="checkbox" id="hideCookieBanner"><span>Masquer le bandeau cookies répétitif<small>Masque uniquement le bandeau, sans modifier les cookies ni votre consentement.</small></span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Personnalisation libre</legend>
+  <p class="note" style="margin:4px 0 8px">Pour tout le reste (sections de Découvrir, modules, boutons…) : masquez n'importe quel élément directement sur la page. Survolez, cliquez, c'est mémorisé.</p>
+  <div class="row"><span>Masquer des éléments à la souris<br><small style="color:var(--muted)">Ouvre l'onglet SoundCloud en mode personnalisation. Échap ou « Terminer » pour quitter.</small></span><button class="btn" id="start-pick" type="button">Démarrer</button></div>
+  <div id="custom-list"></div>
+  <div class="row" id="custom-actions" hidden><span></span><button class="link" id="custom-clear" type="button">Tout réafficher</button></div>
 </fieldset>
 
 <fieldset>

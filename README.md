@@ -13,6 +13,7 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 - **Loupe de timeline** : molette sur la forme d'onde ou la barre du lecteur, zoom 2× à 32× avec la forme d'onde redessinée, règle de temps, placement au centième de seconde, flèches ±1 s / Maj ±0,1 s / Alt ±0,01 s.
 - **Mode DJ** : bouton « platines » dans la barre du lecteur. Platine A = le lecteur SoundCloud, platine B = un second titre lu en flux, recherche intégrée. Crossfader à puissance constante, kill basses par platine, pitch ±16 %, repères cue, Sync du tempo de B sur A, Auto-mix 8/16/32 s avec bascule des basses et pause de A à la fin.
 - **Historique et statistiques d'écoute** : le temps réellement écouté par titre est mesuré sur le flux audio et conservé dans le navigateur (24 mois au plus, désactivable). Page Statistiques avec période au choix : temps d'écoute, écoutes, titres et artistes distincts, titres écoutés en entier, écoute par jour, par heure et par jour de semaine, top titres, top artistes, dernières écoutes, export CSV / JSON, effacement en deux clics. Ouverture depuis les réglages ou le panneau latéral.
+- **Personnalisation libre** : « Masquer des éléments à la souris » dans les réglages ouvre SoundCloud en mode personnalisation ; survolez, cliquez, l'élément est masqué durablement (sections de Découvrir, modules, onglets, boutons…). Chaque masquage est listé dans les réglages et réaffichable.
 - **Debloat et apparence** : réglages séparés pour les éléments du profil (boutons et onglets), les entrées du menu (latéral et déroulant de l'avatar), la lecture, le fil et les promotions. Chaque masquage est local et réversible ; aucun contenu du compte n'est supprimé. Fond noir OLED pour le thème sombre natif, couleur d'accent personnalisée avec saisie hexadécimale, page d'accueil au choix.
 - **Bandeau cookies** : masque par défaut le dialogue répétitif de SoundCloud sans effacer les cookies ni enregistrer un choix de consentement ; désactivable dans Promotions.
 - **Publicités** : blocage optionnel des domaines publicitaires et traceurs tiers via declarativeNetRequest, sans lecture des pages. Désactivé par défaut, inutile sur Brave.
@@ -31,7 +32,8 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 manifest.json
 content/
   media-hook.js   document_start, monde principal : capture l'<audio> de SoundCloud (créé hors DOM)
-  appearance.js   document_start, monde principal : masquage, couleur d'accent, page d'accueil
+  appearance.js   document_start, monde principal : masquage (cases et masquages libres), OLED, accent, page d'accueil
+  customize.js    monde principal : mode « masquer à la souris » (sélecteur d'éléments)
   shuffle.js      monde principal : module Shuffle+ (dérivé du userscript), expose window.__scsp aux autres modules
   library.js      monde principal : bibliothèque des likes (recherche, tri, genres, sélection)
   library-bulk.js sélection et opérations groupées sur favoris et playlists

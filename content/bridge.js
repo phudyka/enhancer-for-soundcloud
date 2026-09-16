@@ -46,11 +46,26 @@
         return false;
     });
 
+    // 2b. Réglages modifiés depuis la page (personnalisation libre) → chrome.storage.sync, clés autorisées seulement
+    const PAGE_KEYS = new Set(['hiddenCustom', 'customizeMode']);
+    async function applyPatch(patch) {
+        const clean = {};
+        for (const [key, value] of Object.entries(patch || {})) {
+            if (!PAGE_KEYS.has(key)) continue;
+            if (key === 'hiddenCustom') clean[key] = Array.isArray(value) ? value.filter((x) => typeof x === 'string' && x.length < 400).slice(0, 300) : [];
+            else clean[key] = !!value;
+        }
+        if (!Object.keys(clean).length) return;
+        const { settings } = await chrome.storage.sync.get('settings');
+        await chrome.storage.sync.set({ settings: { ...(settings || {}), ...clean } });
+    }
+
     // 3. Événements page → service worker
     window.addEventListener('message', (e) => {
         if (e.source !== window || !e.data) return;
         if (e.data.scsp === 'event') chrome.runtime.sendMessage({ type: 'page-event', event: e.data }).catch(() => {});
         if (e.data.sce === 'state')  chrome.runtime.sendMessage({ type: 'player-state', state: e.data }).catch(() => {});
         if (e.data.sce === 'listen' && e.data.entry) chrome.runtime.sendMessage({ type: 'listen', entry: e.data.entry }).catch(() => {});
+        if (e.data.sce === 'settings-patch') applyPatch(e.data.patch).catch(() => {});
     });
 })();

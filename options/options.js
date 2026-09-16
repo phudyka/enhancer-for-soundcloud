@@ -8,9 +8,13 @@ const DEFAULTS = {
     hideNavProfile: false, hideNavLikes: false, hideNavPlaylists: false, hideNavStations: false, hideNavFollowing: false,
     hideNavSuggestions: false, hideNavArtistPro: false, hideNavBenefits: false, hideNavTracks: false, hideNavInsights: false, hideNavDistribute: false,
     hideArtistProPrompt: false,
+    hideNavHome: false, hideNavStream: false, hideNavLibrary: false, hideLocale: false,
+    hideSidebarNewTracks: false, hideSidebarWhoToFollow: false, hideSidebarLikes: false, hideSidebarHistory: false, hideSidebarMobile: false,
     accent: '', homePage: '', blockAds: false, oled: false,
+    hiddenCustom: [], customizeMode: false,
 };
-const CHECKS = Object.keys(DEFAULTS).filter((k) => typeof DEFAULTS[k] === 'boolean');
+const NO_CHECKBOX = new Set(['customizeMode']);
+const CHECKS = Object.keys(DEFAULTS).filter((k) => typeof DEFAULTS[k] === 'boolean' && !NO_CHECKBOX.has(k));
 const SWATCHES = ['#ff5500', '#1db954', '#e91e63', '#7c4dff', '#00b0ff', '#ffc107', '#ffffff'];
 const $ = (id) => document.getElementById(id);
 let settings = { ...DEFAULTS };
@@ -22,10 +26,27 @@ function paintSwatches() {
     $('custom').classList.toggle('on', !!settings.accent && !SWATCHES.includes(settings.accent.toLowerCase()));
 }
 
+/** Liste des masquages libres faits à la souris, avec réaffichage individuel. */
+function customLabel(entry) {
+    const [kind, rest] = [entry.slice(0, entry.indexOf(':')), entry.slice(entry.indexOf(':') + 1)];
+    if (kind === 'text') { const i = rest.indexOf('|'); return { text: rest.slice(i + 1), detail: rest.slice(0, i) }; }
+    if (kind === 'heading') return { text: rest, detail: (window.SCE_T || ((x) => x))('module par titre') };
+    if (kind === 'class') return { text: rest, detail: 'module' };
+    return { text: rest, detail: (window.SCE_T || ((x) => x))('sélecteur') };
+}
+function renderCustom() {
+    const list = Array.isArray(settings.hiddenCustom) ? settings.hiddenCustom : [];
+    const T = window.SCE_T || ((x) => x);
+    $('custom-list').innerHTML = list.map((entry, i) => { const l = customLabel(entry); return `<div class="custom-item"><span title="${esc(entry)}">${esc(l.text)} <code>${esc(l.detail)}</code></span><button class="link" data-restore="${i}" type="button">${T('Réafficher')}</button></div>`; }).join('');
+    $('custom-actions').hidden = list.length === 0;
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 async function load() {
     const { settings: saved } = await chrome.storage.sync.get('settings');
     settings = { ...DEFAULTS, ...(saved || {}) };
     for (const k of CHECKS) $(k).checked = !!settings[k];
+    renderCustom();
     $('homePage').value = settings.homePage || '';
     paintSwatches();
     document.documentElement.style.setProperty('--accent', settings.accent || '#ff5500');
@@ -62,5 +83,15 @@ $('accent-reset').addEventListener('click', () => { save({ accent: '' }); paintS
 $('swatches').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; save({ accent: b.dataset.c === '#ff5500' ? '' : b.dataset.c }); paintSwatches(); });
 $('shortcuts').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }); });
 $('open-stats').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('stats/stats.html') }));
+$('start-pick').addEventListener('click', async () => { await save({ customizeMode: true }); chrome.runtime.sendMessage({ type: 'popup-focus-tab' }).catch(() => {}); });
+$('custom-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-restore]'); if (!b) return;
+    const list = (settings.hiddenCustom || []).filter((_, i) => i !== Number(b.dataset.restore));
+    save({ hiddenCustom: list }); renderCustom();
+});
+$('custom-clear').addEventListener('click', () => { save({ hiddenCustom: [] }); renderCustom(); });
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && changes.settings) { settings = { ...DEFAULTS, ...(changes.settings.newValue || {}) }; renderCustom(); }
+});
 $('open-guide').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: chrome.runtime.getURL('guide/guide.html') }); });
 load();
