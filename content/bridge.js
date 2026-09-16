@@ -28,16 +28,19 @@
             else window.postMessage({ sce: 'command', command: msg.command, value: msg.value }, location.origin);
             sendResponse({ ok: true });
         }
-        if (msg?.type === 'get-state') {
+        // Requêtes avec réponse : la page répond par un message { sce: <reply> }
+        const REQUESTS = { 'get-state': { reply: 'state', timeout: 1500 }, 'get-queue': { reply: 'queue', timeout: 4000 } };
+        if (REQUESTS[msg?.type]) {
+            const { reply, timeout } = REQUESTS[msg.type];
             let timer = null;
             const once = (e) => {
-                if (e.source !== window || e.data?.sce !== 'state') return;
+                if (e.source !== window || e.data?.sce !== reply) return;
                 clearTimeout(timer); window.removeEventListener('message', once);
                 sendResponse(e.data);
             };
             window.addEventListener('message', once);
-            window.postMessage({ sce: 'command', command: 'get-state' }, location.origin);
-            timer = setTimeout(() => { window.removeEventListener('message', once); sendResponse({ ok: false, reason: 'timeout' }); }, 1500); // jamais de promesse en attente côté popup
+            window.postMessage({ sce: 'command', command: msg.type }, location.origin);
+            timer = setTimeout(() => { window.removeEventListener('message', once); sendResponse({ ok: false, reason: 'timeout' }); }, timeout); // jamais de promesse en attente côté popup
             return true; // réponse asynchrone
         }
         return false;

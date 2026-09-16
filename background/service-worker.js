@@ -152,6 +152,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             case 'popup-command':      // depuis le popup : relayer à la page
                 sendResponse(await sendToPage({ type: 'command', command: msg.command, value: msg.value, force: msg.force }));
                 break;
+            case 'popup-get-queue': {
+                const tab = await soundcloudTab();
+                if (!tab) { sendResponse({ ok: false, reason: 'no-tab' }); break; }
+                try { sendResponse(await chrome.tabs.sendMessage(tab.id, { type: 'get-queue' }) || { ok: false }); }
+                catch (e) { sendResponse({ ok: false, reason: String(e) }); }
+                break;
+            }
             case 'popup-get-state': {
                 const tab = await soundcloudTab();
                 if (!tab) { setBadge(false); sendResponse({ ok: false, reason: 'no-tab' }); break; }

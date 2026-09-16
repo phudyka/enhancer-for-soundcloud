@@ -155,6 +155,11 @@ const SCE_I18N = {
  "Annuler le minuteur": "Cancel the timer",
  "fin": "end",
  "Guide des fonctions": "Feature guide",
+ "À suivre": "Up next",
+ "Actualiser la file": "Refresh the queue",
+ "Rien à suivre pour l'instant.": "Nothing up next for now.",
+ "Lire ce titre": "Play this track",
+ "Retirer de la file": "Remove from the queue",
  "Brave bloque déjà les publicités avec ses Shields : laissez désactivé.": "Brave already blocks ads with Shields: leave this off."
 };
 

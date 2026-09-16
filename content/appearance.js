@@ -58,7 +58,7 @@
     function debloatCandidates(settings) {
         const scopes = [];
         if (Object.keys(PROFILE_TABS).some((key) => settings[key])) scopes.push('.g-tabs-link', '.tabs__tab');
-        if (Object.keys(NAV_ITEMS).some((key) => settings[key])) scopes.push('.l-sidebar-left a', '.sidebarNav a', '.userSidebar a', 'nav a', '.l-sidebar-left button', '.sidebarNav button', '.userSidebar button', 'nav button');
+        if (Object.keys(NAV_ITEMS).some((key) => settings[key])) scopes.push('.l-sidebar-left a', '.sidebarNav a', '.userSidebar a', 'nav a', '.l-sidebar-left button', '.sidebarNav button', '.userSidebar button', 'nav button', '.headerMenu__link');
         if (Object.keys(PROFILE_ACTIONS).some((key) => settings[key])) scopes.push('a', 'button');
         if (settings.hideArtistProPrompt) scopes.push('a', 'p');
         const elements = new Set(document.querySelectorAll(`[class*="${NS}-"]`));
@@ -73,8 +73,9 @@
             for (const [key, labels] of Object.entries(PROFILE_TABS)) {
                 if (settings[key] && element.matches('.g-tabs-link, .tabs__tab') && sameLabel(label, labels)) active.add(key);
             }
+            // Menu latéral et menu déroulant de l'avatar (.headerMenu__link) partagent les mêmes réglages
             for (const [key, labels] of Object.entries(NAV_ITEMS)) {
-                if (settings[key] && element.closest('.l-sidebar-left, .sidebarNav, .userSidebar, nav') && sameLabel(label, labels)) active.add(key);
+                if (settings[key] && element.closest('.l-sidebar-left, .sidebarNav, .userSidebar, nav, .dropdownMenu, .headerMenu') && sameLabel(label, labels)) active.add(key);
             }
             for (const [key, labels] of Object.entries(PROFILE_ACTIONS)) {
                 if (settings[key] && element.matches('a, button') && sameLabel(label, labels)) active.add(key);

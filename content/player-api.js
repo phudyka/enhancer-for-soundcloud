@@ -8,6 +8,12 @@
  *   ← { sce: 'command', command: 'toggle-play' | 'next-track' | 'prev-track' | 'repeat' | 'seek' | 'speed' | 'sleep', value? }
  *   → { sce: 'state', playing, title, artist, artwork, position, duration, url, rate, repeat, sleep }
  *
+ * File d'attente : { sce: 'command', command: 'get-queue' | 'queue-play' | 'queue-remove', value? }
+ *   → { sce: 'queue', items: [{ index, title, artist, url, artwork, duration }] }
+ * SoundCloud ne rend les éléments de sa file que lorsque le panneau est ouvert
+ * (liste virtualisée) : on l'ouvre invisible le temps de la lire, puis on le
+ * referme, sauf s'il était déjà ouvert par l'utilisateur.
+ *
  * Minuteur d'arrêt ('sleep') : value = minutes → fondu de 8 s puis pause ;
  * value = 'end' → pause à la fin du titre en cours ; value = 0 → annulation.
  * L'état expose `sleep` : secondes restantes, 'end', ou null.
@@ -23,7 +29,13 @@
         artist:  '.playbackSoundBadge__lightLink',
         artwork: '.playbackSoundBadge__avatar .image__full, .playbackSoundBadge__avatar span[style*="background-image"]',
         progress:'.playbackTimeline__progressWrapper',
+        queue:   '.queue',
+        queueToggle: '.playbackSoundBadge__showQueue',
+        queueHide: '.queue__hide',
+        queueItem: '.queueItemView',
     };
+    const SILENT = 'sce-queue-silent';
+    const QUEUE_LIMIT = 30;
     const $ = (s) => document.querySelector(s);
 
     function artworkUrl() {
@@ -102,7 +114,81 @@
         const iv = setInterval(() => { tries++; if (isPlaying()) { pauseIfPlaying(); clearInterval(iv); window.postMessage(state(), location.origin); } else if (tries > 30) clearInterval(iv); }, 200);
     }
 
+    /* ── File d'attente ───────────────────────────────────────────── */
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    function silentStyle() {
+        if (document.getElementById(`${SILENT}-style`)) return;
+        const style = document.createElement('style'); style.id = `${SILENT}-style`;
+        style.textContent = `.queue.${SILENT} { visibility: hidden !important; pointer-events: none !important; transition: none !important; }`;
+        (document.head || document.documentElement).appendChild(style);
+    }
+    /** Élément de la file → données du panneau. `index` est relatif au titre actif (1 = suivant). */
+    function queueItemData(el, index) {
+        const titleEl = el.querySelector('.queueItemView__title a, a.queueItemView__title, .queueItemView__title');
+        const art = el.querySelector('.queueItemView__artworkImage, [style*="background-image"]');
+        const m = art && (art.style?.backgroundImage || '').match(/url\("?(.*?)"?\)/);
+        return {
+            index,
+            title: (titleEl?.textContent || '').trim(),
+            artist: (el.querySelector('.queueItemView__username')?.textContent || '').trim(),
+            url: titleEl?.getAttribute?.('href') || null,
+            artwork: m ? m[1].replace(/-t\d+x\d+\./, '-t120x120.') : null,
+            duration: (el.querySelector('.queueItemView__duration')?.textContent || '').trim(),
+        };
+    }
+    /** Titres rendus après le titre actif, dans l'ordre. */
+    function upcomingItems() {
+        const items = [...document.querySelectorAll(SEL.queueItem)];
+        const active = items.findIndex((el) => el.classList.contains('m-active'));
+        return items.slice(active + 1, active + 1 + QUEUE_LIMIT);
+    }
+    let queueBusy = null;
+    /** Ouvre la file si besoin (invisible), exécute `fn(items)`, referme. Sérialisé. */
+    function withQueue(fn) {
+        const run = async () => {
+            const queue = $(SEL.queue);
+            const wasOpen = !!queue?.classList.contains('m-visible');
+            if (!wasOpen) {
+                if (!queue || !$(SEL.queueToggle)) return fn([]);
+                silentStyle(); queue.classList.add(SILENT);
+                $(SEL.queueToggle).click();
+                await wait(500);
+            }
+            try { return await fn(upcomingItems()); }
+            finally {
+                if (!wasOpen) {
+                    $(SEL.queueHide)?.click();
+                    await wait(300);
+                    queue.classList.remove(SILENT);
+                }
+            }
+        };
+        queueBusy = (queueBusy || Promise.resolve()).then(run, run);
+        return queueBusy;
+    }
+    const publishQueue = (items) => window.postMessage({ sce: 'queue', items: items.map((el, i) => queueItemData(el, i + 1)) }, location.origin);
+    function queueCommand(cmd, value) {
+        const target = (items) => {
+            const idx = Number(value?.index) - 1;
+            const byIndex = items[idx];
+            if (byIndex && (!value?.url || queueItemData(byIndex, idx + 1).url === value.url)) return byIndex;
+            return items.find((el, i) => queueItemData(el, i + 1).url === value?.url) || null;
+        };
+        return withQueue(async (items) => {
+            if (cmd === 'queue-play') {
+                target(items)?.querySelector('.queueItemView__playButton, .queueItemView__artwork')?.click();
+                await wait(150);
+                publishQueue(upcomingItems());
+            } else if (cmd === 'queue-remove') {
+                target(items)?.querySelector('.queueItemView__remove')?.click();
+                await wait(150);
+                publishQueue(upcomingItems());
+            } else publishQueue(items);
+        });
+    }
+
     function command(cmd, value) {
+        if (cmd === 'get-queue' || cmd === 'queue-play' || cmd === 'queue-remove') { queueCommand(cmd, value); if (cmd === 'get-queue') return; }
         switch (cmd) {
             case 'toggle-play': $(SEL.play)?.click(); break;
             case 'next-track':  $(SEL.next)?.click(); break;

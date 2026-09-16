@@ -36,11 +36,41 @@ function render() {
     $('#sleep-cancel').hidden = sleep == null;
 }
 
+/* File d'attente : demandée au chargement, à chaque changement de titre et après une action. */
+let queue = [], queueSig = '', queueTimer = null;
+function renderQueue() {
+    const has = state && state.sce === 'state' && state.title;
+    $('#queue').hidden = !has;
+    if (!has) return;
+    $('#queue-empty').hidden = queue.length > 0;
+    $('#queue-title').textContent = queue.length ? `${T('À suivre')} · ${queue.length}` : T('À suivre');
+    $('#queue-list').innerHTML = queue.map((q) => `<li data-index="${q.index}" data-url="${esc(q.url || '')}" title="${esc(T('Lire ce titre'))}">
+        <span class="qart" style="${q.artwork ? `background-image:url('${esc(q.artwork)}')` : ''}"></span>
+        <span class="qmeta"><span class="qt">${esc(q.title)}</span><span class="qa">${esc(q.artist)}</span></span>
+        <span class="qd">${esc(q.duration)}</span>
+        <button class="qx" data-remove title="${esc(T('Retirer de la file'))}"><svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button></li>`).join('');
+}
+async function loadQueue() {
+    const r = await send({ type: 'popup-get-queue' });
+    queue = (r && r.sce === 'queue' && Array.isArray(r.items)) ? r.items : [];
+    renderQueue();
+}
+const scheduleQueue = (delay = 400) => { clearTimeout(queueTimer); queueTimer = setTimeout(loadQueue, delay); };
+$('#queue-list').addEventListener('click', async (e) => {
+    const li = e.target.closest('li[data-index]'); if (!li) return;
+    const value = { index: Number(li.dataset.index), url: li.dataset.url || null };
+    await send({ type: 'popup-command', command: e.target.closest('[data-remove]') ? 'queue-remove' : 'queue-play', value });
+    scheduleQueue(600);
+});
+$('#queue-refresh').addEventListener('click', () => loadQueue());
+
 async function poll() {
     const r = await send({ type: 'popup-get-state' });
     if (r && r.sce === 'state') { state = r; tabId = r.tabId ?? tabId; }
     else state = null;
     render();
+    const sig = state ? `${state.url}|${state.title}` : '';
+    if (sig !== queueSig) { queueSig = sig; if (sig) scheduleQueue(); else { queue = []; renderQueue(); } }
 }
 
 async function command(cmd, extra = {}) {
@@ -94,7 +124,11 @@ chrome.storage.sync.get('settings').then(({ settings }) => {
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'session' && changes.playerState) {
         const next = changes.playerState.newValue;
-        if (next && (!tabId || next.tabId === tabId)) { state = next; render(); }
+        if (next && (!tabId || next.tabId === tabId)) {
+            state = next; render();
+            const sig = `${next.url}|${next.title}`;
+            if (sig !== queueSig) { queueSig = sig; scheduleQueue(); }
+        }
     }
     if (area === 'sync' && changes.settings) document.documentElement.style.setProperty('--accent', changes.settings.newValue?.accent || '#ff5500');
 });

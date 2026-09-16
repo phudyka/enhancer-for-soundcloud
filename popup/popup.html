@@ -58,6 +58,25 @@
   .menu button { display: block; width: 100%; height: 28px; text-align: left; padding: 0 8px; border-radius: 2px; color: #ddd; }
   .menu button:hover { background: rgba(255,255,255,.08); color: #fff; }
   .menu[hidden] { display: none; }
+  .queue { padding: 0 12px 12px; }
+  .qhead { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .qhead button { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 2px; }
+  .qhead button svg { width: 13px; height: 13px; }
+  .queue ol { list-style: none; margin: 0; padding: 0; }
+  .queue li { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 2px; min-width: 0; }
+  .queue li:hover { background: rgba(255,255,255,.05); }
+  .queue .qart { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 2px; background: #333 center/cover; }
+  .queue .qmeta { flex: 1; min-width: 0; }
+  .queue .qt, .queue .qa { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queue .qt { font-size: 12px; }
+  .queue .qa { color: var(--muted); font-size: 11px; }
+  .queue .qd { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+  .queue .qx { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 2px; opacity: 0; color: #aaa; }
+  .queue .qx svg { width: 10px; height: 10px; }
+  .queue li:hover .qx { opacity: 1; }
+  .queue .qx:hover { color: #fff; background: rgba(255,255,255,.1); }
+  .qempty { color: var(--muted); font-size: 12px; padding: 6px 0; }
+  .queue[hidden], .qempty[hidden] { display: none; }
   .empty { padding: 36px 20px 30px; text-align: center; color: var(--muted); }
   .empty button { display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 3px; background: var(--accent); color: #fff; font-weight: 600; }
   .player[hidden], .empty[hidden] { display: none; }
@@ -100,6 +119,12 @@
       <button id="open-options" title="Réglages"><svg viewBox="0 0 16 16"><path d="M6.6 1h2.8l.4 1.9 1.3.7 1.8-.7 1.4 2.4-1.4 1.3v1.4l1.4 1.3-1.4 2.4-1.8-.7-1.3.7-.4 1.9H6.6l-.4-1.9-1.3-.7-1.8.7L1.7 9.3l1.4-1.3V6.6L1.7 5.3l1.4-2.4 1.8.7 1.3-.7zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg></button>
     </div>
   </div>
+</section>
+
+<section class="queue" id="queue" hidden>
+  <div class="qhead"><span id="queue-title">À suivre</span><button id="queue-refresh" title="Actualiser la file"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9l1.1-1.1A4 4 0 1 0 4.2 6H6.5v1.5h-5V2.5H3v2.2A5.5 5.5 0 0 1 13.5 8z"/></svg></button></div>
+  <ol id="queue-list"></ol>
+  <div class="qempty" id="queue-empty">Rien à suivre pour l'instant.</div>
 </section>
 
 <div class="empty" id="empty">Choisissez un titre dans SoundCloud pour commencer.<br><button id="show-soundcloud" type="button">Afficher SoundCloud</button></div>

@@ -1,5 +1,9 @@
 # Journal des versions
 
+## En cours
+- Panneau latéral : file d'attente « À suivre » sous le lecteur, lue depuis la file native de SoundCloud (ouverte invisible le temps de la lecture) ; clic pour lire un titre, croix pour le retirer, bouton d'actualisation.
+- Debloat : les masquages des entrées du menu latéral s'appliquent aussi au menu déroulant de l'avatar.
+
 ## 0.13.0 — 16/09/2026
 - Minuteur d'arrêt dans le panneau latéral : arrêt dans 15 à 90 minutes avec fondu de 8 s avant la pause, ou pause à la fin du titre en cours ; temps restant affiché.
 - Guide intégré (français / anglais) ouvert à l'installation et accessible depuis les réglages.
