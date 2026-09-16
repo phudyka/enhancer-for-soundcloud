@@ -1,6 +1,8 @@
 # Journal des versions
 
 ## En cours
+- Sampler : points A/B au clavier ([ et ]), boucle (\), réglage fin, boucles nommées mémorisées par titre dans le panneau Audio, repères sur la barre du lecteur, liste copiable. Sans extraction audio.
+- Le mode DJ (deux platines) est retiré, remplacé par des **transitions automatiques** : fondu croisé avec le titre suivant de la file (6 à 24 s), basses échangées à mi-parcours, calage du lecteur natif à la fin. Option dans les réglages, désactivée par défaut.
 - Personnalisation libre : depuis les réglages, « Masquer des éléments à la souris » ouvre SoundCloud en mode personnalisation ; survolez, cliquez, l'élément est masqué durablement (sections de Découvrir, modules, onglets, boutons…). Liste des masquages dans les réglages avec réaffichage individuel ou total.
 - Debloat : nouvelles cases pour les onglets de l'en-tête (Accueil, Fil d'actualités, Bibliothèque), les modules de la colonne de droite du fil (Nouveaux titres, Artistes à suivre, Mentions J'aime, Historique d'écoute, Passer sur mobile), le sélecteur de langue ; le bloc « Outils pour artistes » intégré est aussi masqué.
 - Audio : le bouton haut-parleur de SoundCloud ouvre un seul panneau réunissant le volume et les réglages audio. Volume linéaire 0–100 % (le volume natif est fixé à 100 %, l'ancienne valeur devient le volume initial), sourdine, molette sur le bouton. Vitesse plus précise : boutons ±0,01, flèches ±0,01 (Maj ±0,1), saisie directe de la valeur, aimant sur 1× réduit.

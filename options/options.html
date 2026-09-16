@@ -52,6 +52,9 @@
   <label><input type="checkbox" id="speedControl"><span>Panneau Audio à gauche du volume : vitesse, bass boost, réverb, presets<small>Slowed + Reverb, Nightcore, Bass boost. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
   <label><input type="checkbox" id="noRepeat" data-i18n="opt_noRepeat"><span>Shuffle+ sans répétition<small>Chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque, puis nouveau tour.</small></span></label>
   <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
+  <label><input type="checkbox" id="autoMix"><span>Transitions automatiques entre les titres<small>Fondu croisé avec le titre suivant de la file, basses échangées à mi-parcours. Le titre suivant doit être lisible en flux (pas d'extrait Go+).</small></span></label>
+  <div class="row"><span>Durée de la transition</span><select id="autoMixSeconds"><option value="6">6 s</option><option value="12">12 s</option><option value="18">18 s</option><option value="24">24 s</option></select></div>
+  <label><input type="checkbox" id="sampler"><span>Sampler : boucles A/B mémorisées par titre<small>Touches [ et ] pour poser A et B, \ pour boucler ; section « Samples » dans le panneau Audio, repères sur la barre du lecteur, liste copiable. Aucune extraction audio.</small></span></label>
   <label><input type="checkbox" id="history"><span>Historique et statistiques d'écoute locaux<small>Temps écouté par titre, conservé dans le navigateur.</small></span></label>
   <div class="row"><span></span><button class="link" id="open-stats" type="button">Voir les statistiques</button></div>
 </fieldset>

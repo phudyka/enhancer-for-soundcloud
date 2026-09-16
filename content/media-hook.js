@@ -17,7 +17,7 @@
  *    Exposé : window.__sceAudioTap = { ctx, el, source, input, output },
  *             window.__sceOnAudioTap(fn) — appelé à chaque nouveau branchement.
  *
- * Un élément marqué `el.__sceIgnore = true` (platine B du mode DJ) est laissé
+ * Un élément marqué `el.__sceIgnore = true` (second flux des transitions) est laissé
  * tel quel : ni mémorisé comme lecteur actif, ni intercepté dans le graphe.
  *
  * Coût : trois wrappers d'une ligne, rien d'autre.

@@ -82,13 +82,14 @@
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500;
         const conv = ctx.createConvolver(); conv.buffer = (graph.conv && graph.ctx === ctx) ? graph.conv.buffer : impulse(ctx);
         const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
-        // Étage DJ : égaliseur bas (kill) + gain master de la platine A, avant la sortie
+        // Étage transitions : égaliseur bas (échange des basses) et fondu du lecteur natif, puis volume de l'utilisateur
+        // (le second flux des transitions se branche sur `master`, après le fondu, pour suivre le même volume)
         const eqLow = ctx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 200; eqLow.gain.value = 0;
+        const xfade = ctx.createGain();                        // fondu sortant du lecteur natif (transitions.js)
         const master = ctx.createGain();                       // volume linéaire de l'utilisateur
-        const xfade = ctx.createGain();                        // réservé aux transitions automatiques
         input.connect(bass); bass.connect(dry); dry.connect(eqLow);
         bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(eqLow);
-        eqLow.connect(master); master.connect(xfade); xfade.connect(output);
+        eqLow.connect(xfade); xfade.connect(master); master.connect(output);
         input.connect(an);
         return { bass, dry, wet, conv, an, eqLow, master, xfade };
     }
@@ -403,6 +404,7 @@
     function togglePanel() {
         if (panel) { closePanel(); return; }
         panel = buildPanel(); document.body.appendChild(panel);
+        window.dispatchEvent(new CustomEvent('sce:audio-panel', { detail: { panel } }));   // sections d'autres modules (sampler)
         const r = btn.getBoundingClientRect(), width = document.documentElement.clientWidth || window.innerWidth, pw = panel.offsetWidth || 284;
         const left = Math.max(8, Math.min(width - pw - 8, r.left + r.width / 2 - pw / 2));
         panel.style.left = `${left}px`;

@@ -190,6 +190,9 @@
         });
     }
 
+    /** Titres à suivre (données), pour les transitions automatiques. */
+    window.__scePlayer = Object.freeze({ upcoming: () => withQueue(async (items) => items.map((el, i) => queueItemData(el, i + 1))) });
+
     function command(cmd, value) {
         if (cmd === 'get-queue' || cmd === 'queue-play' || cmd === 'queue-remove') { queueCommand(cmd, value); if (cmd === 'get-queue') return; }
         switch (cmd) {

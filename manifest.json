@@ -90,10 +90,11 @@
         "content/library.js",
         "content/audio.js",
         "content/scrub.js",
-        "content/dj.js",
         "content/player-api.js",
         "content/history.js",
         "content/customize.js",
+        "content/transitions.js",
+        "content/sampler.js",
         "content/pip.js"
       ],
       "run_at": "document_end",

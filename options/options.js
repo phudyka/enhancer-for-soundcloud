@@ -1,5 +1,5 @@
 const DEFAULTS = {
-    hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true, history: true,
+    hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true, history: true, autoMix: false, autoMixSeconds: '12', sampler: true,
     hideUpsell: false, hidePromoted: false, hideUpload: false, hideUploadMeter: false, hideArtistStudio: false, hideArtistTools: false, hideNotifications: false, hideMessages: false,
     hideComments: false, hideRelated: false, hideFooter: false, hideGoPlus: false, wideSearch: false, hideFeedReposts: false, hideFeedPlaylists: false,
     hideCookieBanner: true,
@@ -48,6 +48,7 @@ async function load() {
     for (const k of CHECKS) $(k).checked = !!settings[k];
     renderCustom();
     $('homePage').value = settings.homePage || '';
+    $('autoMixSeconds').value = String(settings.autoMixSeconds || '12');
     paintSwatches();
     document.documentElement.style.setProperty('--accent', settings.accent || '#ff5500');
     const isBrave = !!(navigator.brave && await navigator.brave.isBrave?.());
@@ -65,6 +66,7 @@ async function save(patch) {
 
 CHECKS.forEach((k) => $(k).addEventListener('change', () => save({ [k]: $(k).checked })));
 $('homePage').addEventListener('change', () => save({ homePage: $('homePage').value }));
+$('autoMixSeconds').addEventListener('change', () => save({ autoMixSeconds: $('autoMixSeconds').value }));
 $('accent').addEventListener('input', () => { save({ accent: $('accent').value.toLowerCase() === '#ff5500' ? '' : $('accent').value }); paintSwatches(); });
 function saveHex() {
     const value = $('accentHex').value.trim();
