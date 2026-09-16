@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "SoundCloud Enhanced",
+  "version": "0.1.0",
+  "description": "Vrai shuffle instantané, vitesse de lecture, lecteur épinglable et autres améliorations pour SoundCloud. Aucune donnée ne quitte le navigateur.",
+  "default_locale": "fr",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "minimum_chrome_version": "116",
+  "host_permissions": ["https://soundcloud.com/*"],
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "SoundCloud Enhanced",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": false
+  },
+  "commands": {
+    "shuffle": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Shuffle+ de la lecture en cours"
+    },
+    "toggle-play": {
+      "suggested_key": { "default": "Alt+Shift+P" },
+      "description": "Lecture / pause (même onglet inactif)"
+    },
+    "next-track": {
+      "description": "Titre suivant"
+    },
+    "prev-track": {
+      "description": "Titre précédent"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://soundcloud.com/*"],
+      "js": ["content/media-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://soundcloud.com/*"],
+      "js": ["content/shuffle.js", "content/speed.js", "content/player-api.js"],
+      "run_at": "document_end",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://soundcloud.com/*"],
+      "js": ["content/bridge.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

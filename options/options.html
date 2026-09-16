@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>SoundCloud Enhanced — Réglages</title>
+<style>
+  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --text: #eee; --muted: #999; }
+  body { margin: 0; padding: 20px 24px; min-width: 420px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 20px; }
+  fieldset { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; }
+  legend { padding: 0 6px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; }
+  label input { margin-top: 4px; accent-color: var(--accent); }
+  label small { display: block; color: var(--muted); }
+  .saved { color: #2ecc71; font-size: 12px; height: 16px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<h1>SoundCloud Enhanced</h1>
+<p class="lead">Tout tourne dans votre navigateur. Aucune donnée n'est envoyée ailleurs.</p>
+
+<fieldset>
+  <legend>Shuffle+</legend>
+  <label><input type="checkbox" id="hijackPlayerShuffle">
+    <span>Le bouton « Aléatoire » du lecteur lance un vrai shuffle<small>Alt+clic conserve le shuffle natif de SoundCloud.</small></span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Lecture</legend>
+  <label><input type="checkbox" id="speedControl">
+    <span>Bouton de vitesse de lecture à côté du volume<small>0,5× à 2×, conservation de la hauteur. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Raccourcis globaux</legend>
+  <p style="margin:4px 0">Shuffle+ et lecture/pause fonctionnent même quand l'onglet SoundCloud n'a pas le focus. Modifiez-les dans <a href="#" id="shortcuts">chrome://extensions/shortcuts</a>.</p>
+</fieldset>
+
+<div class="saved" id="saved"></div>
+<script src="options.js"></script>
+</body>
+</html>

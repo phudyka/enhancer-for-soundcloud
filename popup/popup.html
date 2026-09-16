@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>SoundCloud Enhanced</title>
+<style>
+  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --card: #1f1f1f; --text: #eee; --muted: #999; }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 320px; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  header img { width: 20px; height: 20px; }
+  header h1 { margin: 0; font-size: 14px; font-weight: 600; flex: 1; }
+  header a { color: var(--muted); text-decoration: none; font-size: 12px; }
+  .now { display: flex; gap: 10px; padding: 12px 14px; align-items: center; }
+  .now img { width: 48px; height: 48px; border-radius: 4px; background: #333; object-fit: cover; }
+  .now .meta { flex: 1; min-width: 0; }
+  .now .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now .artist { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .controls { display: flex; gap: 6px; padding: 0 14px 12px; }
+  button { flex: 1; height: 34px; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: var(--card); color: var(--text); cursor: pointer; font-size: 13px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; flex: 2; }
+  .empty { padding: 20px 14px; color: var(--muted); text-align: center; }
+  h2 { margin: 0; padding: 10px 14px 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  ul { list-style: none; margin: 0; padding: 0 14px 12px; max-height: 180px; overflow: auto; }
+  li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.06); }
+  li span:last-child { color: var(--muted); white-space: nowrap; }
+  footer { padding: 8px 14px 12px; color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <img src="../icons/icon-32.png" alt="">
+  <h1>SoundCloud Enhanced</h1>
+  <a href="#" id="open-options">Réglages</a>
+</header>
+
+<section id="now" class="now" hidden>
+  <img id="artwork" alt="">
+  <div class="meta">
+    <div class="title" id="title"></div>
+    <div class="artist" id="artist"></div>
+  </div>
+</section>
+<div id="empty" class="empty">Aucun onglet SoundCloud ouvert.<br><a href="https://soundcloud.com/you/likes" target="_blank" style="color:var(--accent)">Ouvrir SoundCloud</a></div>
+
+<div class="controls" id="controls" hidden>
+  <button data-cmd="prev-track" title="Précédent">⏮</button>
+  <button data-cmd="toggle-play" id="play" title="Lecture / pause">⏯</button>
+  <button data-cmd="next-track" title="Suivant">⏭</button>
+  <button data-cmd="shuffle" class="primary" title="Vrai shuffle de la lecture en cours">🔀 Shuffle+</button>
+</div>
+
+<h2>Derniers shuffles</h2>
+<ul id="history"><li><span style="color:var(--muted)">Rien pour l'instant</span></li></ul>
+
+<footer>
+  <span id="version"></span>
+  <a href="#" id="open-shortcuts">Raccourcis clavier</a>
+</footer>
+<script src="popup.js"></script>
+</body>
+</html>
