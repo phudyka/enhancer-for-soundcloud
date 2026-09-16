@@ -4,8 +4,9 @@
  * Seul script avec accès aux API chrome.*. Il :
  *   1. synchronise chrome.storage.sync → localStorage 'scsp:settings' (lu par shuffle.js) ;
  *   2. relaie les commandes du service worker / popup vers la page (postMessage) ;
- *   3. remonte les événements de la page (shuffle terminé, état du lecteur) vers
- *      le service worker, qui tient l'historique et alimente le popup / le PiP.
+ *   3. remonte les événements de la page (shuffle terminé, état du lecteur,
+ *      écoutes) vers le service worker, qui tient l'historique et alimente le
+ *      panneau latéral / le PiP.
  */
 (() => {
     'use strict';
@@ -47,5 +48,6 @@
         if (e.source !== window || !e.data) return;
         if (e.data.scsp === 'event') chrome.runtime.sendMessage({ type: 'page-event', event: e.data }).catch(() => {});
         if (e.data.sce === 'state')  chrome.runtime.sendMessage({ type: 'player-state', state: e.data }).catch(() => {});
+        if (e.data.sce === 'listen' && e.data.entry) chrome.runtime.sendMessage({ type: 'listen', entry: e.data.entry }).catch(() => {});
     });
 })();

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Enhancer for SoundCloud™ — Statistiques d'écoute</title>
+<style>
+  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --card: #1f1f1f; --text: #eee; --muted: #999; --line: #333; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 24px 40px; max-width: 980px; margin-inline: auto; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 24px; height: 24px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  p.lead { color: var(--muted); margin: 0 0 18px; }
+  select, .btn { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  .btn:hover { background: #3a3a3a; }
+  .btn.danger { color: #ff8a80; }
+  .btn.danger.armed { background: #a3271b; color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 18px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+  .tile .v { font-size: 22px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tile .l { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; min-width: 0; }
+  .chart { display: flex; align-items: flex-end; gap: 2px; height: 96px; }
+  .chart .b { flex: 1; min-width: 0; background: var(--accent); opacity: .85; border-radius: 2px 2px 0 0; min-height: 1px; position: relative; }
+  .chart .b:hover { opacity: 1; }
+  .chart .b.empty { background: #333; opacity: 1; }
+  .labels { display: flex; gap: 2px; margin-top: 4px; color: var(--muted); font-size: 10px; }
+  .labels span { flex: 1; text-align: center; overflow: hidden; white-space: nowrap; }
+  ol { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #2a2a2a; min-width: 0; }
+  li:first-child { border-top: 0; }
+  li .n { width: 18px; color: var(--muted); font-size: 12px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+  li .art { width: 36px; height: 36px; border-radius: 3px; background: #333 center/cover; flex: 0 0 auto; }
+  li .art.round { border-radius: 50%; }
+  li .meta { flex: 1; min-width: 0; }
+  li .t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  li .t a { color: var(--text); text-decoration: none; }
+  li .t a:hover { color: var(--accent); }
+  li .s { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  li .r { color: var(--muted); font-size: 12px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+  li .r b { display: block; color: var(--text); font-weight: 500; }
+  .empty { color: var(--muted); padding: 20px 0; text-align: center; }
+  .note { color: var(--muted); font-size: 12px; margin: 18px 0 0; }
+  a { color: var(--accent); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1><img src="../icons/icon-48.png" alt="">Statistiques d'écoute</h1>
+  <div class="actions">
+    <label>Période <select id="period">
+      <option value="today">Aujourd'hui</option>
+      <option value="7d">7 derniers jours</option>
+      <option value="30d" selected>30 derniers jours</option>
+      <option value="year">12 derniers mois</option>
+      <option value="all">Tout</option>
+    </select></label>
+    <button class="btn" id="export-csv" type="button">Exporter CSV</button>
+    <button class="btn" id="export-json" type="button">Exporter JSON</button>
+    <button class="btn danger" id="clear" type="button">Effacer l'historique</button>
+  </div>
+</div>
+<p class="lead">Temps réellement écouté par titre. Tout reste dans votre navigateur : rien n'est envoyé ailleurs.</p>
+
+<div id="none" class="empty" hidden>Aucune écoute enregistrée. Lancez un titre sur SoundCloud : le temps réellement écouté sera compté ici, uniquement dans votre navigateur.</div>
+<div id="none-period" class="empty" hidden>Aucune écoute enregistrée pour cette période.</div>
+
+<div id="content">
+  <div class="tiles">
+    <div class="tile"><div class="v" id="t-time">0 s</div><div class="l">Temps d'écoute</div></div>
+    <div class="tile"><div class="v" id="t-plays">0</div><div class="l">Écoutes</div></div>
+    <div class="tile"><div class="v" id="t-tracks">0</div><div class="l">Titres distincts</div></div>
+    <div class="tile"><div class="v" id="t-artists">0</div><div class="l">Artistes distincts</div></div>
+    <div class="tile"><div class="v" id="t-completed">0</div><div class="l">Écoutés en entier</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <h2 id="h-days">Écoute par jour</h2>
+    <div class="chart" id="c-days"></div>
+    <div class="labels" id="l-days"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h2>Par heure de la journée</h2><div class="chart" id="c-hours"></div><div class="labels" id="l-hours"></div></div>
+    <div class="card"><h2>Par jour de la semaine</h2><div class="chart" id="c-week"></div><div class="labels" id="l-week"></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h2>Top titres</h2><ol id="top-tracks"></ol></div>
+    <div class="card"><h2>Top artistes</h2><ol id="top-artists"></ol></div>
+  </div>
+
+  <div class="card"><h2>Dernières écoutes</h2><ol id="recent"></ol></div>
+</div>
+
+<p class="note">L'historique se désactive dans les <a href="#" id="open-options">Réglages</a>. Il conserve au plus 24 mois d'écoutes.</p>
+<script src="../ui/i18n.js"></script>
+<script src="stats-model.js"></script>
+<script src="stats.js"></script>
+</body>
+</html>

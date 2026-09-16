@@ -71,6 +71,7 @@ $('#title').addEventListener('click', focusTab);
 $('#show-soundcloud').addEventListener('click', focusTab);
 $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
+$('#open-stats').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('stats/stats.html') }));
 
 
 chrome.storage.sync.get('settings').then(({ settings }) => {

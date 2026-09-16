@@ -3,7 +3,7 @@
  *
  * Masquage à la carte (promotions Go+ / Artist Pro, Uploader, Studio de
  * l'artiste, notifications, messages, commentaires, modules latéraux, pied de
- * page), couleur d'accent personnalisée, page d'accueil au choix.
+ * page), fond noir OLED, couleur d'accent personnalisée, page d'accueil au choix.
  *
  * Réglages lus dans localStorage 'scsp:settings' (synchronisés par le pont
  * depuis chrome.storage.sync). Le bloc artiste est repéré par son titre pour
@@ -137,6 +137,20 @@
         return h - 20;
     }
 
+    /** Fond noir OLED : ne s'applique qu'au thème sombre natif (body.theme-dark). Les surfaces
+     *  transparentes héritent du fond ; seules les surfaces grises durcies sont reprises. */
+    const OLED_CSS = `
+        body.theme-dark, .theme-dark .header, .theme-dark .queue, .theme-dark .playbackSoundBadge__queueCircle, .theme-dark .uploadTarget__frame,
+        .theme-dark .modal__modal, .theme-dark .modal__content, .theme-dark .dropdownMenu, .theme-dark .dropdownContent, .theme-dark .l-listen-hero,
+        .theme-dark .fullHero__artwork, .theme-dark .profileHeaderBackground, .theme-dark .l-fluid-fixed, .theme-dark .sidebarModule.m-elevated { background-color: #000 !important; }
+        .theme-dark .playControls__bg, .theme-dark .playControls__inner, .theme-dark .playControlsPanel, .theme-dark .sc-background-darkgrey,
+        .theme-dark .headerSearch__input, .theme-dark .sc-input, .theme-dark .textfield__input, .theme-dark .volume__sliderBackground, .theme-dark .queue__hide,
+        .theme-dark .sc-button-secondary:not(.sc-button-selected), .theme-dark .listDisplayToggle__badgeToggle, .theme-dark .listDisplayToggle__listToggle,
+        .theme-dark .sound__artwork:has(.image__placeholder), .theme-dark .commentForm__wrapper, .theme-dark .listenEngagement__commentForm .sc-input { background-color: #181818 !important; }
+        .theme-dark .playbackTimeline__progressBackground, .theme-dark .volume__sliderBackground { background-color: #2c2c2c !important; }
+        .theme-dark .sc-button-secondary:not(.sc-button-selected):hover { background-color: #242424 !important; }
+    `;
+
     const readSettings = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}'); } catch { return {}; } };
 
     let styleEl = null;
@@ -182,6 +196,7 @@
             if (s[key]) css += `.${className(key)} { display: none !important; }\n`;
         }
         if (s.hideUpsell || s.hideUpload || s.hideArtistStudio || s.wideSearch) css += WIDE_SEARCH;
+        if (s.oled) css += OLED_CSS;
         if (s.accent && /^#[0-9a-f]{6}$/i.test(s.accent) && s.accent.toLowerCase() !== '#ff5500') css += accentCSS(s.accent);
         // Nos propres composants (panneau Audio, Bibliothèque, lecteur épinglable, toasts) suivent la même couleur
         document.documentElement.style.setProperty('--sce-accent', /^#[0-9a-f]{6}$/i.test(s.accent || '') ? s.accent : '#ff5500');

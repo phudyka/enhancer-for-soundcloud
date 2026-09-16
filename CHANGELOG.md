@@ -1,5 +1,9 @@
 # Journal des versions
 
+## 0.12.0 — 16/09/2026
+- Historique et statistiques d'écoute locaux : temps réellement écouté par titre, mesuré sur le flux audio et conservé dans le navigateur (24 mois au plus). Page Statistiques : période, temps d'écoute, écoutes, titres et artistes distincts, écoute par jour, par heure et par jour de semaine, top titres, top artistes, dernières écoutes, export CSV et JSON, effacement. Accessible depuis les réglages et le panneau latéral ; désactivable.
+- Apparence : fond noir (OLED) pour le thème sombre natif de SoundCloud.
+
 ## 0.11.0 — 16/09/2026
 - Bibliothèque des favoris : sélection individuelle, de tous les résultats filtrés ou de tous les favoris indexés ; création et ajout à une playlist (500 titres maximum), retrait des favoris avec confirmation et bilan des échecs.
 - Debloat par catégories : masquage individuel des boutons et onglets du profil, des entrées du menu, du fil et des promotions, sans suppression de données.

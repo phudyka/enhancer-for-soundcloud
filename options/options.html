@@ -26,7 +26,7 @@
   .custom input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
   .hex { width: 82px; height: 28px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 3px; background: #303030; color: var(--text); font: 12px ui-monospace, monospace; text-transform: uppercase; }
   .hex:focus { outline: 1px solid var(--accent); }
-  .block + .row { border-top: 1px solid #262626; }
+  .block + .row, label + .block, label + .row { border-top: 1px solid #262626; }
   select { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; }
   input[type=color] { width: 36px; height: 28px; border: 0; padding: 0; background: transparent; cursor: pointer; }
   .swatches { display: flex; gap: 6px; }
@@ -48,6 +48,8 @@
   <label><input type="checkbox" id="speedControl"><span>Panneau Audio à gauche du volume : vitesse, bass boost, réverb, presets<small>Slowed + Reverb, Nightcore, Bass boost. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
   <label><input type="checkbox" id="noRepeat" data-i18n="opt_noRepeat"><span>Shuffle+ sans répétition<small>Chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque, puis nouveau tour.</small></span></label>
   <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
+  <label><input type="checkbox" id="history"><span>Historique et statistiques d'écoute locaux<small>Temps écouté par titre, conservé dans le navigateur.</small></span></label>
+  <div class="row"><span></span><button class="link" id="open-stats" type="button">Voir les statistiques</button></div>
 </fieldset>
 
 <p class="lead">Debloat : cochez les éléments à masquer. Tous restent visibles par défaut, sauf le bandeau cookies. Ces choix sont réversibles et ne suppriment aucune donnée du compte.</p>
@@ -113,6 +115,7 @@
 
 <fieldset>
   <legend>Apparence</legend>
+  <label><input type="checkbox" id="oled"><span>Fond noir (OLED) sur le thème sombre<small>Remplace les gris foncés par du noir quand le thème sombre de SoundCloud est actif.</small></span></label>
   <div class="block">
     <span class="lbl">Couleur d'accent<br><small style="color:var(--muted)">Remplace l'orange sur les boutons de lecture, la progression, les états actifs, et sur les composants de l'extension.</small></span>
     <div class="ctl">

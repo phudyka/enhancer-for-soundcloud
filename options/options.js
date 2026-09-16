@@ -1,5 +1,5 @@
 const DEFAULTS = {
-    hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true,
+    hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true, history: true,
     hideUpsell: false, hidePromoted: false, hideUpload: false, hideUploadMeter: false, hideArtistStudio: false, hideArtistTools: false, hideNotifications: false, hideMessages: false,
     hideComments: false, hideRelated: false, hideFooter: false, hideGoPlus: false, wideSearch: false, hideFeedReposts: false, hideFeedPlaylists: false,
     hideCookieBanner: true,
@@ -8,7 +8,7 @@ const DEFAULTS = {
     hideNavProfile: false, hideNavLikes: false, hideNavPlaylists: false, hideNavStations: false, hideNavFollowing: false,
     hideNavSuggestions: false, hideNavArtistPro: false, hideNavBenefits: false, hideNavTracks: false, hideNavInsights: false, hideNavDistribute: false,
     hideArtistProPrompt: false,
-    accent: '', homePage: '', blockAds: false,
+    accent: '', homePage: '', blockAds: false, oled: false,
 };
 const CHECKS = Object.keys(DEFAULTS).filter((k) => typeof DEFAULTS[k] === 'boolean');
 const SWATCHES = ['#ff5500', '#1db954', '#e91e63', '#7c4dff', '#00b0ff', '#ffc107', '#ffffff'];
@@ -61,4 +61,5 @@ $('accentHex').addEventListener('blur', () => { if ($('accentHex').validity.cust
 $('accent-reset').addEventListener('click', () => { save({ accent: '' }); paintSwatches(); });
 $('swatches').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; save({ accent: b.dataset.c === '#ff5500' ? '' : b.dataset.c }); paintSwatches(); });
 $('shortcuts').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }); });
+$('open-stats').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('stats/stats.html') }));
 load();
