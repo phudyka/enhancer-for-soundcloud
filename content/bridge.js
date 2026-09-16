@@ -1,5 +1,5 @@
 /*
- * SoundCloud Enhanced — pont (monde isolé)
+ * Enhancer for SoundCloud™ — pont (monde isolé)
  *
  * Seul script avec accès aux API chrome.*. Il :
  *   1. synchronise chrome.storage.sync → localStorage 'scsp:settings' (lu par shuffle.js) ;

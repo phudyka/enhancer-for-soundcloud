@@ -1,1 +1,8 @@
-{ "extName": { "message": "SoundCloud Enhanced" }, "extDesc": { "message": "Vrai shuffle instantané, vitesse de lecture, lecteur épinglable et autres améliorations pour SoundCloud. Aucune donnée ne quitte le navigateur." } }
+{
+  "extName": {
+    "message": "Enhancer for SoundCloud™"
+  },
+  "extDesc": {
+    "message": "Vrai shuffle instantané, vitesse de lecture, lecteur épinglable et autres améliorations pour SoundCloud. Aucune donnée ne quitte le navigateur."
+  }
+}

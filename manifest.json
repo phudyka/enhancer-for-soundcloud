@@ -22,7 +22,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "SoundCloud Enhanced",
+    "default_title": "Enhancer for SoundCloud™",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",

@@ -1,5 +1,5 @@
 /*
- * SoundCloud Enhanced — module Shuffle+ (monde principal)
+ * Enhancer for SoundCloud™ — module Shuffle+ (monde principal)
  * Dérivé du userscript SoundCloud Shuffle+ (MIT). Tourne dans le contexte de la
  * page ("world": "MAIN") : accès au cookie de session, aux requêtes de la page
  * et au DOM, exactement comme un userscript @grant none.

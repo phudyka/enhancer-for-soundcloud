@@ -1,5 +1,5 @@
 /*
- * SoundCloud Enhanced — vitesse de lecture (monde principal)
+ * Enhancer for SoundCloud™ — vitesse de lecture (monde principal)
  *
  * Bouton « 1.00× » inséré à côté du volume dans la barre du lecteur. Un clic
  * ouvre un panneau : curseur 0,5× → 2,0×, préréglages, conservation de la

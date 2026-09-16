@@ -1,5 +1,5 @@
 /*
- * SoundCloud Enhanced — service worker
+ * Enhancer for SoundCloud™ — service worker
  *
  *   - raccourcis globaux (chrome.commands) → onglet SoundCloud actif ou le plus récent
  *   - historique des shuffles (chrome.storage.local, 50 entrées)

@@ -1,5 +1,5 @@
 /*
- * SoundCloud Enhanced — crochet média (monde principal, document_start)
+ * Enhancer for SoundCloud™ — crochet média (monde principal, document_start)
  *
  * SoundCloud crée son <audio> en mémoire sans l'attacher au DOM : impossible
  * de le retrouver par querySelector. On intercepte donc HTMLMediaElement.play

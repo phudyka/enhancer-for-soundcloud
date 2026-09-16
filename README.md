@@ -1,4 +1,4 @@
-# SoundCloud Enhanced
+# Enhancer for SoundCloud™
 
 Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. Tout tourne localement, aucune donnée ne quitte le navigateur.
 

@@ -1,5 +1,5 @@
 /*
- * SoundCloud Enhanced — télécommande du lecteur (monde principal)
+ * Enhancer for SoundCloud™ — télécommande du lecteur (monde principal)
  *
  * Expose l'état du lecteur natif et des commandes simples au pont (monde
  * isolé), qui les relaie au popup, au service worker (raccourcis globaux) et
