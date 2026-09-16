@@ -121,6 +121,7 @@
 
     // ── UI ────────────────────────────────────────────────────────
     const CSS = `
+        .${NS}-bar, .${NS}-list { font-family: Söhne, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif; }
         .${NS}-bar { display: flex; align-items: center; gap: 8px; padding: 0 24px 8px; flex-wrap: wrap; }
         .${NS}-bar .sc-input { height: 36px; background: #303030; border: 0; color: #fff; padding: 0 12px 0 34px; border-radius: 3px; flex: 1 1 260px; min-width: 200px;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23999'%3E%3Cpath d='M6.5 1a5.5 5.5 0 014.38 8.82l3.9 3.9-1.06 1.06-3.9-3.9A5.5 5.5 0 116.5 1zm0 1.5a4 4 0 100 8 4 4 0 000-8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 11px center; background-size: 14px; }

@@ -2,15 +2,15 @@
 
 Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. Tout tourne localement, aucune donnée ne quitte le navigateur.
 
-## Fonctions (v0.5.0)
+## Fonctions (v0.6.0)
 
 - **Shuffle+** : vrai shuffle instantané des Likes, playlists et sets Discover via l'API interne, playlist tampon privée, bouton du lecteur détourné. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
-- **Vitesse de lecture** : libellé discret « 1× » à gauche du volume, orange quand modifié, panneau 0,5× à 2× avec préréglages et conservation de la hauteur. Raccourcis Maj+, Maj+. Maj+0.
+- **Audio** : bouton jauge à gauche du volume, orange quand actif. Vitesse 0,5× à 2× avec conservation de la hauteur, bass boost jusqu'à +12 dB, réverbération, presets Slowed + Reverb, Nightcore, Bass boost. Traitement Web Audio sur le flux SoundCloud, activé seulement à la demande. Raccourcis Maj+, Maj+. Maj+0.
 - **Lecteur épinglable** : fenêtre Picture-in-Picture toujours au premier plan (Chromium 116+), pochette, titre, progression cliquable, précédent / lecture / suivant / Shuffle+ / répéter, dans le langage visuel du lecteur SoundCloud. Bouton 📌 dans la barre du lecteur, depuis le popup, ou par raccourci.
 - **Popup** : titre en cours, précédent / lecture / suivant / Shuffle+, historique des derniers shuffles.
 - **Raccourcis globaux** : Shuffle+ et lecture/pause même quand l'onglet n'a pas le focus.
 - **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes ou année, filtre par genre. Sur la sélection : lire dans l'ordre, Shuffle+, ou créer une playlist. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement.
-- **Apparence** : masquage à la carte (promotions Go+ et Artist Pro, titres sponsorisés, Uploader, Studio de l'artiste, notifications, messages, commentaires, modules latéraux, pied de page), couleur d'accent personnalisée, page d'accueil au choix.
+- **Apparence** : masquage à la carte (promotions Go+ et Artist Pro, titres sponsorisés, titres Go+ sans abonnement, Uploader, Studio de l'artiste, notifications, messages, commentaires, modules latéraux, pied de page), couleur d'accent personnalisée, page d'accueil au choix.
 - **Publicités** : blocage optionnel des domaines publicitaires et traceurs tiers via declarativeNetRequest, sans lecture des pages. Désactivé par défaut, inutile sur Brave.
 - **Réglages** synchronisés entre appareils.
 
@@ -29,7 +29,7 @@ content/
   appearance.js   document_start, monde principal : masquage, couleur d'accent, page d'accueil
   shuffle.js      monde principal : module Shuffle+ (dérivé du userscript), expose window.__scsp aux autres modules
   library.js      monde principal : bibliothèque des likes (recherche, tri, genres, création de playlists)
-  speed.js        monde principal : vitesse de lecture
+  audio.js        monde principal : vitesse et effets audio (Web Audio API)
   player-api.js   monde principal : état et commandes du lecteur natif
   pip.js          monde principal : lecteur épinglable (Document Picture-in-Picture)
   bridge.js       monde isolé : seul accès à chrome.*, relais page ⇄ extension

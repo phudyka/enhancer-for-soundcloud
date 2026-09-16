@@ -540,7 +540,7 @@
         .${NS}-toast {
             position: fixed; left: 50%; bottom: 64px; transform: translate(-50%, 12px);
             max-width: min(560px, calc(100vw - 32px)); padding: 9px 14px; border-radius: 6px;
-            background: #1f1f1f; color: #fff; font-family: inherit; font-size: 13px; line-height: 1.4; font-weight: 500;
+            background: #1f1f1f; color: #fff; font: 500 13px/1.4 Söhne, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
             box-shadow: 0 6px 24px rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.08);
             opacity: 0; transition: opacity .18s, transform .18s; z-index: 99999; pointer-events: none;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

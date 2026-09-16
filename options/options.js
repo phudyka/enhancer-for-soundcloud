@@ -1,7 +1,7 @@
 const DEFAULTS = {
     hijackPlayerShuffle: true, speedControl: true, library: true,
     hideUpsell: false, hidePromoted: false, hideUpload: false, hideArtistStudio: false, hideNotifications: false, hideMessages: false,
-    hideComments: false, hideRelated: false, hideFooter: false,
+    hideComments: false, hideRelated: false, hideFooter: false, hideGoPlus: false, wideSearch: false,
     accent: '', homePage: '', blockAds: false,
 };
 const CHECKS = Object.keys(DEFAULTS).filter((k) => typeof DEFAULTS[k] === 'boolean');
