@@ -56,6 +56,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 sendResponse({ ok: !!tab });
                 break;
             }
+            case 'set-ad-blocking':
+                await chrome.declarativeNetRequest.updateEnabledRulesets(msg.enabled ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] });
+                sendResponse({ ok: true });
+                break;
             case 'popup-command':      // depuis le popup : relayer à la page
                 sendResponse(await sendToPage({ type: 'command', command: msg.command, value: msg.value, force: msg.force }));
                 break;
@@ -75,7 +79,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
-        await chrome.storage.sync.set({ settings: { hijackPlayerShuffle: true, speedControl: true } });
+        await chrome.storage.sync.set({ settings: { hijackPlayerShuffle: true, speedControl: true, library: true } });
         chrome.runtime.openOptionsPage();
     }
+    // Réaligne le blocage des pubs sur le réglage (au cas où le navigateur l'aurait réinitialisé)
+    const { settings } = await chrome.storage.sync.get('settings');
+    await chrome.declarativeNetRequest.updateEnabledRulesets(settings?.blockAds ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] }).catch(() => {});
 });

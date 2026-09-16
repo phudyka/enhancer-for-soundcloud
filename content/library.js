@@ -85,10 +85,9 @@
                             const got = (res || []).map(slim); await DB.put(got); got.forEach((r) => known.set(r.id, r));
                         } catch (e) { console.warn('[SCE] lot ignoré', e.message); }
                         done += b.length;
-                        S().toast(t('indexing', { n: Math.min(done + known.size - got0, ids.length), t: ids.length }), { sticky: true });
+                        S().toast(t('indexing', { n: known.size, t: ids.length }), { sticky: true });
                     }
                 };
-                const got0 = known.size;
                 await Promise.all(Array.from({ length: PARALLEL }, worker));
                 S().toast(t('indexed', { n: known.size }));
             }
@@ -256,8 +255,9 @@
 
     // ── Montage sur /you/likes ────────────────────────────────────
     let mounted = false;
+    const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').library !== false; } catch { return true; } };
     async function mount() {
-        if (!/^\/you\/likes\/?$/.test(location.pathname) || !S()) { unmount(); return; }
+        if (!/^\/you\/likes\/?$/.test(location.pathname) || !S() || !enabled()) { unmount(); return; }
         const top = $(SEL.top); if (!top || mounted) return;
         mounted = true;
         injectStyles();

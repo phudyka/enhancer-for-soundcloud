@@ -4,41 +4,86 @@
 <meta charset="utf-8">
 <title>Enhancer for SoundCloud™ — Réglages</title>
 <style>
-  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --text: #eee; --muted: #999; }
-  body { margin: 0; padding: 20px 24px; min-width: 420px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  h1 { font-size: 18px; margin: 0 0 4px; }
+  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --card: #1f1f1f; --text: #eee; --muted: #999; --line: #333; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 24px 28px; min-width: 460px; max-width: 640px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 24px; height: 24px; }
   p.lead { color: var(--muted); margin: 0 0 20px; }
-  fieldset { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; }
-  legend { padding: 0 6px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-  label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; }
-  label input { margin-top: 4px; accent-color: var(--accent); }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 8px 16px 12px; margin: 0 0 14px; }
+  legend { padding: 0 6px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  label { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; cursor: pointer; }
+  label + label { border-top: 1px solid #262626; }
+  label input[type=checkbox] { margin-top: 4px; accent-color: var(--accent); flex: 0 0 auto; }
   label small { display: block; color: var(--muted); }
-  .saved { color: #2ecc71; font-size: 12px; height: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .row span { flex: 1; }
+  select { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; }
+  input[type=color] { width: 36px; height: 28px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+  .swatches { display: flex; gap: 6px; }
+  .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+  .swatches button.on { border-color: #fff; }
+  .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
+  .saved { color: #2ecc71; font-size: 12px; height: 16px; margin-top: 4px; }
+  .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
   a { color: var(--accent); }
 </style>
 </head>
 <body>
-<h1>Enhancer for SoundCloud™</h1>
-<p class="lead">Tout tourne dans votre navigateur. Aucune donnée n'est envoyée ailleurs.</p>
-
-<fieldset>
-  <legend>Shuffle+</legend>
-  <label><input type="checkbox" id="hijackPlayerShuffle">
-    <span>Le bouton « Aléatoire » du lecteur lance un vrai shuffle<small>Alt+clic conserve le shuffle natif de SoundCloud.</small></span></label>
-</fieldset>
+<h1><img src="../icons/icon-48.png" alt="">Enhancer for SoundCloud™</h1>
+<p class="lead">Tout tourne dans votre navigateur. Aucune donnée n'est envoyée ailleurs. Les changements s'appliquent immédiatement.</p>
 
 <fieldset>
   <legend>Lecture</legend>
-  <label><input type="checkbox" id="speedControl">
-    <span>Bouton de vitesse de lecture à côté du volume<small>0,5× à 2×, conservation de la hauteur. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
+  <label><input type="checkbox" id="hijackPlayerShuffle"><span>Le bouton « Aléatoire » du lecteur lance un vrai shuffle<small>Alt+clic conserve le shuffle natif de SoundCloud.</small></span></label>
+  <label><input type="checkbox" id="speedControl"><span>Bouton de vitesse de lecture à gauche du volume<small>0,5× à 2×, conservation de la hauteur. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
+  <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Masquer</legend>
+  <label><input type="checkbox" id="hideUpsell"><span>Promotions Go+ et Artist Pro<small>Liens de l'en-tête, bannières produit, panneau du lecteur.</small></span></label>
+  <label><input type="checkbox" id="hidePromoted"><span>Titres sponsorisés dans les listes</span></label>
+  <label><input type="checkbox" id="hideUpload"><span>Bouton « Uploader »</span></label>
+  <label><input type="checkbox" id="hideArtistStudio"><span>Lien « Studio de l'artiste »</span></label>
+  <label><input type="checkbox" id="hideNotifications"><span>Cloche des notifications</span></label>
+  <label><input type="checkbox" id="hideMessages"><span>Icône des messages</span></label>
+  <label><input type="checkbox" id="hideComments"><span>Commentaires sous les titres</span></label>
+  <label><input type="checkbox" id="hideRelated"><span>Modules latéraux : titres similaires, dans les playlists, artistes à suivre</span></label>
+  <label><input type="checkbox" id="hideFooter"><span>Liens de pied de page dans la colonne de droite</span></label>
+</fieldset>
+
+<fieldset>
+  <legend>Apparence</legend>
+  <div class="row"><span>Couleur d'accent<br><small style="color:var(--muted)">Remplace l'orange sur les boutons de lecture, la progression, les états actifs.</small></span>
+    <div class="swatches" id="swatches"></div>
+    <input type="color" id="accent" value="#ff5500" title="Couleur personnalisée">
+    <button class="link" id="accent-reset" title="Revenir à l'orange SoundCloud">Défaut</button>
+  </div>
+  <div class="row"><span>Page d'accueil<br><small style="color:var(--muted)">Page ouverte à l'arrivée sur soundcloud.com, à la place de Découvrir.</small></span>
+    <select id="homePage">
+      <option value="">Découvrir (défaut)</option>
+      <option value="/stream">Fil d'actualités</option>
+      <option value="/you/likes">Favoris</option>
+      <option value="/you/library">Bibliothèque</option>
+      <option value="/you/sets">Playlists</option>
+      <option value="/you/history">Historique</option>
+    </select>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Publicités</legend>
+  <label><input type="checkbox" id="blockAds"><span>Bloquer les publicités et traceurs tiers sur soundcloud.com<small id="ads-note">Liste de domaines publicitaires tiers, appliquée par le navigateur sans lire les pages. Inutile si un bloqueur est déjà actif.</small></span></label>
 </fieldset>
 
 <fieldset>
   <legend>Raccourcis globaux</legend>
-  <p style="margin:4px 0">Shuffle+ et lecture/pause fonctionnent même quand l'onglet SoundCloud n'a pas le focus. Modifiez-les dans <a href="#" id="shortcuts">chrome://extensions/shortcuts</a>.</p>
+  <p style="margin:4px 0">Shuffle+, lecture/pause, lecteur épinglable : fonctionnent même quand l'onglet n'a pas le focus. Modifiez-les dans <a href="#" id="shortcuts">chrome://extensions/shortcuts</a>.</p>
 </fieldset>
 
 <div class="saved" id="saved"></div>
+<p class="note">Enhancer for SoundCloud™ est un projet indépendant, sans lien avec SoundCloud. SoundCloud est une marque de SoundCloud Global Limited &amp; Co. KG.</p>
 <script src="options.js"></script>
 </body>
 </html>

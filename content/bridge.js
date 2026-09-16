@@ -9,7 +9,7 @@
  */
 (() => {
     'use strict';
-    const DEFAULTS = { hijackPlayerShuffle: true, speedControl: true };
+    const DEFAULTS = { hijackPlayerShuffle: true, speedControl: true, library: true, accent: '', homePage: '', blockAds: false };
 
     // 1. Réglages → page
     async function pushSettings() {
