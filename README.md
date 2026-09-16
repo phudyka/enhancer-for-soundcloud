@@ -2,13 +2,14 @@
 
 Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. Tout tourne localement, aucune donnée ne quitte le navigateur.
 
-## Fonctions (v0.3.1)
+## Fonctions (v0.4.0)
 
 - **Shuffle+** : vrai shuffle instantané des Likes, playlists et sets Discover via l'API interne, playlist tampon privée, bouton du lecteur détourné. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
 - **Vitesse de lecture** : libellé discret « 1× » à gauche du volume, orange quand modifié, panneau 0,5× à 2× avec préréglages et conservation de la hauteur. Raccourcis Maj+, Maj+. Maj+0.
 - **Lecteur épinglable** : fenêtre Picture-in-Picture toujours au premier plan (Chromium 116+), pochette, titre, progression cliquable, précédent / lecture / suivant / Shuffle+ / répéter, dans le langage visuel du lecteur SoundCloud. Bouton 📌 dans la barre du lecteur, depuis le popup, ou par raccourci.
 - **Popup** : titre en cours, précédent / lecture / suivant / Shuffle+, historique des derniers shuffles.
 - **Raccourcis globaux** : Shuffle+ et lecture/pause même quand l'onglet n'a pas le focus.
+- **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes ou année, filtre par genre. Sur la sélection : lire dans l'ordre, Shuffle+, ou créer une playlist. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement.
 - **Réglages** synchronisés entre appareils.
 
 ## Installer en mode développeur
@@ -23,7 +24,8 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 manifest.json
 content/
   media-hook.js   document_start, monde principal : capture l'<audio> de SoundCloud (créé hors DOM)
-  shuffle.js      monde principal : module Shuffle+ (dérivé du userscript)
+  shuffle.js      monde principal : module Shuffle+ (dérivé du userscript), expose window.__scsp aux autres modules
+  library.js      monde principal : bibliothèque des likes (recherche, tri, genres, création de playlists)
   speed.js        monde principal : vitesse de lecture
   player-api.js   monde principal : état et commandes du lecteur natif
   pip.js          monde principal : lecteur épinglable (Document Picture-in-Picture)

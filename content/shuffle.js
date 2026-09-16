@@ -695,26 +695,36 @@
         store.set('last_source', { key: source.key, label: source.label, name: source.name });
 
         const picked = shuffle(ids).slice(0, CFG.MAX_TRACKS);
-        Toast.show(t('writing'), { sticky: true });
-        await deleteBuffer();                       // jamais deux playlists tampon à la fois
-        const buffer = await createBuffer(picked, source.name);
-
         const summary = picked.length < ids.length
             ? t('drawn', { n: picked.length, t: ids.length })
             : t('shuffled', { n: picked.length });
+        await playIds(me, picked, { name: source.name, label: source.label, summary, onDone });
+    }
+
+    /**
+     * Joue une liste d'identifiants dans l'ordre donné via la playlist tampon.
+     * Utilisé par le shuffle et par la Bibliothèque (lecture d'une sélection triée).
+     */
+    async function playIds(me, ids, { name, label, summary, onDone } = {}) {
+        me = me || await API.call('/me');
+        const picked = ids.slice(0, CFG.MAX_TRACKS);
+        summary = summary || t('shuffled', { n: picked.length }).replace(/\S+$/, '').trim() || `${fmt(picked.length)}`;
+        Toast.show(t('writing'), { sticky: true });
+        await deleteBuffer();                       // jamais deux playlists tampon à la fois
+        const buffer = await createBuffer(picked, name);
         onDone?.();
         Toast.show(t('launching'), { sticky: true });
 
         // Navigation interne (pas de rechargement : la playlist est neuve,
         // l'app n'en a aucune version en cache), puis Lecture.
         const played = await navigateAndPlay(buffer.path);
-        emit({ type: 'shuffled', source: source.name || source.label, count: picked.length, total: ids.length, at: Date.now() });
+        emit({ type: 'shuffled', source: name || label, count: picked.length, total: ids.length, at: Date.now() });
         if (played) {
-            Toast.show(`🔀 ${summary} · ${source.label}`);
+            Toast.show(`🔀 ${summary}${label ? ` · ${label}` : ''}`);
             sweepBuffers(me.id, buffer.id); // arrière-plan, au plus une fois par jour
         } else {
             // Repli : rechargement complet avec lecture automatique au chargement
-            store.set('pending_toast', `🔀 ${summary} · ${source.label}`);
+            store.set('pending_toast', `🔀 ${summary}${label ? ` · ${label}` : ''}`);
             location.assign(buffer.path + CFG.PLAY_HASH);
         }
     }
@@ -965,6 +975,18 @@
     });
 
     const emit = (payload) => window.postMessage({ scsp: 'event', ...payload }, location.origin);
+
+    /** API interne partagée avec les autres modules du monde principal (library.js). */
+    window.__scsp = Object.freeze({
+        api: API.call,
+        me: () => API.call('/me'),
+        likesIds: (userId, count, opts) => fetchLikes(userId, count, { own: true, ...opts }),
+        playIds: (ids, opts) => playIds(null, ids, opts),
+        shuffleIds: async (ids, opts = {}) => playIds(null, shuffle(ids), { ...opts, summary: t(ids.length > CFG.MAX_TRACKS ? 'drawn' : 'shuffled', { n: Math.min(ids.length, CFG.MAX_TRACKS), t: ids.length }) }),
+        toast: (msg, o) => Toast.show(msg, o),
+        maxTracks: CFG.MAX_TRACKS,
+        lang: LANG,
+    });
 
     // ═══════════════════════════════════════════════════════════════
     //  INIT
