@@ -1,7 +1,7 @@
 /*
  * Enhancer for SoundCloud™ — Audio : vitesse, effets, analyse (monde principal)
  *
- * Bouton « jauge » à gauche du volume (mêmes cotes que les icônes SoundCloud).
+ * Bouton « baguette magique » à gauche du volume (mêmes cotes que les icônes SoundCloud).
  * Panneau dans le style du popover de volume :
  *   · Vitesse 0,1× → 3× : curseur logarithmique (même sensation sur toute la
  *     plage), aimant sur 1×, double-clic = 1×, molette = ±1 %
@@ -302,7 +302,7 @@
         const volume = document.querySelector('.playControls__volume'); if (!volume) return;
         injectStyles();
         btn = document.createElement('button'); btn.type = 'button'; btn.className = `${NS}-btn sc-mr-1x`; btn.setAttribute('aria-label', L.tip);
-        btn.innerHTML = `<div><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 11.25a5.25 5.25 0 1 1 10.5 0"/><path d="M8 11.25l2.6-3.6"/><circle cx="8" cy="11.25" r=".9" fill="currentColor" stroke="none"/></svg></div>`;
+        btn.innerHTML = `<div><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5l7.5-7.5"/><path d="M9 5l2 2"/><path d="M12.5 1.5v2M12.5 6.5v2M10 4h-1M15 4h1M11 2.2l-.7-.7M14 5.8l.7.7M14 2.2l.7-.7M11 5.8l-.7.7"/></svg></div>`;
         btn.addEventListener('click', togglePanel);
         volume.parentElement.insertBefore(btn, volume);
         updateBtn();
