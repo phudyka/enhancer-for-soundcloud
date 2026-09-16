@@ -11,6 +11,7 @@ async function refreshState() {
     const has = state && state.sce === 'state' && state.title;
     $('#now').hidden = !has;
     $('#controls').hidden = !has;
+    $('#controls2').hidden = !has;
     $('#empty').hidden = !!has;
     if (!has) return;
     $('#title').textContent = state.title;
@@ -30,7 +31,7 @@ const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 
 document.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', async (e) => {
     await send({ type: 'popup-command', command: b.dataset.cmd, force: e.shiftKey });
-    if (b.dataset.cmd === 'shuffle') window.close();
+    if (b.dataset.cmd === 'shuffle' || b.dataset.cmd === 'pip') window.close();
     else setTimeout(refreshState, 300);
 }));
 

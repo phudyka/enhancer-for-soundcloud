@@ -2,10 +2,11 @@
 
 Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. Tout tourne localement, aucune donnée ne quitte le navigateur.
 
-## Fonctions du squelette (v0.1.0)
+## Fonctions (v0.2.0)
 
 - **Shuffle+** : vrai shuffle instantané des Likes, playlists et sets Discover via l'API interne, playlist tampon privée, bouton du lecteur détourné. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
-- **Vitesse de lecture** : bouton « 1.00× » à côté du volume, 0,5× à 2×, conservation de la hauteur, persistant. Raccourcis Maj+, Maj+. Maj+0.
+- **Vitesse de lecture** : libellé discret « 1× » à gauche du volume, orange quand modifié, panneau 0,5× à 2× avec préréglages et conservation de la hauteur. Raccourcis Maj+, Maj+. Maj+0.
+- **Lecteur épinglable** : fenêtre Picture-in-Picture toujours au premier plan (Chromium 116+), pochette, titre, progression cliquable, précédent / lecture / suivant / Shuffle+ / répéter, dans le langage visuel du lecteur SoundCloud. Bouton 📌 dans la barre du lecteur, depuis le popup, ou par raccourci.
 - **Popup** : titre en cours, précédent / lecture / suivant / Shuffle+, historique des derniers shuffles.
 - **Raccourcis globaux** : Shuffle+ et lecture/pause même quand l'onglet n'a pas le focus.
 - **Réglages** synchronisés entre appareils.
@@ -25,6 +26,7 @@ content/
   shuffle.js      monde principal : module Shuffle+ (dérivé du userscript)
   speed.js        monde principal : vitesse de lecture
   player-api.js   monde principal : état et commandes du lecteur natif
+  pip.js          monde principal : lecteur épinglable (Document Picture-in-Picture)
   bridge.js       monde isolé : seul accès à chrome.*, relais page ⇄ extension
 background/
   service-worker.js  raccourcis globaux, historique, état du lecteur
@@ -36,7 +38,7 @@ Les scripts du **monde principal** voient la page comme un userscript `@grant no
 ## Feuille de route
 
 1. **Tours sans répétition** : chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque.
-2. **Lecteur épinglable** (Document Picture-in-Picture, Chromium 116+) : fenêtre flottante toujours au premier plan, télécommande du lecteur natif. Repli fenêtre popup sur Firefox.
+2. **Lecteur épinglable** : repli fenêtre popup sur Firefox, qui n'a pas Document Picture-in-Picture.
 3. **Fil « Stream » sans reposts** : masquer reposts et playlists pour ne voir que les nouveautés des artistes suivis.
 4. **Obtenir ce titre** : bouton de téléchargement officiel quand l'artiste l'autorise (fichier d'origine, souvent WAV/FLAC, avec tags), sinon lien d'achat de l'artiste.
 5. **Historique et statistiques** d'écoute locaux.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "__MSG_extDesc__",
   "default_locale": "fr",
   "icons": {
@@ -51,6 +51,9 @@
     },
     "prev-track": {
       "description": "Titre précédent"
+    },
+    "pip": {
+      "description": "Ouvrir le lecteur épinglable"
     }
   },
   "content_scripts": [
@@ -71,7 +74,8 @@
       "js": [
         "content/shuffle.js",
         "content/speed.js",
-        "content/player-api.js"
+        "content/player-api.js",
+        "content/pip.js"
       ],
       "run_at": "document_end",
       "world": "MAIN"

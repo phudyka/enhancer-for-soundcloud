@@ -21,7 +21,8 @@
     let media = null;
     let btn = null, panel = null;
 
-    const fmt = (r) => `${r.toFixed(2)}×`;
+    // Libellé court : 1× · 1.5× · 1.25× (pas de décimales inutiles)
+    const fmt = (r) => `${parseFloat(r.toFixed(2))}×`;
 
     function apply(el = media) {
         if (!el) return;
@@ -44,19 +45,26 @@
     }
 
     // ── UI ────────────────────────────────────────────────────────
+    // Design system SoundCloud : contrôle discret, même gris que les icônes du lecteur,
+    // orange #f50 uniquement quand la vitesse n'est pas 1×. Panneau dans le style
+    // du popover de volume (fond #333, angles 2px, pas d'ombre lourde).
     const CSS = `
-        .${NS}-btn { min-width: 44px !important; padding: 0 6px !important; font-size: 11px !important; font-weight: 700 !important;
-                     font-variant-numeric: tabular-nums; letter-spacing: 0; text-transform: none !important; }
-        .${NS}-btn.m-active { color: #f50 !important; }
-        .${NS}-panel { position: fixed; bottom: 56px; width: 240px; padding: 12px 14px; border-radius: 8px;
-                       background: #1f1f1f; color: #fff; box-shadow: 0 8px 28px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.08);
-                       font-size: 12px; z-index: 99999; }
-        .${NS}-panel h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; }
-        .${NS}-panel input[type=range] { width: 100%; accent-color: #f50; }
-        .${NS}-presets { display: flex; gap: 6px; margin: 8px 0; }
-        .${NS}-presets button { flex: 1; padding: 4px 0; border-radius: 4px; border: 1px solid rgba(255,255,255,.15); background: transparent; color: #ddd; cursor: pointer; font-size: 11px; }
-        .${NS}-presets button.m-on { background: #f50; border-color: #f50; color: #fff; }
-        .${NS}-panel label { display: flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; color: #ccc; }
+        .${NS}-btn { height: 46px; padding: 0 6px; border: 0; background: transparent; color: #ccc; cursor: pointer;
+                     font: 500 12px/46px inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; opacity: .8; }
+        .${NS}-btn:hover, .${NS}-btn.m-open { color: #fff; opacity: 1; }
+        .${NS}-btn.m-active { color: #f50; opacity: 1; }
+        .${NS}-panel { position: fixed; bottom: 52px; width: 200px; padding: 10px 12px 8px; border-radius: 2px;
+                       background: #333; color: #ccc; box-shadow: 0 2px 8px rgba(0,0,0,.4); font-size: 12px; z-index: 99999; }
+        .${NS}-panel::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: #333; transform: translateX(-50%) rotate(45deg); }
+        .${NS}-panel h4 { margin: 0 0 8px; font-size: 12px; font-weight: 400; color: #999; display: flex; justify-content: space-between; }
+        .${NS}-panel h4 .${NS}-val { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .${NS}-panel input[type=range] { width: 100%; height: 2px; margin: 6px 0 10px; accent-color: #f50; cursor: pointer; }
+        .${NS}-presets { display: flex; gap: 4px; }
+        .${NS}-presets button { flex: 1; height: 24px; border-radius: 2px; border: 0; background: #444; color: #ccc; cursor: pointer; font-size: 11px; font-variant-numeric: tabular-nums; }
+        .${NS}-presets button:hover { background: #555; color: #fff; }
+        .${NS}-presets button.m-on { background: #f50; color: #fff; }
+        .${NS}-panel label { display: flex; align-items: center; gap: 6px; margin-top: 10px; cursor: pointer; color: #999; font-size: 11px; }
+        .${NS}-panel label input { accent-color: #f50; margin: 0; }
     `;
     function injectStyles() {
         if (document.getElementById(`${NS}-styles`)) return;
@@ -67,10 +75,10 @@
         const p = document.createElement('div');
         p.className = `${NS}-panel`;
         p.innerHTML = `
-            <h4><span>Vitesse de lecture</span><span class="${NS}-val">${fmt(cfg.rate)}</span></h4>
+            <h4><span>Vitesse</span><span class="${NS}-val">${fmt(cfg.rate)}</span></h4>
             <input type="range" min="${MIN}" max="${MAX}" step="${STEP}" value="${cfg.rate}">
             <div class="${NS}-presets">${PRESETS.map((r) => `<button type="button" data-rate="${r}">${r}×</button>`).join('')}</div>
-            <label><input type="checkbox" class="${NS}-pitch" ${cfg.preservePitch ? 'checked' : ''}> Conserver la hauteur (pas d'effet chipmunk)</label>`;
+            <label><input type="checkbox" class="${NS}-pitch" ${cfg.preservePitch ? 'checked' : ''}> Conserver la hauteur</label>`;
         p.querySelector('input[type=range]').addEventListener('input', (e) => setRate(parseFloat(e.target.value)));
         p.querySelectorAll('[data-rate]').forEach((b) => b.addEventListener('click', () => setRate(parseFloat(b.dataset.rate))));
         p.querySelector(`.${NS}-pitch`).addEventListener('change', (e) => { cfg = { ...cfg, preservePitch: e.target.checked }; store.set(cfg); apply(); });
@@ -84,15 +92,18 @@
         btn?.classList.toggle('m-active', Math.abs(cfg.rate - 1) > 1e-6);
     }
 
+    function closePanel() { panel?.remove(); panel = null; btn?.classList.remove('m-open'); }
     function togglePanel() {
-        if (panel) { panel.remove(); panel = null; return; }
+        if (panel) { closePanel(); return; }
         panel = buildPanel();
         document.body.appendChild(panel);
+        btn.classList.add('m-open');
         const r = btn.getBoundingClientRect();
-        panel.style.left = `${Math.max(8, Math.min(window.innerWidth - 256, r.left + r.width / 2 - 120))}px`;
+        panel.style.left = `${Math.max(8, Math.min(window.innerWidth - 216, r.left + r.width / 2 - 100))}px`;
         syncPanel();
-        const close = (e) => { if (panel && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) { panel.remove(); panel = null; document.removeEventListener('mousedown', close, true); } };
+        const close = (e) => { if (panel && !panel.contains(e.target) && !btn.contains(e.target)) { closePanel(); document.removeEventListener('mousedown', close, true); } };
         document.addEventListener('mousedown', close, true);
+        document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { closePanel(); document.removeEventListener('keydown', esc); } });
     }
 
     const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').speedControl !== false; } catch { return true; } };
@@ -105,8 +116,8 @@
         injectStyles();
         btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `${NS}-btn sc-button sc-button-secondary sc-button-small sc-mr-1x`;
-        btn.title = 'Vitesse de lecture';
+        btn.className = `${NS}-btn`;
+        btn.title = 'Vitesse de lecture  (Maj+, / Maj+. / Maj+0)';
         btn.innerHTML = `<span class="${NS}-label">${fmt(cfg.rate)}</span>`;
         btn.addEventListener('click', togglePanel);
         volume.parentElement.insertBefore(btn, volume);
