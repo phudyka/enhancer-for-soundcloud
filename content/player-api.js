@@ -41,7 +41,7 @@
     function artworkUrl() {
         const el = $(SEL.artwork);
         const m = el && (el.style?.backgroundImage || '').match(/url\("?(.*?)"?\)/);
-        return m ? m[1].replace(/-t\d+x\d+\./, '-t500x500.') : null;
+        return m ? m[1].replace(/-t\d+x\d+\./, '-t500x500.') : (el?.src || null);
     }
 
     function state() {
@@ -61,6 +61,9 @@
             sleep:    sleep.at ? Math.max(0, Math.round((sleep.at - Date.now()) / 1000)) : sleep.endOfTrack ? 'end' : null,
         };
     }
+
+    // The pinned player reads the same snapshot as the popup and service worker.
+    window.__scePlayerState = state;
 
     /* ── Minuteur d'arrêt ─────────────────────────────────────────── */
     const sleep = { at: null, endOfTrack: false, timer: null, fading: false };

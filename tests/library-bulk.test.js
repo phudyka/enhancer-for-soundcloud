@@ -5,6 +5,7 @@ const vm = require('node:vm');
 
 function bulk() {
     const window = {};
+    vm.runInNewContext(fs.readFileSync('content/shared.js', 'utf8'), { window, URL });
     vm.runInNewContext(fs.readFileSync('content/library-bulk.js', 'utf8'), { window });
     return window.__sceLibraryBulk;
 }

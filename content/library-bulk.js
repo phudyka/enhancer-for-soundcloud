@@ -23,9 +23,7 @@
                 const page = await api(path);
                 all.push(...(Array.isArray(page) ? page : page?.collection || []));
                 if (page?.next_href) {
-                    const next = new URL(page.next_href);
-                    next.searchParams.delete('client_id');
-                    path = next.pathname + next.search;
+                    path = window.__sceShared.nextPath(page.next_href);
                 } else path = null;
             }
             existing = all;

@@ -153,7 +153,7 @@
         .${NS}-open { color: #999; text-decoration: none; font-size: 11px; } .${NS}-open:hover { color: #fff; }
     `;
     let ui = null, dock = null, btn = null;
-    const ICON = { play: '<svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg>', pause: '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>' };
+    const ICON = window.__sceShared.icons;
 
     function buildDock() {
         const d = document.createElement('div'); d.className = `${NS}-dock`;

@@ -368,7 +368,7 @@
         }
 
         /** Transforme un next_href absolu en chemin relatif sans client_id. */
-        const rel = (href) => href.replace(CFG.API, '').replace(/([?&])client_id=[^&]*&?/, '$1').replace(/[?&]$/, '');
+        const rel = window.__sceShared.nextPath;
 
         return { call, rel };
     })();

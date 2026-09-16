@@ -1,14 +1,13 @@
 /* Lecteur du panneau latéral et de la fenêtre PiP de repli. */
 const $ = (s) => document.querySelector(s);
 const send = (msg) => chrome.runtime.sendMessage(msg).catch(() => null);
-const ICON_PLAY  = '<svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg>';
-const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>';
+const { play: ICON_PLAY, pause: ICON_PAUSE } = window.__sceShared.icons;
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const T = (s) => (window.SCE_T || ((x) => x))(s);
 
 let state = null, tabId = null, timer = null;
 
-const fmtTime = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const fmtTime = window.__sceShared.formatTime;
 const fmtRate = (r) => `${parseFloat((r || 1).toFixed(2))}×`;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

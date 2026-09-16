@@ -22,8 +22,6 @@
         prev:     '.skipControl__prev',
         repeat:   '.repeatControl',
         title:    '.playbackSoundBadge__titleLink',
-        artist:   '.playbackSoundBadge__lightLink',
-        artwork:  '.playbackSoundBadge__avatar span[style*="background-image"], .playbackSoundBadge__avatar .image__full',
         timeline: '.playbackTimeline__progressWrapper',
         volume:   '.playControls__volume',
         badge:    '.playControls__soundBadge',
@@ -42,33 +40,23 @@
     const I = {
         prev:    '<svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM13 2v12L5.5 8z"/></svg>',
         next:    '<svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM3 2v12l7.5-6z"/></svg>',
-        play:    '<svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg>',
-        pause:   '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>',
+        ...window.__sceShared.icons,
         shuffle: '<svg viewBox="0 0 16 16"><path d="M11.5 1.5l3 3-3 3V5.75h-1.2c-.5 0-.97.25-1.25.66L7.9 8l-1.15-1.6.6-.84A3 3 0 0 1 10.3 4.25h1.2V1.5zM1 4.25h2.3a3 3 0 0 1 2.45 1.27l3.3 4.62c.28.41.75.66 1.25.66h1.2V8.5l3 3-3 3v-2.25h-1.2a3 3 0 0 1-2.45-1.27L4.55 6.36a1.5 1.5 0 0 0-1.25-.61H1v-1.5zM1 10.25h2.3c.5 0 .97-.25 1.25-.66l.6-.84L6.3 10.35l-.55.77A3 3 0 0 1 3.3 12.4H1v-1.5z"/></svg>',
         repeat:  '<svg viewBox="0 0 16 16"><path d="M4 4.5h7V2.5l3 3-3 3v-2H5.5v3H4zM12 11.5H5v2l-3-3 3-3v2h5.5v-3H12z"/></svg>',
         // Glyphe Picture-in-Picture : cadre 1,5 px + vignette pleine, comme les icônes SoundCloud
         pin:     '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7.25" width="5" height="3.75" rx=".5" fill="currentColor"/></svg>',
     };
 
-    const fmtTime = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    const fmtTime = window.__sceShared.formatTime;
 
-    function artworkUrl() {
-        const el = $(SEL.artwork);
-        const m = el && (el.style?.backgroundImage || '').match(/url\("?(.*?)"?\)/);
-        return m ? m[1].replace(/-t\d+x\d+\./, '-t500x500.') : (el?.src || null);
-    }
     function readState() {
-        const media = window.__sceMedia;
-        const tl = $(SEL.timeline);
-        const rep = $(SEL.repeat);
+        const state = window.__scePlayerState();
         return {
-            playing:  !!$(SEL.play)?.classList.contains('playing'),
-            title:    $(SEL.title)?.title || $(SEL.title)?.textContent?.trim() || '—',
-            artist:   $(SEL.artist)?.textContent?.trim() || '',
-            artwork:  artworkUrl(),
-            position: media && Number.isFinite(media.currentTime) ? media.currentTime : Number(tl?.getAttribute('aria-valuenow') || 0),
-            duration: media && Number.isFinite(media.duration)    ? media.duration    : Number(tl?.getAttribute('aria-valuemax') || 0),
-            repeat:   rep?.classList.contains('m-one') ? 'one' : rep?.classList.contains('m-all') ? 'all' : 'off',
+            ...state,
+            title: state.title || '—',
+            artist: state.artist || '',
+            position: Number.isFinite(state.position) ? state.position : Number($(SEL.timeline)?.getAttribute('aria-valuenow') || 0),
+            duration: Number.isFinite(state.duration) ? state.duration : Number($(SEL.timeline)?.getAttribute('aria-valuemax') || 0),
         };
     }
 

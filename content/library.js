@@ -346,9 +346,7 @@
                     const page = await S().api(url);
                     playlists.push(...(page.collection || []));
                     if (page.next_href) {
-                        const next = new URL(page.next_href);
-                        next.searchParams.delete('client_id');
-                        url = next.pathname + next.search;
+                        url = window.__sceShared.nextPath(page.next_href);
                     } else url = null;
                 }
                 if (!playlists.length) { S().toast(t('noPlaylists'), { error: true }); return; }
