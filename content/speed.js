@@ -29,7 +29,13 @@
         el.playbackRate = cfg.rate;
         el.defaultPlaybackRate = cfg.rate;
         if ('preservesPitch' in el) el.preservesPitch = cfg.preservePitch;
-        if (btn) btn.querySelector(`.${NS}-label`).textContent = fmt(cfg.rate);
+        updateTitle();
+    }
+
+    function updateTitle() {
+        if (!btn) return;
+        btn.title = `Vitesse : ${fmt(cfg.rate)}  (Maj+, / Maj+. / Maj+0)`;
+        btn.classList.toggle('m-active', Math.abs(cfg.rate - 1) > 1e-6);
     }
 
     function setRate(rate) {
@@ -49,10 +55,13 @@
     // orange #f50 uniquement quand la vitesse n'est pas 1×. Panneau dans le style
     // du popover de volume (fond #333, angles 2px, pas d'ombre lourde).
     const CSS = `
-        .${NS}-btn { height: 46px; padding: 0 6px; border: 0; background: transparent; color: #ccc; cursor: pointer;
-                     font: 500 12px/46px inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; opacity: .8; }
-        .${NS}-btn:hover, .${NS}-btn.m-open { color: #fff; opacity: 1; }
-        .${NS}-btn.m-active { color: #f50; opacity: 1; }
+        /* Même moule que .shuffleControl / .volume__button : 24×48, icône 16 px blanche */
+        .${NS}-btn { width: 24px; height: 48px; padding: 16px 4px; border: 0; background: transparent; color: #fff; cursor: pointer; display: block; }
+        .${NS}-btn div { width: 16px; height: 16px; }
+        .${NS}-btn svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+        .${NS}-btn:hover, .${NS}-btn.m-open { color: #fff; }
+        .${NS}-btn.m-active { color: #f50; }
+        .${NS}-btn.m-active .${NS}-needle { stroke-width: 1.75; }
         .${NS}-panel { position: fixed; bottom: 52px; width: 200px; padding: 10px 12px 8px; border-radius: 2px;
                        background: #333; color: #ccc; box-shadow: 0 2px 8px rgba(0,0,0,.4); font-size: 12px; z-index: 99999; }
         .${NS}-panel::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: #333; transform: translateX(-50%) rotate(45deg); }
@@ -89,7 +98,7 @@
         panel.querySelector(`.${NS}-val`).textContent = fmt(cfg.rate);
         panel.querySelector('input[type=range]').value = cfg.rate;
         panel.querySelectorAll('[data-rate]').forEach((b) => b.classList.toggle('m-on', Math.abs(parseFloat(b.dataset.rate) - cfg.rate) < 1e-6));
-        btn?.classList.toggle('m-active', Math.abs(cfg.rate - 1) > 1e-6);
+        updateTitle();
     }
 
     function closePanel() { panel?.remove(); panel = null; btn?.classList.remove('m-open'); }
@@ -116,12 +125,17 @@
         injectStyles();
         btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `${NS}-btn`;
-        btn.title = 'Vitesse de lecture  (Maj+, / Maj+. / Maj+0)';
-        btn.innerHTML = `<span class="${NS}-label">${fmt(cfg.rate)}</span>`;
+        btn.className = `${NS}-btn sc-mr-1x`;
+        btn.setAttribute('aria-label', 'Vitesse de lecture');
+        // Jauge : arc + aiguille, tracé à 1,5 px comme les glyphes SoundCloud
+        btn.innerHTML = `<div><svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.75 11.25a5.25 5.25 0 1 1 10.5 0"/>
+            <path class="${NS}-needle" d="M8 11.25l2.6-3.6"/>
+            <circle cx="8" cy="11.25" r=".9" fill="currentColor" stroke="none"/>
+        </svg></div>`;
+        updateTitle();
         btn.addEventListener('click', togglePanel);
         volume.parentElement.insertBefore(btn, volume);
-        btn.classList.toggle('m-active', Math.abs(cfg.rate - 1) > 1e-6);
     }
 
     // Commande externe (popup / lecteur épinglable) : window.dispatchEvent(new CustomEvent('sce:speed', { detail: { rate } }))

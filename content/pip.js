@@ -39,7 +39,8 @@
         pause:   '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z"/></svg>',
         shuffle: '<svg viewBox="0 0 16 16"><path d="M11.5 1.5l3 3-3 3V5.75h-1.2c-.5 0-.97.25-1.25.66L7.9 8l-1.15-1.6.6-.84A3 3 0 0 1 10.3 4.25h1.2V1.5zM1 4.25h2.3a3 3 0 0 1 2.45 1.27l3.3 4.62c.28.41.75.66 1.25.66h1.2V8.5l3 3-3 3v-2.25h-1.2a3 3 0 0 1-2.45-1.27L4.55 6.36a1.5 1.5 0 0 0-1.25-.61H1v-1.5zM1 10.25h2.3c.5 0 .97-.25 1.25-.66l.6-.84L6.3 10.35l-.55.77A3 3 0 0 1 3.3 12.4H1v-1.5z"/></svg>',
         repeat:  '<svg viewBox="0 0 16 16"><path d="M4 4.5h7V2.5l3 3-3 3v-2H5.5v3H4zM12 11.5H5v2l-3-3 3-3v2h5.5v-3H12z"/></svg>',
-        pin:     '<svg viewBox="0 0 16 16"><path d="M9.5 1.5l5 5-1.4 1.4-.7-.7-2.9 2.9.3 2.6L8.6 14 5.4 10.8 2 14.2l-.7-.7 3.4-3.4L1.5 6.9l1.3-1.2 2.6.3L8.3 3.1l-.7-.7z"/></svg>',
+        // Glyphe Picture-in-Picture : cadre 1,5 px + vignette pleine, comme les icônes SoundCloud
+        pin:     '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7.25" width="5" height="3.75" rx=".5" fill="currentColor"/></svg>',
     };
 
     const fmtTime = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -205,10 +206,11 @@
     // ── Bouton « épingler » dans la barre du lecteur
     let pinBtn = null;
     const BAR_CSS = `
-        .${NS}-pin { height: 46px; width: 28px; border: 0; background: transparent; color: #ccc; cursor: pointer; opacity: .8; display: grid; place-items: center; padding: 0; }
-        .${NS}-pin svg { width: 14px; height: 14px; fill: currentColor; }
-        .${NS}-pin:hover { color: #fff; opacity: 1; }
-        .${NS}-pin.m-on { color: #f50; opacity: 1; }
+        .${NS}-pin { width: 24px; height: 48px; padding: 16px 4px; border: 0; background: transparent; color: #fff; cursor: pointer; display: block; }
+        .${NS}-pin div { width: 16px; height: 16px; }
+        .${NS}-pin svg { width: 16px; height: 16px; display: block; }
+        .${NS}-pin:hover { color: #fff; }
+        .${NS}-pin.m-on { color: #f50; }
     `;
     function mount() {
         if (!supported || pinBtn?.isConnected) return;
@@ -216,9 +218,10 @@
         if (!document.getElementById(`${NS}-bar-styles`)) { const st = document.createElement('style'); st.id = `${NS}-bar-styles`; st.textContent = BAR_CSS; document.head.appendChild(st); }
         pinBtn = document.createElement('button');
         pinBtn.type = 'button';
-        pinBtn.className = `${NS}-pin`;
+        pinBtn.className = `${NS}-pin sc-mr-1x`;
         pinBtn.title = 'Lecteur épinglable (toujours au premier plan)';
-        pinBtn.innerHTML = I.pin;
+        pinBtn.setAttribute('aria-label', 'Lecteur épinglable');
+        pinBtn.innerHTML = `<div>${I.pin}</div>`;
         pinBtn.addEventListener('click', () => open().catch((e) => console.warn('[SCE] PiP', e)));
         volume.parentElement.insertBefore(pinBtn, volume);
     }
