@@ -120,6 +120,7 @@
     }
 
     // ── UI ────────────────────────────────────────────────────────
+    const FONT = 'Söhne, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif';
     // Tout vit dans la rangée native « Afficher … Filtre » : deux menus compacts
     // (tri, genre) avant le champ Filtre, que l'on remplace par notre recherche
     // à l'identique. Compteur et actions n'apparaissent qu'au-dessus des résultats.
@@ -146,6 +147,17 @@
         .${NS}-head .sc-button { height: 28px !important; padding: 0 10px !important; font-size: 12px !important; }
         .${NS}-head .sc-button svg { width: 12px; height: 12px; fill: currentColor; margin-right: 5px; vertical-align: -1px; }
         .${NS}-list { padding: 0 24px 24px; font-family: ${FONT}; }
+        /* Mode « badges » : même grille que les favoris natifs */
+        .${NS}-list.m-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 28px 20px; }
+        .${NS}-tile { cursor: pointer; min-width: 0; }
+        .${NS}-tile .${NS}-art { width: 100%; height: auto; aspect-ratio: 1; border-radius: 2px; }
+        .${NS}-tile:hover .${NS}-art::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.25); }
+        .${NS}-tile .${NS}-play { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: #f50 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3E%3Cpath d='M5 3v10l8-5z'/%3E%3C/svg%3E") center/26px no-repeat; opacity: 0; transition: opacity .12s; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+        .${NS}-tile:hover .${NS}-play { opacity: 1; }
+        .${NS}-tile .${NS}-title { margin-top: 8px; font-size: 14px; }
+        .${NS}-tile .${NS}-artist { font-size: 14px; }
+        .${NS}-tile .${NS}-sub { color: #999; font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .${NS}-list.m-badges .${NS}-more, .${NS}-list.m-badges .${NS}-empty { grid-column: 1 / -1; }
         .${NS}-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 120px 48px 56px; gap: 12px; align-items: center; height: 56px; padding: 0 8px; border-radius: 3px; cursor: pointer; color: #ccc; }
         .${NS}-row:hover { background: #262626; color: #fff; }
         .${NS}-art { width: 40px; height: 40px; border-radius: 2px; background: #333 center/cover no-repeat; position: relative; }
@@ -160,7 +172,6 @@
         .${NS}-more { height: 8px; }
         .${NS}-empty { color: #999; padding: 40px 0; text-align: center; }
     `;
-    const FONT = 'Söhne, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif';
     let sortMenu = null, genreMenu = null, search = null, nativeFilter = null, head = null, list = null, nativeList = null, sentinel = null, rendered = 0, current = [];
 
     function injectStyles() { if ($(`#${NS}-styles`)) return; const s = document.createElement('style'); s.id = `${NS}-styles`; s.textContent = CSS; document.head.appendChild(s); }
@@ -232,9 +243,13 @@
         return parts.length ? `${parts.join(' · ')} · ${t('likes')}` : t('likes');
     }
 
+    /** Suit le choix natif « Afficher » : badges (grille) ou liste. */
+    const mode = () => (document.querySelector('.listDisplayToggle__listToggle')?.classList.contains('sc-button-selected') ? 'list' : 'badges');
+
     function refresh() {
         current = selection();
         syncMenuLabels();
+        list.classList.toggle('m-badges', mode() === 'badges');
         const on = active();
         if (nativeList) nativeList.style.display = on ? 'none' : '';
         head.style.display = on ? '' : 'none';
@@ -249,16 +264,28 @@
 
     function renderMore() {
         const frag = document.createDocumentFragment();
+        const badges = mode() === 'badges';
         for (const r of current.slice(rendered, rendered + PAGE)) {
             const row = document.createElement('div');
-            row.className = `${NS}-row`; row.dataset.id = r.id;
-            row.innerHTML = `
-                <div class="${NS}-art" style="${r.art ? `background-image:url('${r.art}')` : ''}"></div>
-                <div class="${NS}-meta"><div class="${NS}-title">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
-                    <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div></div>
-                <div class="${NS}-genre" title="${esc(r.genre)}">${esc(r.genre)}</div>
-                <div class="${NS}-num">${r.year || ''}</div>
-                <div class="${NS}-num">${fmtDur(r.dur)}</div>`;
+            row.dataset.id = r.id;
+            const art = (r.art || '').replace('-t120x120.', badges ? '-t200x200.' : '-t120x120.');
+            if (badges) {
+                row.className = `${NS}-tile`;
+                row.innerHTML = `
+                    <div class="${NS}-art" style="${art ? `background-image:url('${art}')` : ''}"><span class="${NS}-play"></span></div>
+                    <div class="${NS}-title" title="${esc(r.title)}">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
+                    <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div>
+                    <div class="${NS}-sub">${[r.genre, r.year || '', fmtDur(r.dur)].filter(Boolean).map(esc).join(' · ')}</div>`;
+            } else {
+                row.className = `${NS}-row`;
+                row.innerHTML = `
+                    <div class="${NS}-art" style="${art ? `background-image:url('${art}')` : ''}"></div>
+                    <div class="${NS}-meta"><div class="${NS}-title">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
+                        <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div></div>
+                    <div class="${NS}-genre" title="${esc(r.genre)}">${esc(r.genre)}</div>
+                    <div class="${NS}-num">${r.year || ''}</div>
+                    <div class="${NS}-num">${fmtDur(r.dur)}</div>`;
+            }
             frag.appendChild(row);
         }
         rendered += PAGE;
@@ -314,8 +341,11 @@
         list.addEventListener('click', (e) => {
             if (e.target.closest('a')) return;
             const g = e.target.closest(`.${NS}-genre`); if (g) { state.genre = g.textContent; refresh(); return; }
-            const row = e.target.closest(`.${NS}-row`); if (row) act('play', Number(row.dataset.id));
+            const row = e.target.closest(`.${NS}-row, .${NS}-tile`);
+            if (row) { const r = rows.get(Number(row.dataset.id)); if (r?.url) S().openAndPlay(new URL(r.url).pathname); }
         });
+        // Le choix natif « Afficher » (badges / liste) bascule aussi notre rendu
+        top.querySelector('.listDisplayToggle__options')?.addEventListener('click', () => setTimeout(() => { if (active()) refresh(); }, 50));
         syncMenuLabels();
         try { await buildIndex(); } catch (e) { console.warn('[SCE] bibliothèque', e); S().toast(e.message, { error: true }); return; }
         refresh();

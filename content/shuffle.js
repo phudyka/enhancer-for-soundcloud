@@ -984,6 +984,8 @@
         playIds: (ids, opts) => playIds(null, ids, opts),
         shuffleIds: async (ids, opts = {}) => playIds(null, shuffle(ids), { ...opts, summary: t(ids.length > CFG.MAX_TRACKS ? 'drawn' : 'shuffled', { n: Math.min(ids.length, CFG.MAX_TRACKS), t: ids.length }) }),
         toast: (msg, o) => Toast.show(msg, o),
+        /** Ouvre une page SoundCloud (SPA) et clique sur Lecture : lire un titre seul, une playlist… */
+        openAndPlay: (path) => navigateAndPlay(path),
         maxTracks: CFG.MAX_TRACKS,
         lang: LANG,
     });
