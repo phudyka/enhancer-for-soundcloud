@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "__MSG_extDesc__",
   "default_locale": "fr",
   "icons": {
@@ -81,6 +81,7 @@
         "content/library.js",
         "content/audio.js",
         "content/scrub.js",
+        "content/dj.js",
         "content/player-api.js",
         "content/pip.js"
       ],

@@ -1,5 +1,11 @@
 # Journal des versions
 
+## 0.10.0 — 16/09/2026
+- Loupe de timeline : zoom 2–32× à la molette, forme d'onde redessinée, placement précis.
+- Mode DJ : deux platines, crossfader, kill basses, pitch, cue, Sync, Auto-mix.
+- Accent : forme d'onde, titre en cours des listes, volume, composants de l'extension, réglages. Barre de progression lisible.
+- Panneau Audio : en-tête avec fermeture, analyse en tuiles.
+
 ## 0.9.0 — 16/09/2026
 - Fil d'actualités : masquage des reposts et des playlists/albums (réglages).
 - Shuffle+ sans répétition : chaque shuffle tire parmi les titres pas encore joués, tours successifs.
