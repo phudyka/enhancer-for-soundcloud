@@ -95,8 +95,11 @@
         document.addEventListener('mousedown', close, true);
     }
 
+    const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').speedControl !== false; } catch { return true; } };
+
     function mount() {
         if (btn?.isConnected) return;
+        if (!enabled()) { btn?.remove(); btn = null; return; }
         const volume = document.querySelector('.playControls__volume');
         if (!volume) return;
         injectStyles();
@@ -121,5 +124,6 @@
     });
 
     new MutationObserver(() => { if (!btn?.isConnected) mount(); }).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('storage', (e) => { if (e.key === 'scsp:settings') { if (!enabled()) { btn?.remove(); btn = null; } else mount(); } });
     mount();
 })();

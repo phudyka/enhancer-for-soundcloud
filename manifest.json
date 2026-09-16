@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SoundCloud Enhanced",
+  "name": "__MSG_extName__",
   "version": "0.1.0",
-  "description": "Vrai shuffle instantané, vitesse de lecture, lecteur épinglable et autres améliorations pour SoundCloud. Aucune donnée ne quitte le navigateur.",
+  "description": "__MSG_extDesc__",
   "default_locale": "fr",
   "icons": {
     "16": "icons/icon-16.png",
@@ -11,8 +11,12 @@
     "128": "icons/icon-128.png"
   },
   "minimum_chrome_version": "116",
-  "host_permissions": ["https://soundcloud.com/*"],
-  "permissions": ["storage"],
+  "host_permissions": [
+    "https://soundcloud.com/*"
+  ],
+  "permissions": [
+    "storage"
+  ],
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
@@ -31,11 +35,15 @@
   },
   "commands": {
     "shuffle": {
-      "suggested_key": { "default": "Alt+Shift+S" },
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
       "description": "Shuffle+ de la lecture en cours"
     },
     "toggle-play": {
-      "suggested_key": { "default": "Alt+Shift+P" },
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
       "description": "Lecture / pause (même onglet inactif)"
     },
     "next-track": {
@@ -47,20 +55,34 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://soundcloud.com/*"],
-      "js": ["content/media-hook.js"],
+      "matches": [
+        "https://soundcloud.com/*"
+      ],
+      "js": [
+        "content/media-hook.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://soundcloud.com/*"],
-      "js": ["content/shuffle.js", "content/speed.js", "content/player-api.js"],
+      "matches": [
+        "https://soundcloud.com/*"
+      ],
+      "js": [
+        "content/shuffle.js",
+        "content/speed.js",
+        "content/player-api.js"
+      ],
       "run_at": "document_end",
       "world": "MAIN"
     },
     {
-      "matches": ["https://soundcloud.com/*"],
-      "js": ["content/bridge.js"],
+      "matches": [
+        "https://soundcloud.com/*"
+      ],
+      "js": [
+        "content/bridge.js"
+      ],
       "run_at": "document_end"
     }
   ]
