@@ -21,12 +21,14 @@ async function load() {
     for (const k of CHECKS) $(k).checked = !!settings[k];
     $('homePage').value = settings.homePage || '';
     paintSwatches();
+    document.documentElement.style.setProperty('--accent', settings.accent || '#ff5500');
     const isBrave = !!(navigator.brave && await navigator.brave.isBrave?.());
     if (isBrave) $('ads-note').textContent = (window.SCE_T || ((x) => x))('Brave bloque déjà les publicités avec ses Shields : laissez désactivé.');
 }
 
 async function save(patch) {
     settings = { ...settings, ...patch };
+    if ('accent' in patch) document.documentElement.style.setProperty('--accent', settings.accent || '#ff5500');
     await chrome.storage.sync.set({ settings });
     if ('blockAds' in patch) chrome.runtime.sendMessage({ type: 'set-ad-blocking', enabled: !!patch.blockAds }).catch(() => {});
     $('saved').textContent = (window.SCE_T || ((x) => x))('Enregistré');

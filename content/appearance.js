@@ -46,7 +46,11 @@
         .sc-link-primary:hover, .soundTitle__title:hover, .sc-text-primary a:hover { color: ${c} !important; }
         .sc-button-like.sc-button-selected, .sc-button-like.sc-button-selected:hover, .playbackSoundBadge__like.sc-button-selected { color: ${c} !important; }
         .sc-badge, .badge-primary, .notificationIcon__badge { background-color: ${c} !important; }
-        .waveform__layer .waveform__scene canvas { filter: hue-rotate(${hue(c)}deg) saturate(.9); }
+        .waveform__scene canvas, .waveform canvas.sceneLayer { filter: hue-rotate(${hue(c)}deg); }
+        .trackItem.active .trackItem__number, .trackItem.active .trackItem__username, .trackItem.active .trackItem__trackTitle, .trackItem.active .trackItem__separator,
+        .trackItem.active .trackItem__separator.sc-text-secondary, .sound.playing .soundTitle__title, .soundTitle__title.sc-link-primary:hover, .playing .soundTitle__usernameText { color: ${c} !important; }
+        .sc-text-orange, .sc-text-special, .sc-link-primary.active { color: ${c} !important; }
+        .volume__sliderProgress, .volume__sliderHandle, .queue__itemsHeight .queueItemView.m-active .queueItemView__title { background-color: ${c} !important; }
         .sc-input:focus, .textfield__input:focus { box-shadow: inset 0 0 0 1px ${c} !important; }
     `;
     /** Rotation de teinte depuis l'orange SoundCloud (≈ 20°) vers la couleur choisie, pour les canvas de waveform. */
