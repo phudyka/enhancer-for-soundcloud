@@ -2,7 +2,7 @@
 
 Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. Tout tourne localement, aucune donnée ne quitte le navigateur.
 
-## Fonctions (v0.13.0)
+## Fonctions (v0.14.0)
 
 - **Shuffle+** : vrai shuffle instantané des Likes, playlists et sets Discover via l'API interne, playlist tampon privée, bouton du lecteur détourné. **Sans répétition** : chaque shuffle tire parmi les titres pas encore joués, tour après tour. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
 - **Audio** : le bouton haut-parleur ouvre un panneau unique. Volume linéaire 0–100 % avec sourdine (molette sur le bouton), vitesse 0,1× à 3× sur un curseur logarithmique avec aimant sur 1×, boutons ±0,01, flèches et saisie directe de la valeur, conservation de la hauteur, bass boost jusqu'à +12 dB, réverbération, presets Slowed + Reverb, Nightcore, Bass boost. **Analyse en direct : BPM et tonalité avec code Camelot**, affinés sur les 30 premières secondes, corrigés de la vitesse, mémorisés par titre. Traitement Web Audio sur le flux SoundCloud. Raccourcis Maj+, Maj+. Maj+0.

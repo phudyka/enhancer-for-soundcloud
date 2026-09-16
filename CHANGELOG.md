@@ -1,6 +1,6 @@
 # Journal des versions
 
-## En cours
+## 0.14.0 — 16/09/2026
 - Sampler : points A/B au clavier ([ et ]), boucle (\), réglage fin, boucles nommées mémorisées par titre dans le panneau Audio, repères sur la barre du lecteur, liste copiable. Sans extraction audio.
 - Le mode DJ (deux platines) est retiré, remplacé par des **transitions automatiques** : fondu croisé avec le titre suivant de la file (6 à 24 s), basses échangées à mi-parcours, calage du lecteur natif à la fin. Option dans les réglages, désactivée par défaut.
 - Personnalisation libre : depuis les réglages, « Masquer des éléments à la souris » ouvre SoundCloud en mode personnalisation ; survolez, cliquez, l'élément est masqué durablement (sections de Découvrir, modules, onglets, boutons…). Liste des masquages dans les réglages avec réaffichage individuel ou total.
