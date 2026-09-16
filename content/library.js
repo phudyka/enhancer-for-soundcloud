@@ -130,8 +130,12 @@
             font: 500 13px ${FONT}; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; position: relative; }
         .${NS}-menu > button::after { content: ''; position: absolute; right: 11px; top: 13px; border: 4px solid transparent; border-top: 5px solid #ccc; }
         .${NS}-menu > button:hover { background: #3a3a3a; }
-        .${NS}-menu > button.m-on { color: #f50; }
-        .${NS}-menu > button.m-on::after { border-top-color: #f50; }
+        .${NS}-menu > button.m-on { color: #f50; padding-right: 30px; }
+        .${NS}-menu > button.m-on::after { display: none; }
+        /* Filtre actif : la flèche laisse place à une croix qui retire le filtre d'un clic */
+        .${NS}-clear { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: #f50; cursor: pointer; display: none; font: 16px/24px ${FONT}; text-align: center; padding: 0; }
+        .${NS}-clear:hover { background: rgba(255,85,0,.18); color: #fff; }
+        .${NS}-menu.m-on .${NS}-clear { display: block; }
         .${NS}-list-menu { position: absolute; top: 36px; left: 0; min-width: 180px; max-height: 320px; overflow: auto; background: #333; border-radius: 2px;
             box-shadow: 0 2px 8px rgba(0,0,0,.45); padding: 4px 0; z-index: 1000; display: none; font: 13px ${FONT}; }
         .${NS}-menu.m-open .${NS}-list-menu { display: block; }
@@ -177,11 +181,12 @@
     function injectStyles() { if ($(`#${NS}-styles`)) return; const s = document.createElement('style'); s.id = `${NS}-styles`; s.textContent = CSS; document.head.appendChild(s); }
 
     /** Menu déroulant compact, style menus SoundCloud. items: [{v, label, count, on}] */
-    function menu(className, render) {
+    function menu(className, render, onClear) {
         const wrap = document.createElement('div'); wrap.className = `${NS}-menu ${className}`;
-        wrap.innerHTML = `<button type="button"></button><div class="${NS}-list-menu"></div>`;
+        wrap.innerHTML = `<button type="button"></button><button type="button" class="${NS}-clear" title="${t('reset')}">×</button><div class="${NS}-list-menu"></div>`;
         const btn = wrap.firstElementChild, box = wrap.lastElementChild;
         btn.addEventListener('click', (e) => { e.stopPropagation(); const open = !wrap.classList.contains('m-open'); closeMenus(); if (open) { render(box); wrap.classList.add('m-open'); } });
+        wrap.querySelector(`.${NS}-clear`).addEventListener('click', (e) => { e.stopPropagation(); closeMenus(); onClear(); refresh(); });
         return wrap;
     }
     const closeMenus = () => document.querySelectorAll(`.${NS}-menu.m-open`).forEach((m) => m.classList.remove('m-open'));
@@ -209,10 +214,11 @@
     function syncMenuLabels() {
         const sb = sortMenu.firstElementChild;
         sb.textContent = state.sort === 'added' && state.dir === 'desc' ? t('added') : `${t(state.sort)} ${state.dir === 'asc' ? '↑' : '↓'}`;
-        sb.classList.toggle('m-on', state.sort !== 'added' || state.dir !== 'desc');
+        const sortOn = state.sort !== 'added' || state.dir !== 'desc';
+        sb.classList.toggle('m-on', sortOn); sortMenu.classList.toggle('m-on', sortOn);
         const gb = genreMenu.firstElementChild;
         gb.textContent = state.genre || t('genre');
-        gb.classList.toggle('m-on', !!state.genre);
+        gb.classList.toggle('m-on', !!state.genre); genreMenu.classList.toggle('m-on', !!state.genre);
     }
 
     function buildSearch() {
@@ -325,8 +331,8 @@
         // Rangée native : [titre] [Afficher ▦ ☰ 🔀] [Tri ▾] [Genre ▾] [Filtre → notre recherche]
         const filters = top.querySelector('.collectionSection__filters');
         nativeFilter = filters?.querySelector('input');
-        sortMenu = menu('m-sort', renderSortMenu);
-        genreMenu = menu('m-genre', renderGenreMenu);
+        sortMenu = menu('m-sort', renderSortMenu, () => { state.sort = 'added'; state.dir = 'desc'; });
+        genreMenu = menu('m-genre', renderGenreMenu, () => { state.genre = ''; });
         search = buildSearch();
         if (filters) {
             filters.before(sortMenu, genreMenu);
@@ -347,6 +353,11 @@
         // Le choix natif « Afficher » (badges / liste) bascule aussi notre rendu
         top.querySelector('.listDisplayToggle__options')?.addEventListener('click', () => setTimeout(() => { if (active()) refresh(); }, 50));
         syncMenuLabels();
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || !mounted || !active()) return;
+            const el = document.activeElement; if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+            state.q = ''; state.genre = ''; state.sort = 'added'; state.dir = 'desc'; if (search) search.value = ''; refresh();
+        });
         try { await buildIndex(); } catch (e) { console.warn('[SCE] bibliothèque', e); S().toast(e.message, { error: true }); return; }
         refresh();
     }
