@@ -5,7 +5,7 @@
  * isolé), qui les relaie au popup, au service worker (raccourcis globaux) et
  * au futur lecteur épinglable (Document Picture-in-Picture).
  *
- *   ← { sce: 'command', command: 'toggle-play' | 'next-track' | 'prev-track' | 'seek', value? }
+ *   ← { sce: 'command', command: 'toggle-play' | 'next-track' | 'prev-track' | 'repeat' | 'seek' | 'speed', value? }
  *   → { sce: 'state', playing, title, artist, artwork, position, duration, url }
  */
 (() => {
@@ -14,6 +14,7 @@
         play:    '.playControl',
         next:    '.skipControl__next',
         prev:    '.skipControl__prev',
+        repeat:  '.repeatControl',
         title:   '.playbackSoundBadge__titleLink',
         artist:  '.playbackSoundBadge__lightLink',
         artwork: '.playbackSoundBadge__avatar .image__full, .playbackSoundBadge__avatar span[style*="background-image"]',
@@ -40,6 +41,7 @@
             position: media ? media.currentTime : Number(prog?.getAttribute('aria-valuenow') || 0),
             duration: media ? media.duration    : Number(prog?.getAttribute('aria-valuemax') || 0),
             rate:     media ? media.playbackRate : 1,
+            repeat:   $(SEL.repeat)?.classList.contains('m-one') ? 'one' : $(SEL.repeat)?.classList.contains('m-all') ? 'all' : 'off',
         };
     }
 
@@ -49,6 +51,8 @@
             case 'next-track':  $(SEL.next)?.click(); break;
             case 'prev-track':  $(SEL.prev)?.click(); break;
             case 'seek':        if (window.__sceMedia && Number.isFinite(value)) window.__sceMedia.currentTime = value; break;
+            case 'repeat':      $(SEL.repeat)?.click(); break;
+            case 'speed':       window.dispatchEvent(new CustomEvent('sce:speed', { detail: { rate: value } })); break;
             case 'get-state':   break;
         }
         window.postMessage(state(), location.origin);

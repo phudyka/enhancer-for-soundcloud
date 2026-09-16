@@ -108,6 +108,11 @@
         del(k)           { try { localStorage.removeItem(`${NS}:${k}`); } catch {} },
     };
 
+    /** Adresse de playlist sans le jeton secret « /s-xxxx » ni barre finale, pour comparer. */
+    const normPath = (p) => (p || '').replace(/\/s-[A-Za-z0-9]+\/?$/, '').replace(/\/+$/, '');
+    /** La page (ou l'adresse donnée) est-elle la playlist tampon ? */
+    const isBufferPath = (p = location.pathname) => { const b = store.get('buffer_path'); return !!b && normPath(p) === normPath(b); };
+
     function detectPageType(pathname = location.pathname) {
         const p = pathname.replace(/\/+$/, '');
         if (p === '/you/likes' || p.startsWith('/you/likes/')) return 'Likes';
@@ -597,7 +602,7 @@
             this.count = btn.querySelector(`.${NS}-count`);
             this.resetTimer = null;
             this.busy = false;
-            this.isBufferPage = pageType === 'Playlist' && store.get('buffer_path') === location.pathname;
+            this.isBufferPage = pageType === 'Playlist' && isBufferPath();
             this.setTip();
         }
 
@@ -677,6 +682,8 @@
         const me = await API.call('/me');
         const opts = { force, onProgress: progress, meId: me.id };
         let source = await pickSource(me, opts);
+        const isBufferSource = (src) => !!src && (src.key === `playlist:${store.get('buffer_id')}` || (src.name || '').startsWith(CFG.BUFFER_TITLE));
+        if (isBufferSource(source)) source = await sourceFromLast(me, opts); // jamais la playlist tampon comme source
         if (!source) source = await sourceFromLast(me, opts);
         if (!source) source = await resolveSource('Likes', opts); // dernier recours : tes Likes
 
@@ -722,7 +729,7 @@
             const inCtx = new URL(href, location.origin).searchParams.get('in');
             if (inCtx) {
                 const path = '/' + inCtx.replace(/^\/+/, '').replace(/\/+$/, '');
-                if (path !== store.get('buffer_path')) {           // pas la playlist tampon elle-même
+                if (!isBufferPath(path)) {                         // pas la playlist tampon elle-même
                     const type = detectPageType(path);
                     if (type === 'Playlist' || type === 'Discover') {
                         try { return await resolveSource(type, opts, location.origin + path); }
@@ -731,7 +738,7 @@
                 }
             }
             const pageType = detectPageType();
-            if (pageType && location.pathname !== store.get('buffer_path')) return resolveSource(pageType, opts);
+            if (pageType && !isBufferPath()) return resolveSource(pageType, opts);
             return null; // → dernière source, puis Likes
         }
 
@@ -879,7 +886,7 @@
         unmount();
         if (!pageType) return;
         // Pas de bouton sur la playlist tampon elle-même : on y arrive déjà mélangé.
-        if (pageType === 'Playlist' && store.get('buffer_path') === location.pathname) return;
+        if (pageType === 'Playlist' && isBufferPath()) return;
 
         const seq = ++mountSeq;
         let anchor;

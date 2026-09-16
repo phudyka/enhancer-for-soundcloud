@@ -124,6 +124,9 @@
         btn.classList.toggle('m-active', Math.abs(cfg.rate - 1) > 1e-6);
     }
 
+    // Commande externe (popup / lecteur épinglable) : window.dispatchEvent(new CustomEvent('sce:speed', { detail: { rate } }))
+    window.addEventListener('sce:speed', (e) => { const r = Number(e.detail?.rate); if (Number.isFinite(r)) setRate(r); });
+
     // Raccourcis : Maj+, / Maj+. (± 0,25×), Maj+0 = 1×
     document.addEventListener('keydown', (e) => {
         const el = document.activeElement;

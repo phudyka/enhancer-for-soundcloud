@@ -8,6 +8,13 @@
 
 const HISTORY_MAX = 50;
 
+/** Icône de la barre d'outils : point orange pendant la lecture, rien sinon. */
+function setBadge(playing) {
+    chrome.action.setBadgeText({ text: playing ? '●' : '' });
+    chrome.action.setBadgeBackgroundColor({ color: '#1a1a1a' });
+    chrome.action.setBadgeTextColor?.({ color: '#ff5500' });
+}
+
 /** Onglet SoundCloud cible : celui qui joue, sinon le dernier utilisé. */
 async function soundcloudTab() {
     const tabs = await chrome.tabs.query({ url: 'https://soundcloud.com/*' });
@@ -40,14 +47,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
             case 'player-state':
                 await chrome.storage.session.set({ playerState: { ...msg.state, tabId: sender.tab?.id, at: Date.now() } });
+                setBadge(msg.state.playing);
                 sendResponse({ ok: true });
                 break;
+            case 'popup-focus-tab': {
+                const tab = await soundcloudTab();
+                if (tab) { await chrome.tabs.update(tab.id, { active: true }); await chrome.windows.update(tab.windowId, { focused: true }); }
+                sendResponse({ ok: !!tab });
+                break;
+            }
             case 'popup-command':      // depuis le popup : relayer à la page
                 sendResponse(await sendToPage({ type: 'command', command: msg.command, value: msg.value, force: msg.force }));
                 break;
-            case 'popup-get-state':
-                sendResponse(await sendToPage({ type: 'get-state' }));
+            case 'popup-get-state': {
+                const tab = await soundcloudTab();
+                if (!tab) { setBadge(false); sendResponse({ ok: false, reason: 'no-tab' }); break; }
+                try { const st = await chrome.tabs.sendMessage(tab.id, { type: 'get-state' }); sendResponse(st ? { ...st, tabId: tab.id } : { ok: false }); }
+                catch (e) { sendResponse({ ok: false, reason: String(e) }); }
                 break;
+            }
             default:
                 sendResponse({ ok: false });
         }
