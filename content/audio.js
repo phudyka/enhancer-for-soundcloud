@@ -76,10 +76,14 @@
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500;
         const conv = ctx.createConvolver(); conv.buffer = (graph.conv && graph.ctx === ctx) ? graph.conv.buffer : impulse(ctx);
         const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
-        input.connect(bass); bass.connect(dry); dry.connect(output);
-        bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(output);
+        // Étage DJ : égaliseur bas (kill) + gain master de la platine A, avant la sortie
+        const eqLow = ctx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 200; eqLow.gain.value = 0;
+        const master = ctx.createGain();
+        input.connect(bass); bass.connect(dry); dry.connect(eqLow);
+        bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(eqLow);
+        eqLow.connect(master); master.connect(output);
         input.connect(an);
-        return { bass, dry, wet, conv, an };
+        return { bass, dry, wet, conv, an, eqLow, master };
     }
     function ensureGraph(el) {
         if (!el) return false;
@@ -207,6 +211,12 @@
         };
     })();
 
+    /** Exposé au mode DJ : contexte, gain master et égaliseur bas de la platine A, analyse courante. */
+    window.__sceAudio = Object.freeze({
+        get ctx() { return graph.ctx; }, get master() { return graph.master; }, get eqLow() { return graph.eqLow; },
+        get analysis() { return Analysis.result; }, ensure: () => ensureGraph(media), get media() { return media; },
+        get rate() { return cfg.rate; }, setRate: (r) => set({ rate: clampRate(r) }),
+    });
     if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { media = el; apply(el); });
     if (typeof window.__sceOnAudioTap === 'function') window.__sceOnAudioTap((tap) => { if (media === tap.el || !media) { media = tap.el; apply(tap.el); } });
     window.addEventListener('sce:speed', (e) => { const r = Number(e.detail?.rate); if (Number.isFinite(r)) set({ rate: clampRate(r) }); });

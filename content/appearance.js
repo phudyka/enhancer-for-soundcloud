@@ -38,7 +38,8 @@
     const accentCSS = (c) => `
         .sc-button-play, .sc-button-primary, .playButton.sc-button-play, .heroPlayButton .sc-button-play { background-color: ${c} !important; border-color: ${c} !important; }
         .sc-button-play:hover, .sc-button-primary:hover { filter: brightness(1.08); }
-        .playbackTimeline__progressBackground, .playbackTimeline__progressBar, .playbackTimeline__progressHandle { background-color: ${c} !important; }
+        .playbackTimeline__progressBar, .playbackTimeline__progressHandle { background-color: ${c} !important; }
+        .playbackTimeline__progressBackground { background-color: #4a4a4a !important; }
         .playbackTimeline__timePassed, .playbackTimeline__timePassed span { color: ${c} !important; }
         .sc-button-selected, .sc-button-selected:hover, .shuffleControl.m-shuffling, .repeatControl.m-one, .repeatControl.m-all { color: ${c} !important; }
         .tabs__tab.active, .g-tabs-link.active, .g-nav-item.active > a, .header__navItem.active { border-color: ${c} !important; color: #fff; }
