@@ -6,6 +6,8 @@ const ICON_PAUSE = '<svg viewBox="0 0 16 16"><path d="M3.5 2h3v12h-3zM9.5 2h3v12
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
 let state = null, tabId = null, timer = null;
+const WINDOWED = new URLSearchParams(location.search).has('window'); // repli PiP : fenêtre autonome, ne se ferme pas seule
+const closeIfPopup = () => { if (!WINDOWED) window.close(); };
 
 const fmtTime = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const fmtRate = (r) => `${parseFloat((r || 1).toFixed(2))}×`;
@@ -45,8 +47,8 @@ async function command(cmd, extra = {}) {
 
 document.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', async (e) => {
     const cmd = b.dataset.cmd;
-    if (cmd === 'shuffle') { b.classList.add('busy'); await command('shuffle', { force: e.shiftKey }); setTimeout(() => window.close(), 400); return; }
-    if (cmd === 'pip') { await command('pip'); window.close(); return; }
+    if (cmd === 'shuffle') { b.classList.add('busy'); await command('shuffle', { force: e.shiftKey }); setTimeout(() => { b.classList.remove('busy'); closeIfPopup(); }, 400); return; }
+    if (cmd === 'pip') { await command('pip'); closeIfPopup(); return; }
     command(cmd);
 }));
 
@@ -65,7 +67,7 @@ $('#speed').addEventListener('click', (e) => {
     command('speed', { value: SPEEDS[i] });
 });
 
-const focusTab = async () => { const r = await send({ type: 'popup-focus-tab' }); if (r?.ok) window.close(); };
+const focusTab = async () => { const r = await send({ type: 'popup-focus-tab' }); if (r?.ok) closeIfPopup(); };
 $('#open-tab').addEventListener('click', focusTab);
 $('#title').addEventListener('click', focusTab);
 $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());

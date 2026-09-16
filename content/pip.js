@@ -140,7 +140,7 @@
     }
 
     async function open() {
-        if (!supported) return;
+        if (!supported) { window.postMessage({ scsp: 'event', type: 'pip-fallback' }, location.origin); return; } // Firefox : fenêtre popup via le service worker
         if (pipWin && !pipWin.closed) { pipWin.focus(); return; }
         pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 380 });
         const d = pipWin.document;
@@ -213,7 +213,7 @@
         .${NS}-pin.m-on { color: #f50; }
     `;
     function mount() {
-        if (!supported || pinBtn?.isConnected) return;
+        if (pinBtn?.isConnected) return;
         const volume = $(SEL.volume); if (!volume) return;
         if (!document.getElementById(`${NS}-bar-styles`)) { const st = document.createElement('style'); st.id = `${NS}-bar-styles`; st.textContent = BAR_CSS; document.head.appendChild(st); }
         pinBtn = document.createElement('button');

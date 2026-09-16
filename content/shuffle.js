@@ -182,6 +182,7 @@
             playerTip:  'True shuffle of what is playing  (Alt+click = native shuffle)',
             likesName:  'Likes',
             userLikesName: 'Likes · {u}',
+            round: 'round {n}', remaining: '{n} left',
         },
         fr: {
             tip:        'Shuffle réel de toute la liste  (Maj+{k} · Maj+clic = resynchro des likes)',
@@ -208,6 +209,7 @@
             playerTip:  'Vrai shuffle de la lecture en cours  (Alt+clic = shuffle natif)',
             likesName:  'Likes',
             userLikesName: 'Likes · {u}',
+            round: 'tour {n}', remaining: '{n} restants',
         },
         de: {
             tip:        'Echtes Shuffle der ganzen Liste  (Umschalt+{k} · Umschalt+Klick = Likes neu laden)',
@@ -694,10 +696,27 @@
         if (ids.length < 2) throw new Error(t('tooFew'));
         store.set('last_source', { key: source.key, label: source.label, name: source.name });
 
-        const picked = shuffle(ids).slice(0, CFG.MAX_TRACKS);
-        const summary = picked.length < ids.length
+        // Tours sans répétition : on ne retire que des titres pas encore joués dans le tour courant ;
+        // quand la bibliothèque est épuisée, un nouveau tour commence.
+        let picked, roundInfo = '';
+        if (settings().noRepeat !== false && ids.length > CFG.MAX_TRACKS) {
+            const rk = `round:${source.key}`;
+            const round = store.get(rk) || { drawn: [], n: 1 };
+            const drawnSet = new Set(round.drawn);
+            let pool = ids.filter((id) => !drawnSet.has(id));
+            if (!pool.length) { round.drawn = []; round.n += 1; drawnSet.clear(); pool = ids; }
+            picked = shuffle(pool).slice(0, CFG.MAX_TRACKS);
+            round.drawn = [...drawnSet, ...picked].filter((id) => ids.includes(id));
+            if (round.drawn.length >= ids.length) { round.drawn = []; round.n += 1; }
+            store.set(rk, round);
+            const remaining = ids.length - (round.drawn.length || 0);
+            roundInfo = ` · ${t('round', { n: round.drawn.length ? round.n : round.n - 1 })}${round.drawn.length ? ` · ${t('remaining', { n: remaining })}` : ''}`;
+        } else {
+            picked = shuffle(ids).slice(0, CFG.MAX_TRACKS);
+        }
+        const summary = (picked.length < ids.length
             ? t('drawn', { n: picked.length, t: ids.length })
-            : t('shuffled', { n: picked.length });
+            : t('shuffled', { n: picked.length })) + roundInfo;
         await playIds(me, picked, { name: source.name, label: source.label, summary, onDone });
     }
 
@@ -961,7 +980,7 @@
     // ═══════════════════════════════════════════════════════════════
     //  RÉGLAGES (synchronisés par le pont) + COMMANDES EXTERNES
     // ═══════════════════════════════════════════════════════════════
-    const settings = () => ({ hijackPlayerShuffle: true, ...(store.get('settings') || {}) });
+    const settings = () => ({ hijackPlayerShuffle: true, noRepeat: true, ...(store.get('settings') || {}) });
 
     /** Déclenche un shuffle depuis l'extérieur (popup, raccourci global). */
     function triggerShuffle(force = false) {

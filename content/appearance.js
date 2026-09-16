@@ -25,6 +25,9 @@
         hideRelated:       ['.l-sidebar-right .sidebarModule:has(.relatedSoundsModule)', '.l-sidebar-right .sidebarModule:has(.soundInSetsModule)', '.l-sidebar-right .sidebarModule:has(.creatorRecommendations)', '.trackStationsModule'],
         hideFooter:        ['.sidebarFooter', '.l-sidebar-right .sidebarModule:has(.sidebarFooter)', '.footer'],
         hidePromoted:      ['.soundList__item:has(.sound__promoted)', '.audibleTile:has(.audibleTile__promoted)', '.promotedIndicator'],
+        // Fil d'actualités : les items portent .streamContext ; un repost a un pictogramme dans la ligne de contexte
+        hideFeedReposts:   ['.soundList__item:has(.sound.streamContext .soundContext__line .sc-ministats)'],
+        hideFeedPlaylists: ['.soundList__item:has(.sound.streamContext.playlist)'],
         // Titres Go+ (extraits de 30 s sans abonnement) : SoundCloud pose .sc-hidden sur l'indicateur quand le titre n'est pas Go+
         hideGoPlus:        ['.searchList__item:has([class*="tierIndicator"]:not(.sc-hidden))', '.soundList__item:has([class*="tierIndicator"]:not(.sc-hidden))', '.audibleTile:has([class*="tierIndicator"]:not(.sc-hidden))', '.trackList__item:has([class*="tierIndicator"]:not(.sc-hidden))', '.badgeList__item:has([class*="tierIndicator"]:not(.sc-hidden))'],
     };

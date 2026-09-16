@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "__MSG_extDesc__",
   "default_locale": "fr",
   "icons": {
@@ -20,6 +20,9 @@
   ],
   "background": {
     "service_worker": "background/service-worker.js",
+    "scripts": [
+      "background/service-worker.js"
+    ],
     "type": "module"
   },
   "action": {
@@ -101,5 +104,13 @@
         "path": "rules/ads.json"
       }
     ]
+  },
+  "author": "phudyka",
+  "homepage_url": "https://github.com/phudyka/enhancer-for-soundcloud",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "enhancer-for-soundcloud@phudyka",
+      "strict_min_version": "128.0"
+    }
   }
 }

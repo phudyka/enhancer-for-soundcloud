@@ -37,6 +37,7 @@
   <legend>Lecture</legend>
   <label><input type="checkbox" id="hijackPlayerShuffle"><span>Le bouton « Aléatoire » du lecteur lance un vrai shuffle<small>Alt+clic conserve le shuffle natif de SoundCloud.</small></span></label>
   <label><input type="checkbox" id="speedControl"><span>Panneau Audio à gauche du volume : vitesse, bass boost, réverb, presets<small>Slowed + Reverb, Nightcore, Bass boost. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
+  <label><input type="checkbox" id="noRepeat" data-i18n="opt_noRepeat"><span>Shuffle+ sans répétition<small>Chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque, puis nouveau tour.</small></span></label>
   <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
 </fieldset>
 
@@ -53,6 +54,8 @@
   <label><input type="checkbox" id="hideComments"><span>Commentaires sous les titres</span></label>
   <label><input type="checkbox" id="hideRelated"><span>Modules latéraux : titres similaires, dans les playlists, artistes à suivre</span></label>
   <label><input type="checkbox" id="hideFooter"><span>Liens de pied de page dans la colonne de droite</span></label>
+  <label><input type="checkbox" id="hideFeedReposts"><span>Reposts dans le fil d'actualités<small>Ne garder que les nouveautés des artistes suivis.</small></span></label>
+  <label><input type="checkbox" id="hideFeedPlaylists"><span>Playlists et albums dans le fil d'actualités</span></label>
 </fieldset>
 
 <fieldset>
@@ -86,6 +89,7 @@
 
 <div class="saved" id="saved"></div>
 <p class="note">Enhancer for SoundCloud™ est un projet indépendant, sans lien avec SoundCloud. SoundCloud est une marque de SoundCloud Global Limited &amp; Co. KG.</p>
+<script src="../ui/i18n.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

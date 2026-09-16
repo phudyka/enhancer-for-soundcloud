@@ -1,12 +1,10 @@
 /*
  * Enhancer for SoundCloud™ — service worker
  *
- *   - raccourcis globaux (chrome.commands) → onglet SoundCloud actif ou le plus récent
- *   - historique des shuffles (chrome.storage.local, 50 entrées)
- *   - dernier état connu du lecteur, pour le popup et le futur lecteur épinglable
+ *   - raccourcis globaux (chrome.commands) → onglet SoundCloud qui joue, sinon le plus récent
+ *   - badge de lecture sur l'icône, dernier état connu du lecteur (popup)
+ *   - blocage optionnel des pubs (declarativeNetRequest), repli PiP en fenêtre popup
  */
-
-const HISTORY_MAX = 50;
 
 /** Icône de la barre d'outils : point orange pendant la lecture, rien sinon. */
 function setBadge(playing) {
@@ -37,10 +35,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
         switch (msg?.type) {
             case 'page-event': {
-                if (msg.event.type === 'shuffled') {
-                    const { history = [] } = await chrome.storage.local.get('history');
-                    history.unshift({ source: msg.event.source, count: msg.event.count, total: msg.event.total, at: msg.event.at });
-                    await chrome.storage.local.set({ history: history.slice(0, HISTORY_MAX) });
+                if (msg.event.type === 'pip-fallback') {          // navigateur sans Document PiP : le lecteur popup dans une petite fenêtre
+                    await chrome.windows.create({ url: chrome.runtime.getURL('popup/popup.html?window=1'), type: 'popup', width: 324, height: 560 });
                 }
                 sendResponse({ ok: true });
                 break;

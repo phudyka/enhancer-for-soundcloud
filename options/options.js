@@ -1,7 +1,7 @@
 const DEFAULTS = {
-    hijackPlayerShuffle: true, speedControl: true, library: true,
+    hijackPlayerShuffle: true, speedControl: true, library: true, noRepeat: true,
     hideUpsell: false, hidePromoted: false, hideUpload: false, hideArtistStudio: false, hideNotifications: false, hideMessages: false,
-    hideComments: false, hideRelated: false, hideFooter: false, hideGoPlus: false, wideSearch: false,
+    hideComments: false, hideRelated: false, hideFooter: false, hideGoPlus: false, wideSearch: false, hideFeedReposts: false, hideFeedPlaylists: false,
     accent: '', homePage: '', blockAds: false,
 };
 const CHECKS = Object.keys(DEFAULTS).filter((k) => typeof DEFAULTS[k] === 'boolean');
@@ -21,14 +21,14 @@ async function load() {
     $('homePage').value = settings.homePage || '';
     paintSwatches();
     const isBrave = !!(navigator.brave && await navigator.brave.isBrave?.());
-    if (isBrave) $('ads-note').textContent = 'Brave bloque déjà les publicités avec ses Shields : laissez désactivé.';
+    if (isBrave) $('ads-note').textContent = (window.SCE_T || ((x) => x))('Brave bloque déjà les publicités avec ses Shields : laissez désactivé.');
 }
 
 async function save(patch) {
     settings = { ...settings, ...patch };
     await chrome.storage.sync.set({ settings });
     if ('blockAds' in patch) chrome.runtime.sendMessage({ type: 'set-ad-blocking', enabled: !!patch.blockAds }).catch(() => {});
-    $('saved').textContent = 'Enregistré';
+    $('saved').textContent = (window.SCE_T || ((x) => x))('Enregistré');
     setTimeout(() => { $('saved').textContent = ''; }, 1500);
 }
 
