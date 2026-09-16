@@ -71,17 +71,7 @@ $('#title').addEventListener('click', focusTab);
 $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
 
-async function history() {
-    const { history = [] } = await chrome.storage.local.get('history');
-    if (!history.length) return;
-    $('#history').hidden = false;
-    $('#history-list').innerHTML = history.slice(0, 4).map((h) => {
-        const d = new Date(h.at).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-        return `<li><span>${esc(h.source)}</span><span>${h.count}${h.total > h.count ? ` / ${h.total}` : ''} · ${d}</span></li>`;
-    }).join('');
-}
 
 poll();
-history();
 timer = setInterval(poll, 500);
 window.addEventListener('unload', () => clearInterval(timer));
