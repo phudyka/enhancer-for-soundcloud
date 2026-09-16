@@ -60,7 +60,8 @@
     const NS = 'scsp';
     const CFG = Object.freeze({
         BUFFER_TITLE:     '🔀 Shuffle+',
-        BUFFER_DESC:      'Playlist tampon générée par Shuffle+ (script Tampermonkey). Recréée à chaque shuffle, ne pas modifier à la main.',
+        BUFFER_DESC:      'Playlist tampon générée par Shuffle+. Recréée à chaque shuffle, ne pas modifier à la main.',
+        BUFFER_TAGS:      'shuffle',    // évite l'invite « Ajoutez des tags » de SoundCloud sur la playlist tampon
         MAX_TRACKS:       500,          // limite SoundCloud par playlist
         PAGE_SIZE:        200,
         CACHE_TTL_MS:     7 * 864e5,    // re-synchro complète des likes après 7 jours
@@ -449,7 +450,8 @@
     // ═══════════════════════════════════════════════════════════════
     /** Titre : « 🔀 Shuffle+ · <source> ». */
     function bufferTitle(sourceName) {
-        const name = (sourceName || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        const prefix = new RegExp(`^(?:${CFG.BUFFER_TITLE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*·\\s*)+`);
+        const name = (sourceName || '').replace(/\s+/g, ' ').trim().replace(prefix, '').slice(0, 60);
         return `${CFG.BUFFER_TITLE}${name ? ` · ${name}` : ''}`;
     }
 
@@ -457,7 +459,7 @@
     const bufferPermalink = () => `shuffle-plus-${Math.random().toString(36).slice(2, 8)}`;
 
     async function createBuffer(ids, sourceName) {
-        const base = { title: bufferTitle(sourceName), permalink: bufferPermalink(), sharing: 'private', description: CFG.BUFFER_DESC };
+        const base = { title: bufferTitle(sourceName), permalink: bufferPermalink(), sharing: 'private', description: CFG.BUFFER_DESC, tag_list: CFG.BUFFER_TAGS };
         let pl;
         try {
             pl = await API.call('/playlists', { method: 'POST', body: { playlist: { ...base, tracks: ids } } });
@@ -906,6 +908,20 @@
         log('bouton monté :', pageType);
     }
 
+    /** Sur la playlist tampon, masque l'invite « Voici quelques tags pour vous aider à démarrer ». */
+    function hideTagPrompt() {
+        if (!isBufferPath()) return;
+        const re = /tags pour vous aider|tags to help|tags to get you started|Tags hinzu|etiquetas para|tag per aiut|tags para ajud/i;
+        for (const el of document.querySelectorAll('h2, h3, h4, p, strong')) {
+            if (el.children.length || !re.test(el.textContent) || el.dataset.scspHidden) continue;
+            // remonte jusqu'au bloc d'invite (classe contenant « tag »), au plus 6 niveaux
+            let box = el, n = 0;
+            while (box.parentElement && n < 6 && !/tag/i.test(box.className)) { box = box.parentElement; n++; }
+            (n < 6 ? box : el.parentElement?.parentElement || el).style.display = 'none';
+            el.dataset.scspHidden = '1';
+        }
+    }
+
     function setupRouter() {
         let timer = null;
         const schedule = () => { clearTimeout(timer); timer = setTimeout(mount, CFG.MOUNT_DEBOUNCE_MS); };
@@ -915,6 +931,7 @@
         }
         window.addEventListener('popstate', schedule);
         new MutationObserver(() => {
+            hideTagPrompt();
             if (!current || !current.ctrl.btn.isConnected) schedule();
             PlayerShuffle.ensure();
         }).observe(document.body, { childList: true, subtree: true });
