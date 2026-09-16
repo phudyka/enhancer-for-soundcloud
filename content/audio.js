@@ -104,7 +104,6 @@
             return true;
         } catch (e) { console.warn('[SCE] audio graph', e); return false; }
     }
-    if (typeof window.__sceOnAudioTap === 'function') window.__sceOnAudioTap((tap) => { if (media === tap.el || !media) { media = tap.el; apply(tap.el); } });
 
     function apply(el = media) {
         if (!el) return;
@@ -209,6 +208,7 @@
     })();
 
     if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { media = el; apply(el); });
+    if (typeof window.__sceOnAudioTap === 'function') window.__sceOnAudioTap((tap) => { if (media === tap.el || !media) { media = tap.el; apply(tap.el); } });
     window.addEventListener('sce:speed', (e) => { const r = Number(e.detail?.rate); if (Number.isFinite(r)) set({ rate: clampRate(r) }); });
 
     // ── UI ────────────────────────────────────────────────────────
