@@ -451,6 +451,6 @@
     for (const fn of ['pushState', 'replaceState']) { const o = history[fn]; history[fn] = function (...a) { const r = o.apply(this, a); schedule(); return r; }; }
     window.addEventListener('popstate', schedule);
     const onLikes = () => location.pathname.startsWith('/you/likes');
-    new MutationObserver(() => { if (mounted ? !sortMenu?.isConnected : onLikes()) schedule(); }).observe(document.body, { childList: true, subtree: true });
+    (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => { if (mounted ? !sortMenu?.isConnected : onLikes()) schedule(); });
     schedule();
 })();

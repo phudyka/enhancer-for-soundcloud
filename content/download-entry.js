@@ -81,6 +81,6 @@
     `;
     (document.head || document.documentElement).append(style);
     let timer;
-    new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(mount, 120); }).observe(document.documentElement, { childList: true, subtree: true });
+    (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => { clearTimeout(timer); timer = setTimeout(mount, 120); });
     mount();
 })();

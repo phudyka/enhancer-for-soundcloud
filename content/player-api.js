@@ -239,12 +239,15 @@
     // sont observées avec leurs attributs (le reste de la page en change en permanence).
     let last = '', queued = false, bar = null;
     const publish = () => {
+        if (!queued) return;
         queued = false;
         const s = state();
         const sig = `${s.playing}|${s.title}|${s.url}`;
         if (sig !== last) { last = sig; window.postMessage(s, location.origin); }
     };
-    const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(publish); } };
+    // requestAnimationFrame ne tourne pas onglet masqué : l'état (titre suivant, pause) doit quand même partir vers l'historique et le panneau.
+    // Le minuteur prend le relais de l'image suivante, qui n'arrive jamais dans un onglet masqué.
+    const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(publish); setTimeout(publish, 250); } };
     const barObserver = new MutationObserver(schedule);
     function attach() {
         const el = document.querySelector('.playControls');

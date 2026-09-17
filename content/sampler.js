@@ -155,6 +155,6 @@
     });
     window.addEventListener('sce:audio-panel', (e) => { if (enabled() && e.detail?.panel) build(e.detail.panel); });
     if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', resetForTrack); el.addEventListener('loadedmetadata', () => { resetForTrack(); render(); }); });
-    new MutationObserver(() => { if ((Number.isFinite(loop.a) || Number.isFinite(loop.b)) && !document.querySelector(`.${NS}-mark`) && document.querySelector('.playbackTimeline__progressWrapper')) renderMarks(); }).observe(document.body, { childList: true, subtree: true });
+    (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => { if ((Number.isFinite(loop.a) || Number.isFinite(loop.b)) && !document.querySelector(`.${NS}-mark`) && document.querySelector('.playbackTimeline__progressWrapper')) renderMarks(); });
     window.__sceSampler = Object.freeze({ setPoint, setLoop, get loop() { return { a: loop.a, b: loop.b, on: loop.on }; }, save, list: () => store.list(trackUrl()) });
 })();

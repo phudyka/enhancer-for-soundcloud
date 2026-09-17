@@ -161,6 +161,6 @@
     document.addEventListener('keydown', onKey, true);
     document.addEventListener('mousedown', (e) => { if (panel && !panel.contains(e.target) && !anchor?.contains(e.target)) close(); }, true);
     window.addEventListener('resize', () => { if (panel) place(); });
-    new MutationObserver(bind).observe(document.body, { childList: true, subtree: true });
+    (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(bind);
     bind();
 })();

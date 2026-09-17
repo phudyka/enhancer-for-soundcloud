@@ -54,7 +54,7 @@
         set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
     };
     let cfg = store.get();
-    let media = null, btn = null, panel = null;
+    let media = null, btn = null, panel = null, analysisBar = null;
     const fmtRate = (r) => `${r < 1 ? r.toFixed(2).replace(/0$/, '') : parseFloat(r.toFixed(2))}×`;
     const effectsOn = (c = cfg) => c.bass > 0.01 || c.reverb > 0.01;
     const anyOn = (c = cfg) => effectsOn(c) || Math.abs(c.rate - 1) > 1e-6 || !!c.pitchSemitones;
@@ -213,13 +213,15 @@
 
     // ── Analyse : BPM (flux spectral + autocorrélation) et tonalité (chroma + profils de Krumhansl) ──
     const Analysis = (() => {
-        const FRAME_MS = 20, HISTORY_S = 40, BPM_MIN = 60, BPM_MAX = 200;
+        const IDLE_MS = 500, FRAME_MS = 20, HISTORY_S = 40, BPM_MIN = 60, BPM_MAX = 200, DB_TO_AMP = Math.LN10 / 20;
         const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
         const CAMELOT = { major: { C: '8B', 'C♯': '3B', D: '10B', 'E♭': '5B', E: '12B', F: '7B', 'F♯': '2B', G: '9B', 'A♭': '4B', A: '11B', 'B♭': '6B', B: '1B' },
                           minor: { C: '5A', 'C♯': '12A', D: '7A', 'E♭': '2A', E: '9A', F: '4A', 'F♯': '11A', G: '6A', 'A♭': '1A', A: '8A', 'B♭': '3A', B: '10A' } };
         const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
         const MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null, liveTrack = null, sinceTrackCheck = 0;
+        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null, liveTrack = null, lastTrackCheck = 0, pace = 0;
+        /** 50 Hz seulement pendant l'analyse ; deux réveils par seconde le reste du temps. */
+        const setPace = (ms) => { if (pace === ms) return; pace = ms; clearInterval(timer); timer = setInterval(tick, ms); };
 
         const currentTrack = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
         const cacheGet = (k) => { try { const value = JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); return value?.version === 3 ? value : null; } catch { return null; } };
@@ -232,11 +234,14 @@
             for (let i = 1; i < n; i++) { const f = i * sr / (2 * n); if (f < 110 || f > 1800) continue; binNote[i] = ((Math.round(12 * Math.log2(f / 440)) + 9) % 12 + 12) % 12; }
         }
         function tick() {
-            const el = graph.el; if (!el || el.paused) return;
-            if (++sinceTrackCheck >= 25 || trackKey === null) { sinceTrackCheck = 0; liveTrack = currentTrack(); }   // deux lectures du DOM par seconde, pas cinquante
+            const el = graph.el;
+            if (!el || el.paused || !analysisVisible() || !enabled()) { setPace(IDLE_MS); return; }   // en pause ou affichage désactivé : aucune analyse
+            const now = Date.now();
+            if (now - lastTrackCheck >= 480 || trackKey === null) { lastTrackCheck = now; liveTrack = currentTrack(); }   // deux lectures du DOM par seconde, pas cinquante
             const tk = liveTrack;
             if (tk !== trackKey) { trackKey = tk; reset(); const c = tk && cacheGet(tk); if (c) result = { ...c, cached: true }; render(); }
-            if (result?.cached) return;
+            if (result?.cached) { setPace(IDLE_MS); return; }               // résultat connu : simple veille du changement de titre
+            setPace(FRAME_MS);
             const an = graph.an, n = an.frequencyBinCount;
             const mag = spareMag && spareMag.length === n ? spareMag : new Float32Array(n); // deux tampons en alternance : aucune allocation à 50 Hz
             an.getFloatFrequencyData(mag);
@@ -244,7 +249,7 @@
             // flux spectral (onsets) + chroma pondéré
             let fl = 0;
             for (let i = 1; i < n; i++) {
-                const m = Math.pow(10, mag[i] / 20); // dB → amplitude
+                const m = Math.exp(mag[i] * DB_TO_AMP); // dB → amplitude
                 if (prevMag) { const d = m - prevMag[i]; if (d > 0) fl += d; }
                 if (binNote[i] >= 0) chroma[binNote[i]] += m * m;
                 mag[i] = m;
@@ -257,7 +262,7 @@
                 // Une fenêtre peu rythmée ne doit pas effacer le dernier tempo fiable du même titre.
                 result = { ...next, bpm: next.bpm ?? result?.bpm ?? null };
                 render();
-                if (frames >= 1500 && next.conf > 0.35 && next.bpm && next.key && tk) cacheSet(tk, { bpm: next.bpm, key: next.key, mode: next.mode, conf: next.conf });
+                if (frames >= 1500 && next.conf > 0.35 && next.bpm && next.key && tk) { cacheSet(tk, { bpm: next.bpm, key: next.key, mode: next.mode, conf: next.conf }); result.cached = true; prevMag = spareMag = null; flux = []; }   // acquis : plus d'analyse jusqu'au titre suivant
             }
         }
         function estimate() {
@@ -304,7 +309,7 @@
         }
         function render() { updateAnalysisBar(); updateBtn(); }
         return {
-            attach() { clearInterval(timer); timer = setInterval(tick, FRAME_MS); },
+            attach() { pace = 0; setPace(IDLE_MS); },
             label, camelot: (r) => CAMELOT[r.mode][r.key], get result() { return result; },
         };
     })();
@@ -443,7 +448,7 @@
         const bar = document.createElement('div'); bar.className = `${NS}-analysis-bar`;
         bar.setAttribute('aria-label', L.analysis);
         bar.innerHTML = '<b>–</b> BPM <span class="sce-audio-dot">·</span> <b>–</b> <span class="sce-audio-dot">·</span> <b>–</b>';
-        badge.before(bar); updateAnalysisBar();
+        badge.before(bar); analysisBar = bar; updateAnalysisBar();
     }
     const paint = (input, pct) => input.style.setProperty('--p', `${pct * 100}%`);
 
@@ -642,16 +647,20 @@
         if (e.code === 'Comma')  { e.preventDefault(); set({ rate: clampRate(cfg.rate / 1.1) }); }
         if (e.code === 'Digit0') { e.preventDefault(); set({ ...PRESETS.normal }); }
     });
-    let lastTrack = document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
+    // Cet observateur suit la lecture même onglet masqué (retour à Normal au titre suivant) : il garde donc
+    // son propre abonnement, et ses éléments en mémoire pour ne pas réinterroger la page à chaque mutation.
+    let titleLink = null;
+    const trackHref = () => { if (!titleLink?.isConnected) titleLink = document.querySelector('.playbackSoundBadge__titleLink'); return titleLink?.getAttribute('href') || null; };
+    let lastTrack = trackHref();
     new MutationObserver(() => {
-        const track = document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
+        const track = trackHref();
         if (track && lastTrack && track !== lastTrack) {
             if (!cfg.keepNext) set(PRESETS.normal);
             else { apply(); if (panel) syncPanel(); }
-            setTimeout(() => { if (track === document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href')) { apply(); if (panel) syncPanel(); } }, 250);
+            setTimeout(() => { if (track === trackHref()) { apply(); if (panel) syncPanel(); } }, 250);
         }
         if (track) lastTrack = track;
-        if (!btn?.isConnected || (analysisVisible() && !document.querySelector(`.${NS}-analysis-bar`)?.isConnected)) mount();
+        if (!btn?.isConnected || (analysisVisible() && !analysisBar?.isConnected)) mount();
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
     // Réglage modifié : 'sce:settings-change' vient du pont (même onglet), 'storage' d'un autre onglet
     const onSettings = () => { flags = readFlags(); if (!enabled()) unmount(); else mount(); };

@@ -1,5 +1,10 @@
 # Journal des versions
 
+## 0.15.2 — 17/09/2026
+- Performances : un seul observateur de la page pour tous les modules (au lieu d'un par module), au plus un passage par image affichée ; aucun travail d'interface tant que l'onglet n'est pas affiché, un seul rattrapage au retour. Shuffle+ ne relance plus de minuteur hors des pages concernées.
+- Analyse audio : le calcul à 50 Hz ne tourne que pendant l'analyse ; en pause, affichage BPM/tonalité désactivé ou résultat déjà connu, il ne reste que deux réveils par seconde, et l'analyse s'arrête dès le résultat acquis jusqu'au titre suivant.
+- Lecteur : l'état (titre suivant, pause) est transmis à l'historique et au panneau latéral même quand l'onglet SoundCloud est masqué.
+
 ## 0.15.1 — 17/09/2026
 - Bibliothèque et playlists personnelles : les fenêtres du navigateur (confirmation, saisie, numéro de playlist à taper) laissent place à des boîtes de dialogue intégrées : liste des playlists cliquable avec nombre de titres et filtre, bouton d'action explicite, Échap pour annuler.
 - Panneau latéral : la progression avance en continu au lieu de sauter toutes les 5 s ; clavier : espace = lecture/pause, ← → = ±5 s, Maj+← → = titre précédent/suivant ; la barre de progression est accessible au clavier et aux lecteurs d'écran.

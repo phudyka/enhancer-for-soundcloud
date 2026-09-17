@@ -201,9 +201,9 @@
         history[name] = function (...args) { const result = original.apply(this, args); schedule(); return result; };
     }
     window.addEventListener('popstate', schedule);
-    new MutationObserver(() => {
+    (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => {
         if (current && (!current.button.isConnected || current.path !== location.pathname)) schedule();
         else if (!current && isPlaylist() && $('.soundActions')) schedule();
-    }).observe(document.body, { childList: true, subtree: true });
+    });
     schedule();
 })();

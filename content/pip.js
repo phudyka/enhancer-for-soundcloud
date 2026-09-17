@@ -259,7 +259,7 @@
         pinBtn.addEventListener('click', () => open().catch((e) => console.warn('[SCE] PiP', e)));
         volume.parentElement.insertBefore(pinBtn, volume);
     }
-    new MutationObserver(() => { if (!pinBtn?.isConnected) mount(); }).observe(document.body, { childList: true, subtree: true });
+    (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => { if (!pinBtn?.isConnected) mount(); });
     mount();
 
     // Commande externe (popup / raccourci) : { sce: 'command', command: 'pip' }.

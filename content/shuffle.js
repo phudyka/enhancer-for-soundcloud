@@ -1078,11 +1078,11 @@
             history[fn] = function (...a) { const r = orig.apply(this, a); schedule(); return r; };
         }
         window.addEventListener('popstate', schedule);
-        new MutationObserver(() => {
+        window.__sceShared.onDom(() => {
             hideTagPrompt();
-            if (!current || !current.ctrl.btn.isConnected) schedule();
+            if (current ? !current.ctrl.btn.isConnected : !!detectPageType()) schedule();   // hors page concernée : aucun minuteur relancé
             PlayerShuffle.ensure();
-        }).observe(document.body, { childList: true, subtree: true });
+        });
     }
 
     function setupHotkeys() {

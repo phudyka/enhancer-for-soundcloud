@@ -43,5 +43,22 @@
         return null;
     }
 
-    window.__sceShared = Object.freeze({ icons, formatTime, nextPath, clientId });
+    /**
+     * Un seul observateur du DOM pour tous les modules, au plus un passage par image affichée.
+     * requestAnimationFrame ne tourne pas dans un onglet en arrière-plan : aucun travail de
+     * montage pendant l'écoute onglet masqué, un seul rattrapage au retour. À réserver aux
+     * tâches d'interface ; ce qui doit suivre la lecture en arrière-plan garde son propre observateur.
+     */
+    const domListeners = new Set();
+    let domQueued = false;
+    const flushDom = () => { domQueued = false; for (const fn of domListeners) { try { fn(); } catch (e) { console.warn('[SCE] dom listener', e); } } };
+    function onDom(fn) {
+        if (!domListeners.size) {
+            new MutationObserver(() => { if (!domQueued) { domQueued = true; requestAnimationFrame(flushDom); } })
+                .observe(document.documentElement, { childList: true, subtree: true });
+        }
+        domListeners.add(fn);
+    }
+
+    window.__sceShared = Object.freeze({ icons, formatTime, nextPath, clientId, onDom });
 })();
