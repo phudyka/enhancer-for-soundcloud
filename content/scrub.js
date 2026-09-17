@@ -153,7 +153,7 @@
             if (!el || bound.has(el)) continue;
             bound.add(el);
             el.addEventListener('wheel', onWheel, { passive: false });
-            el.title = (el.title ? el.title + ' · ' : '') + 'Molette : loupe';
+            el.title = (el.title ? el.title + ' · ' : '') + ((document.documentElement.lang || 'en').startsWith('fr') ? 'Molette : loupe' : 'Wheel: magnifier');
         }
     }
     window.addEventListener('mousemove', (e) => { if (dragging && panel) seekAt(e); });

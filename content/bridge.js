@@ -30,6 +30,7 @@
 
     // Les réglages restent dans leur page d'extension, affichée dans SoundCloud.
     let settingsOverlay = null;
+    const french = () => (document.documentElement.lang || '').startsWith('fr');
     function closeSettings() {
         settingsOverlay?.remove();
         settingsOverlay = null;
@@ -41,10 +42,10 @@
         const panel = document.createElement('div'); panel.className = 'sce-settings-panel';
         panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Enhancer for SoundCloud™');
         const close = document.createElement('button'); close.type = 'button'; close.className = 'sce-settings-close';
-        close.textContent = '×'; close.setAttribute('aria-label', 'Fermer les réglages');
+        close.textContent = '×'; close.title = french() ? 'Fermer les réglages' : 'Close settings'; close.setAttribute('aria-label', close.title);
         close.addEventListener('click', closeSettings);
         const frame = document.createElement('iframe'); frame.className = 'sce-settings-frame';
-        frame.title = 'Enhancer for SoundCloud™ — Réglages';
+        frame.title = french() ? 'Enhancer for SoundCloud™ — Réglages' : 'Enhancer for SoundCloud™ — Settings';
         frame.src = chrome.runtime.getURL('options/options.html?embedded=1');
         panel.append(frame, close); overlay.append(panel); document.body.append(overlay);
         overlay.addEventListener('pointerdown', (event) => { if (event.target === overlay) closeSettings(); });
@@ -58,7 +59,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'sce-settings-button';
-        button.title = (document.documentElement.lang || '').startsWith('fr') ? 'Réglages d’Enhancer for SoundCloud™' : 'Enhancer for SoundCloud™ settings';
+        button.title = french() ? 'Réglages d’Enhancer for SoundCloud™' : 'Enhancer for SoundCloud™ settings';
         button.setAttribute('aria-label', button.title);
         button.setAttribute('aria-expanded', settingsOverlay ? 'true' : 'false');
         button.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.6 1h2.8l.4 1.9 1.3.7 1.8-.7 1.4 2.4-1.4 1.3v1.4l1.4 1.3-1.4 2.4-1.8-.7-1.3.7-.4 1.9H6.6l-.4-1.9-1.3-.7-1.8.7L1.7 9.3l1.4-1.3V6.6L1.7 5.3l1.4-2.4 1.8.7 1.3-.7zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>';
@@ -67,7 +68,7 @@
     }
     // L'onglet reste accessible une fois le panneau fermé, sans passer par l'icône de l'extension.
     let panelOpen = false;
-    const panelLabel = (open) => (document.documentElement.lang || '').startsWith('fr')
+    const panelLabel = (open) => french()
         ? (open ? 'Fermer le lecteur latéral' : 'Ouvrir le lecteur latéral')
         : (open ? 'Close side player' : 'Open side player');
     function updatePanelPin(open) {

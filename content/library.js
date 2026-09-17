@@ -22,17 +22,17 @@
     const BATCH = 50, PARALLEL = 4, PAGE = 120;
     const SEL = { top: '.collectionSection__top', list: '.collectionSection .lazyLoadingList, .collectionSection__list', section: '.collectionSection' };
     const $ = (s, r = document) => r.querySelector(s);
-    const S = () => window.__scsp;
+    const S = () => window.__scsp, D = () => window.__sceDialog;
 
     const T = {
         fr: { search: 'Rechercher dans vos likes : titre, artiste, tag…', sort: 'Trier', added: "Date d'ajout", title: 'Titre', artist: 'Artiste', duration: 'Durée', plays: 'Écoutes', year: 'Année', genre: 'Tous les genres',
               play: 'Lire', shuffle: 'Shuffle+', playlist: 'Créer une playlist', tracks: 'titres', indexing: 'Indexation des likes… {n} / {t}', indexed: 'Bibliothèque à jour : {n} titres',
               plName: 'Nom de la playlist', created: 'Playlist créée : {t}', tooMany: '{n} titres maximum par playlist. Réduisez la sélection.', none: 'Aucun titre ne correspond', reset: 'Réinitialiser', likes: 'Likes', filter: 'Filtre',
-              select: 'Sélectionner des titres', selectAll: 'Tout sélectionner', selectResults: 'Sélectionner les résultats', clear: 'Effacer la sélection', selected: '{n} sélectionnés', add: 'Ajouter à une playlist', remove: 'Retirer des favoris', removePlaylist: 'Retirer d’une playlist', choosePlaylist: 'Numéro de la playlist :', confirmRemove: 'Retirer {n} titres de vos favoris ? Cette action ne supprime pas les morceaux de SoundCloud.', confirmPlaylistRemove: 'Retirer les titres sélectionnés de « {title} » ? Cette action ne supprime pas les morceaux de SoundCloud.', removed: '{n} favoris retirés', partial: '{n} favoris retirés ; {f} échecs', addedTo: '{n} titres ajoutés à la playlist', removedFrom: '{n} titres retirés de la playlist', noPlaylists: 'Aucune playlist trouvée', actionError: 'Action impossible : {error}' },
+              select: 'Sélectionner des titres', selectAll: 'Tout sélectionner', selectResults: 'Sélectionner les résultats', clear: 'Effacer la sélection', selected: '{n} sélectionnés', add: 'Ajouter à une playlist', remove: 'Retirer des favoris', removePlaylist: 'Retirer d’une playlist', confirmRemove: 'Retirer {n} titres de vos favoris ? Cette action ne supprime pas les morceaux de SoundCloud.', confirmPlaylistRemove: 'Retirer les titres sélectionnés de « {title} » ? Cette action ne supprime pas les morceaux de SoundCloud.', removed: '{n} favoris retirés', partial: '{n} favoris retirés ; {f} échecs', addedTo: '{n} titres ajoutés à la playlist', removedFrom: '{n} titres retirés de la playlist', noPlaylists: 'Aucune playlist trouvée', actionError: 'Action impossible : {error}' },
         en: { search: 'Search your likes: title, artist, tag…', sort: 'Sort', added: 'Date liked', title: 'Title', artist: 'Artist', duration: 'Duration', plays: 'Plays', year: 'Year', genre: 'All genres',
               play: 'Play', shuffle: 'Shuffle+', playlist: 'Create playlist', tracks: 'tracks', indexing: 'Indexing likes… {n} / {t}', indexed: 'Library up to date: {n} tracks',
               plName: 'Playlist name', created: 'Playlist created: {t}', tooMany: '{n} tracks maximum per playlist. Reduce the selection.', none: 'No matching tracks', reset: 'Reset', likes: 'Likes', filter: 'Filter',
-              select: 'Select tracks', selectAll: 'Select all', selectResults: 'Select results', clear: 'Clear selection', selected: '{n} selected', add: 'Add to playlist', remove: 'Remove from likes', removePlaylist: 'Remove from a playlist', choosePlaylist: 'Playlist number:', confirmRemove: 'Remove {n} tracks from your likes? This will not delete the tracks from SoundCloud.', confirmPlaylistRemove: 'Remove selected tracks from “{title}”? This will not delete the tracks from SoundCloud.', removed: '{n} likes removed', partial: '{n} likes removed; {f} failed', addedTo: '{n} tracks added to playlist', removedFrom: '{n} tracks removed from playlist', noPlaylists: 'No playlists found', actionError: 'Action failed: {error}' },
+              select: 'Select tracks', selectAll: 'Select all', selectResults: 'Select results', clear: 'Clear selection', selected: '{n} selected', add: 'Add to playlist', remove: 'Remove from likes', removePlaylist: 'Remove from a playlist', confirmRemove: 'Remove {n} tracks from your likes? This will not delete the tracks from SoundCloud.', confirmPlaylistRemove: 'Remove selected tracks from “{title}”? This will not delete the tracks from SoundCloud.', removed: '{n} likes removed', partial: '{n} likes removed; {f} failed', addedTo: '{n} tracks added to playlist', removedFrom: '{n} tracks removed from playlist', noPlaylists: 'No playlists found', actionError: 'Action failed: {error}' },
     };
     const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
     const t = (k, v = {}) => (L[k] || T.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (typeof v[x] === 'number' ? v[x].toLocaleString() : (v[x] ?? '')));
@@ -339,20 +339,17 @@
             if (!chosen.length) return;
             const bulk = window.__sceLibraryBulk;
             if (['create', 'add'].includes(kind) && chosen.length > S().maxTracks) { S().toast(t('tooMany', { n: S().maxTracks }), { error: true }); return; }
-            if (kind === 'remove' && !confirm(t('confirmRemove', { n: chosen.length }))) return;
+            if (kind === 'remove' && !await D().confirm(t('confirmRemove', { n: chosen.length }), { ok: t('remove'), danger: true })) return;
             let title, playlistId, targetPlaylist, me;
-            if (kind === 'create') { title = prompt(t('plName'), label()); if (!title?.trim()) return; }
+            if (kind === 'create') { title = await D().input(t('plName'), label()); if (!title?.trim()) return; }
             if (kind === 'add' || kind === 'removePlaylist') {
                 me = await S().me();
                 const playlists = await bulk.ownPlaylists(S().api, me.id);
                 if (!playlists.length) { S().toast(t('noPlaylists'), { error: true }); return; }
-                const answer = prompt(`${t('choosePlaylist')}\n${playlists.map((pl, i) => `${i + 1}. ${pl.title}`).join('\n')}`);
-                if (answer === null) return;
-                const index = Number(answer) - 1;
-                if (!Number.isInteger(index) || index < 0 || index >= playlists.length) return;
-                targetPlaylist = playlists[index];
+                targetPlaylist = playlists[await D().pick(t(kind === 'add' ? 'add' : 'removePlaylist'), playlists.map((pl) => ({ label: pl.title, detail: pl.track_count ?? '' })))];
+                if (!targetPlaylist) return;
                 playlistId = targetPlaylist.id;
-                if (kind === 'removePlaylist' && !confirm(t('confirmPlaylistRemove', { title: targetPlaylist.title }))) return;
+                if (kind === 'removePlaylist' && !await D().confirm(t('confirmPlaylistRemove', { title: targetPlaylist.title }), { ok: t('removePlaylist'), danger: true })) return;
             }
             busy = true; refresh();
             try {

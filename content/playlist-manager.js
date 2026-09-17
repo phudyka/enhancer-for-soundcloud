@@ -9,7 +9,7 @@
     const labels = fr ? {
         manage: 'Gérer les titres', close: 'Fermer', selectAll: 'Tout sélectionner', clear: 'Effacer la sélection',
         selected: 'sélectionnés', remove: 'Retirer', add: 'Ajouter à une playlist', create: 'Créer une playlist',
-        unlike: 'Retirer des likes', playlistName: 'Nom de la playlist', choose: 'Numéro de la playlist :',
+        unlike: 'Retirer des likes', playlistName: 'Nom de la playlist',
         noPlaylists: 'Aucune playlist trouvée', confirmRemove: 'Retirer {n} titre(s) de « {title} » ? Les morceaux ne seront pas supprimés de SoundCloud.',
         confirmUnlike: 'Retirer {n} titre(s) de vos likes ?', removed: '{n} titre(s) retiré(s) de la playlist',
         added: '{n} titre(s) ajouté(s)', created: 'Playlist créée : {title}', unliked: '{n} like(s) retiré(s), {f} échec(s)',
@@ -17,7 +17,7 @@
     } : {
         manage: 'Manage tracks', close: 'Close', selectAll: 'Select all', clear: 'Clear selection',
         selected: 'selected', remove: 'Remove', add: 'Add to playlist', create: 'Create playlist',
-        unlike: 'Remove from likes', playlistName: 'Playlist name', choose: 'Playlist number:',
+        unlike: 'Remove from likes', playlistName: 'Playlist name',
         noPlaylists: 'No playlists found', confirmRemove: 'Remove {n} track(s) from “{title}”? The tracks will remain on SoundCloud.',
         confirmUnlike: 'Remove {n} track(s) from your likes?', removed: '{n} track(s) removed from playlist',
         added: '{n} track(s) added', created: 'Playlist created: {title}', unliked: '{n} like(s) removed, {f} failed',
@@ -25,7 +25,7 @@
     };
     const t = (key, vars = {}) => labels[key].replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
     const bulk = () => window.__sceLibraryBulk;
-    const S = () => window.__scsp;
+    const S = () => window.__scsp, D = () => window.__sceDialog;
     const isPlaylist = () => /^\/[^/]+\/sets\/[^/]+/.test(location.pathname);
     const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -79,15 +79,13 @@
         }
         let title, target;
         try {
-            if (action === 'remove' && !confirm(t('confirmRemove', { n: selected.length, title: ctx.playlist.title }))) return;
-            if (action === 'unlike' && !confirm(t('confirmUnlike', { n: selected.length }))) return;
-            if (action === 'create') { title = prompt(t('playlistName'), ctx.playlist.title); if (!title?.trim()) return; }
+            if (action === 'remove' && !await D().confirm(t('confirmRemove', { n: selected.length, title: ctx.playlist.title }), { ok: t('remove'), danger: true })) return;
+            if (action === 'unlike' && !await D().confirm(t('confirmUnlike', { n: selected.length }), { ok: t('unlike'), danger: true })) return;
+            if (action === 'create') { title = await D().input(t('playlistName'), ctx.playlist.title); if (!title?.trim()) return; }
             if (action === 'add') {
                 const playlists = await bulk().ownPlaylists(S().api, ctx.meId);
                 if (!playlists.length) { S().toast(t('noPlaylists'), { error: true }); return; }
-                const answer = prompt(`${t('choose')}\n${playlists.map((pl, i) => `${i + 1}. ${pl.title}`).join('\n')}`);
-                if (answer == null) return;
-                target = playlists[Number(answer) - 1];
+                target = playlists[await D().pick(t('add'), playlists.map((pl) => ({ label: pl.title, detail: pl.track_count ?? '' })))];
                 if (!target) return;
             }
             ctx.busy = true; render(ctx);

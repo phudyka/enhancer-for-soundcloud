@@ -5,12 +5,33 @@ const { play: ICON_PLAY, pause: ICON_PAUSE } = window.__sceShared.icons;
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const T = (s) => (window.SCE_T || ((x) => x))(s);
 
-let state = null, tabId = null, timer = null, noTab = false, standaloneUrl = '';
+let state = null, stateAt = 0, tabId = null, timer = null, noTab = false, standaloneUrl = '';
 let audioLoading = false;
 
 const fmtTime = window.__sceShared.formatTime;
 const fmtRate = (r) => `${parseFloat((r || 1).toFixed(2))}×`;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/** Position estimée entre deux états : le lecteur ne publie que les changements notables. */
+function livePosition() {
+    if (!state) return 0;
+    const position = Number(state.position) || 0;
+    if (!state.playing) return position;
+    const live = position + ((Date.now() - stateAt) / 1000) * (state.rate || 1);
+    return state.duration ? Math.min(state.duration, live) : live;
+}
+function renderProgress() {
+    const position = livePosition();
+    const pct = state?.duration ? Math.min(100, (position / state.duration) * 100) : 0;
+    $('#fill').style.width = `${pct}%`;
+    $('#knob').style.left = `${pct}%`;
+    $('#cur').textContent = fmtTime(position);
+    $('#dur').textContent = fmtTime(state?.duration);
+    const bar = $('#bar');
+    bar.setAttribute('aria-valuemax', String(Math.round(state?.duration || 0)));
+    bar.setAttribute('aria-valuenow', String(Math.round(position)));
+    bar.setAttribute('aria-valuetext', `${fmtTime(position)} / ${fmtTime(state?.duration)}`);
+}
 
 function render() {
     const has = state && state.sce === 'state' && state.title;
@@ -27,11 +48,7 @@ function render() {
     $('#title').textContent = state.title;
     $('#artist').textContent = state.artist || '';
     $('#play').innerHTML = state.playing ? ICON_PAUSE : ICON_PLAY;
-    const pct = state.duration ? Math.min(100, (state.position / state.duration) * 100) : 0;
-    $('#fill').style.width = `${pct}%`;
-    $('#knob').style.left = `${pct}%`;
-    $('#cur').textContent = fmtTime(state.position);
-    $('#dur').textContent = fmtTime(state.duration);
+    renderProgress();
     $('#repeat').classList.toggle('on', state.repeat && state.repeat !== 'off');
     $('#repeat-n').textContent = state.repeat === 'one' ? '1' : '';
     $('#speed').textContent = fmtRate(state.rate);
@@ -114,7 +131,7 @@ async function poll() {
     const r = await send({ type: 'popup-get-state' });
     noTab = r?.reason === 'no-tab';
     if (r && r.sce === 'state') {
-        state = r; tabId = r.tabId ?? tabId;
+        state = r; stateAt = Date.now(); tabId = r.tabId ?? tabId;
         const url = soundcloudUrl(r.url);
         if (url && url !== standaloneUrl) {
             standaloneUrl = url;
@@ -213,6 +230,20 @@ $('#bar').addEventListener('click', (e) => {
     command('seek', { value: frac * state.duration });
 });
 
+// Clavier : espace = lecture/pause, ← → = ±5 s, Maj+← → = titre précédent/suivant (hors champs et boutons).
+const seekBy = (seconds) => { if (state?.duration) command('seek', { value: Math.max(0, Math.min(state.duration, livePosition() + seconds)) }); };
+document.addEventListener('keydown', (e) => {
+    if (!state?.title || e.ctrlKey || e.altKey || e.metaKey) return;
+    const onBar = e.target === $('#bar');
+    if (!onBar && e.target.closest?.('input, select, textarea, button, a, summary, iframe')) return;
+    if (e.code === 'Space') { e.preventDefault(); command('toggle-play'); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const forward = e.key === 'ArrowRight';
+        if (e.shiftKey) command(forward ? 'next-track' : 'prev-track'); else seekBy(forward ? 5 : -5);
+    }
+});
+
 $('#speed').addEventListener('click', (e) => {
     const cur = state?.rate || 1;
     let i = SPEEDS.findIndex((s) => Math.abs(s - cur) < 1e-6);
@@ -274,7 +305,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'session' && changes.playerState) {
         const next = changes.playerState.newValue;
         if (next && (!tabId || next.tabId === tabId)) {
-            state = next; noTab = false; render();
+            state = next; stateAt = Date.now(); noTab = false; render();
             const sig = `${next.url}|${next.title}`;
             if (sig !== queueSig) { queueSig = sig; scheduleQueue(); }
         }
@@ -287,4 +318,5 @@ chrome.storage.local.get('standaloneUrl').then(({ standaloneUrl: saved }) => {
     poll();
 }).catch(poll);
 timer = setInterval(() => { if (!document.hidden) { poll(); loadAudio(); } }, 5000);
-window.addEventListener('pagehide', () => clearInterval(timer));
+const progressTimer = setInterval(() => { if (!document.hidden && state?.playing) renderProgress(); }, 500);
+window.addEventListener('pagehide', () => { clearInterval(timer); clearInterval(progressTimer); });

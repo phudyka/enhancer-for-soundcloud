@@ -185,5 +185,29 @@ chrome.storage.onChanged.addListener((changes, area) => {
         if (document.activeElement !== $('accentHex')) fill();
     }
 });
+// Recherche : ne garde que les lignes (ou les rubriques entières) dont le texte correspond, sans accents.
+const fold = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function filterSettings() {
+    const terms = fold($('settings-search').value).split(/\s+/).filter(Boolean);
+    const matches = (text) => { const folded = fold(text); return terms.every((term) => folded.includes(term)); };
+    let shown = 0;
+    for (const fieldset of document.querySelectorAll('fieldset')) {
+        const whole = !terms.length || matches(fieldset.querySelector('legend')?.textContent);
+        let any = whole;
+        for (const item of fieldset.children) {
+            if (item.tagName === 'LEGEND') continue;
+            const extra = item.matches('.hide-group-actions, .note');               // commandes et intertitres : seulement avec la rubrique entière
+            const visible = whole || (!extra && matches(item.textContent));
+            item.classList.toggle('filtered', !visible);
+            if (visible && !extra) any = true;
+        }
+        fieldset.classList.toggle('filtered', !any);
+        if (any) shown++;
+    }
+    $('settings-empty').hidden = shown > 0;
+}
+$('settings-search').addEventListener('input', filterSettings);
+$('settings-search').addEventListener('keydown', (event) => { if (event.key === 'Escape' && $('settings-search').value) { event.stopPropagation(); $('settings-search').value = ''; filterSettings(); } });
+
 $('open-guide').addEventListener('click', (e) => { e.preventDefault(); chrome.tabs.create({ url: chrome.runtime.getURL('guide/guide.html') }); });
 load();

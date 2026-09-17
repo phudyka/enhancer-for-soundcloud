@@ -7,5 +7,5 @@ version=$(node -p "require('./manifest.json').version")
 out="dist/enhancer-for-soundcloud-${version}.zip"
 mkdir -p dist
 rm -f "$out"
-zip -qr "$out" manifest.json background content popup options stats guide ui icons rules _locales -x '*.DS_Store'
+zip -qr "$out" manifest.json background content popup options stats guide downloads ui icons rules _locales -x '*.DS_Store'
 echo "$out ($(du -h "$out" | cut -f1))"

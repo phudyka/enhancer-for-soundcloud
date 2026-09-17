@@ -1,5 +1,13 @@
 # Journal des versions
 
+## 0.15.1 — 17/09/2026
+- Bibliothèque et playlists personnelles : les fenêtres du navigateur (confirmation, saisie, numéro de playlist à taper) laissent place à des boîtes de dialogue intégrées : liste des playlists cliquable avec nombre de titres et filtre, bouton d'action explicite, Échap pour annuler.
+- Panneau latéral : la progression avance en continu au lieu de sauter toutes les 5 s ; clavier : espace = lecture/pause, ← → = ±5 s, Maj+← → = titre précédent/suivant ; la barre de progression est accessible au clavier et aux lecteurs d'écran.
+- Analyse audio : moins de lectures du DOM pendant la lecture. Loupe de timeline : infobulle traduite.
+- Réglages : champ de recherche (sans accents, Échap pour effacer) qui ne garde que les lignes ou rubriques correspondantes ; « Tout réafficher » de la personnalisation libre n'apparaît plus quand la liste est vide.
+- Paquet : l'archive des boutiques inclut désormais la page de téléchargement (`downloads/`), absente jusque-là.
+- En-tête SoundCloud : libellés du bouton de réglages et de sa fermeture traduits en anglais.
+
 ## 0.15.0 — 17/09/2026
 - Transitions : choisir un autre titre, mettre en pause ou répéter le titre en cours pendant un fondu ne laisse plus le lecteur muet ; une erreur de préparation n'immobilise plus la transition suivante.
 - Audio : le décalage de hauteur n'est calculé que lorsqu'il est utilisé (moins de charge processeur), un navigateur sans ce traitement ne coupe plus le son, et l'avertissement « effets indisponibles » n'apparaît qu'une fois par titre.

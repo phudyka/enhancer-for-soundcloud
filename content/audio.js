@@ -219,7 +219,7 @@
                           minor: { C: '5A', 'C♯': '12A', D: '7A', 'E♭': '2A', E: '9A', F: '4A', 'F♯': '11A', G: '6A', 'A♭': '1A', A: '8A', 'B♭': '3A', B: '10A' } };
         const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
         const MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null;
+        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null, liveTrack = null, sinceTrackCheck = 0;
 
         const currentTrack = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
         const cacheGet = (k) => { try { const value = JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); return value?.version === 3 ? value : null; } catch { return null; } };
@@ -233,7 +233,8 @@
         }
         function tick() {
             const el = graph.el; if (!el || el.paused) return;
-            const tk = currentTrack();
+            if (++sinceTrackCheck >= 25 || trackKey === null) { sinceTrackCheck = 0; liveTrack = currentTrack(); }   // deux lectures du DOM par seconde, pas cinquante
+            const tk = liveTrack;
             if (tk !== trackKey) { trackKey = tk; reset(); const c = tk && cacheGet(tk); if (c) result = { ...c, cached: true }; render(); }
             if (result?.cached) return;
             const an = graph.an, n = an.frequencyBinCount;
