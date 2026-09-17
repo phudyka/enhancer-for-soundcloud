@@ -38,6 +38,7 @@
     const state = { phase: 'idle', forUrl: null, track: null, el: null, src: null, low: null, gain: null, mixStart: 0, mixDur: 0, watcher: null, stalled: 0 };
     const curve = (fn) => Float32Array.from({ length: POINTS }, (_, i) => fn(i / (POINTS - 1)));
     const EQUAL_OUT = curve((t) => Math.cos(t * Math.PI / 2)), EQUAL_IN = curve((t) => Math.sin(t * Math.PI / 2));
+    const remainingTime = (media) => (media.duration - media.currentTime) / (media.playbackRate || 1);
 
     /** Résout le titre suivant de la file en URL de flux progressif. */
     async function resolveNext() {
@@ -87,7 +88,19 @@
             state.track = next;
             state.el.src = next.stream; state.el.load();
             state.phase = 'ready';
+            tryBegin(window.__sceMedia);
         }).catch((e) => { console.warn('[SCE] transitions : préparation', e); if (state.phase === 'preparing' && state.forUrl === url) state.phase = 'skip'; });
+    }
+    function tryBegin(media) {
+        if (state.phase !== 'ready' || !media || !enabled() || media.paused || !Number.isFinite(media.duration) || media.duration <= 0) return false;
+        const url = currentUrl();
+        if (state.forUrl && state.forUrl !== url) { reset(true); return false; }
+        const remaining = remainingTime(media);
+        if (remaining <= duration() && remaining > 1 && isPlaying() && !repeatsOne()) {
+            begin(media);
+            return true;
+        }
+        return false;
     }
     function begin(media) {
         const a = A(); if (!a?.xfade || !state.el) { reset(true); return; }
@@ -142,10 +155,10 @@
         if (state.phase === 'mixing' || state.phase === 'swapping') return;
         if (state.forUrl && state.forUrl !== url) { reset(true); }
         if (!Number.isFinite(media.duration) || media.duration <= 0 || media.paused) return;
-        const remaining = (media.duration - media.currentTime) / (media.playbackRate || 1);
+        const remaining = remainingTime(media);
         const dur = duration();
         if (state.phase === 'idle' && url && remaining <= dur + PREPARE_AHEAD && remaining > dur + 0.5) prepare(url);
-        else if (state.phase === 'ready' && remaining <= dur && remaining > 1 && isPlaying() && !repeatsOne()) begin(media);
+        else if (state.phase === 'ready') tryBegin(media);
     }
     if (typeof window.__sceOnMedia === 'function') {
         window.__sceOnMedia((el) => { if (!el.__sceMixHooked) { el.__sceMixHooked = true; el.addEventListener('timeupdate', () => onTime(el)); } });

@@ -1,6 +1,6 @@
 const DEFAULTS = {
     extensionDisabled: false,
-    shuffleMode: 'queue', speedControl: true, showAnalysis: true, library: true, noRepeat: true, history: true, autoMix: false, autoMixSeconds: '12', sampler: true,
+    shuffleMode: 'queue', speedControl: true, showAnalysis: true, library: true, noRepeat: true, history: true, autoMix: false, autoMixSeconds: '12', panelPinSide: 'left', sampler: true,
     hideUpsell: false, hidePromoted: false, hideUpload: false, hideUploadMeter: false, hideArtistStudio: false, hideArtistTools: false, hideNotifications: false, hideMessages: false,
     hideComments: false, hideRelated: false, hideRelatedTracks: false, hideRelatedPlaylists: false, hideRelatedArtists: false, hideTrackStations: false, hideFooter: false, hideGoPlus: false, wideSearch: false, hideFeedReposts: false, hideFeedPlaylists: false,
     hideUpsellHeader: false, hideUpsellBanners: false, hideUpsellPlayer: false, hideUpsellSidebar: false, hideUpsellTracks: false, hideUpsellUpload: false, hideUpsellArtistLink: false, hideUpsellTour: false,
@@ -87,6 +87,7 @@ function fill() {
     $('homePage').value = settings.homePage || '';
     $('shuffleMode').value = settings.shuffleMode || (settings.hijackPlayerShuffle === false ? 'native' : 'queue');
     $('autoMixSeconds').value = String(settings.autoMixSeconds || '12');
+    $('panelPinSide').value = settings.panelPinSide === 'right' ? 'right' : 'left';
     paintSwatches();
     document.documentElement.style.setProperty('--accent', settings.accent || '#ff5500');
 }
@@ -146,6 +147,7 @@ $('restore-defaults').addEventListener('click', async () => {
 $('shuffleMode').addEventListener('change', () => save({ shuffleMode: $('shuffleMode').value }));
 $('homePage').addEventListener('change', () => save({ homePage: $('homePage').value }));
 $('autoMixSeconds').addEventListener('change', () => save({ autoMixSeconds: $('autoMixSeconds').value }));
+$('panelPinSide').addEventListener('change', () => save({ panelPinSide: $('panelPinSide').value === 'right' ? 'right' : 'left' }));
 // Le sélecteur émet « input » en continu : aperçu immédiat, une seule écriture à la fin (chrome.storage.sync limite les écritures par minute).
 let accentTimer = null;
 $('accent').addEventListener('input', () => {

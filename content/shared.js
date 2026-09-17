@@ -70,7 +70,7 @@
             major: { C: '8B', 'C♯': '3B', D: '10B', 'E♭': '5B', E: '12B', F: '7B', 'F♯': '2B', G: '9B', 'A♭': '4B', A: '11B', 'B♭': '6B', B: '1B' },
             minor: { C: '5A', 'C♯': '12A', D: '7A', 'E♭': '2A', E: '9A', F: '4A', 'F♯': '11A', G: '6A', 'A♭': '1A', A: '8A', 'B♭': '3A', B: '10A' },
         };
-        const PREFIX = 'sce:analysis:', VERSION = 3;
+        const PREFIX = 'sce:analysis:', VERSION = 4;
         /** Chemin du titre sans domaine ni contexte de lecture (?in=playlist). */
         const pathOf = (url) => { if (!url) return null; try { return new URL(url, 'https://soundcloud.com').pathname.replace(/\/$/, '') || null; } catch { return null; } };
         const camelot = (key, mode) => CAMELOT[mode]?.[key] || null;

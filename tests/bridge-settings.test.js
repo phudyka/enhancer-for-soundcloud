@@ -63,3 +63,47 @@ test('SoundCloud header exposes settings and remounts after header replacement',
     changed();
     assert.ok(header.button);
 });
+
+test('the side panel pin follows the configured side', async () => {
+    let onChanged;
+    const body = { children: [], append(item) { this.children.push(item); } };
+    const element = () => ({
+        attributes: {},
+        dataset: {},
+        style: {},
+        setAttribute(name, value) { this.attributes[name] = value; this[name] = value; },
+        addEventListener(type, callback) { this[type] = callback; },
+        append(...children) { this.children = children; },
+    });
+    const document = {
+        documentElement: { lang: 'fr' },
+        head: { append() {} },
+        body,
+        addEventListener() {},
+        querySelector: (selector) => selector === '.sce-player-pin' ? body.children.find((item) => item.className === 'sce-player-pin') || null : null,
+        createElement: element,
+    };
+    const chrome = {
+        storage: {
+            onChanged: { addListener: (fn) => { onChanged = fn; } },
+            sync: { get: async () => ({ settings: { panelPinSide: 'left' } }) },
+        },
+        runtime: { id: 'test', onMessage: { addListener() {} }, sendMessage: async () => ({ ok: true, open: false }) },
+    };
+    class MutationObserver { observe() {} disconnect() {} }
+    vm.runInNewContext(fs.readFileSync('content/bridge.js', 'utf8'), {
+        window: { addEventListener() {}, dispatchEvent() {} },
+        document,
+        chrome,
+        MutationObserver,
+        localStorage: { setItem() {} },
+        Event,
+    });
+    await Promise.resolve();
+
+    const pin = body.children.find((item) => item.className === 'sce-player-pin');
+    assert.equal(pin.dataset.side, 'left');
+
+    onChanged({ settings: { newValue: { panelPinSide: 'right' } } }, 'sync');
+    assert.equal(pin.dataset.side, 'right');
+});

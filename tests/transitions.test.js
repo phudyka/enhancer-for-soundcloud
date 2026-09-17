@@ -5,7 +5,7 @@ const vm = require('node:vm');
 
 /* Contexte audio factice : chaque paramètre note les appels de planification. */
 function param(value) { return { value, calls: [], cancelScheduledValues() { this.calls.push('cancel'); }, setValueAtTime(v) { this.value = v; this.calls.push(`set:${v}`); }, setTargetAtTime(v) { this.value = v; this.calls.push(`target:${v}`); }, setValueCurveAtTime(curve, at, dur) { this.calls.push(`curve:${curve[0]}->${curve[curve.length - 1]}:${dur}`); }, linearRampToValueAtTime(v) { this.value = v; this.calls.push(`ramp:${v}`); } }; }
-function start(t) {
+function start(t, opts = {}) {
     t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
     const ctx = { currentTime: 0, createMediaElementSource: () => ({ connect() {} }), createBiquadFilter: () => ({ type: '', frequency: { value: 0 }, gain: param(0), connect() {} }), createGain: () => ({ gain: param(0), connect() {} }) };
     const audio = { ctx, master: { gain: param(1) }, xfade: { gain: param(1) }, eqLow: { gain: param(0) }, ensure() {} };
@@ -14,10 +14,11 @@ function start(t) {
     const toasts = [];
     const apiCalls = [];
     const B = { played: 0, paused: 0, src: null, currentTime: 0, playbackRate: 1, load() {}, play() { this.played++; return Promise.resolve(); }, pause() { this.paused++; } };
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const window = {
         __sceMedia: media, __sceOnMedia: (fn) => fn(media),
         __sceAudio: audio,
-        __scePlayer: { upcoming: async () => [{ url: '/b/two', title: 'Two' }] },
+        __scePlayer: { upcoming: async () => { if (opts.upcomingDelay) await wait(opts.upcomingDelay); return [{ url: '/b/two', title: 'Two' }]; } },
         __scsp: { api: async (path) => { apiCalls.push(path); if (path.startsWith('/resolve')) return { kind: 'track', track_authorization: 'tok', media: { transcodings: [{ url: 'https://api-v2.soundcloud.com/media/1/stream/progressive', format: { protocol: 'progressive', mime_type: 'audio/mpeg' } }] } }; return { url: 'https://cf.sndcdn.com/stream.mp3' }; }, toast: (m) => toasts.push(m) },
         addEventListener() {},
     };
@@ -64,6 +65,17 @@ test('a transition is abandoned when SoundCloud does not move on to the expected
     assert.equal(p.phase(), 'idle');
     assert.equal(p.toasts.at(-1), 'Transition annulée');
     assert.equal(p.audio.xfade.gain.value, 1);
+});
+
+test('a transition starts when preparation finishes after the fade window has opened', async (t) => {
+    const p = start(t, { upcomingDelay: 9500 });
+    await p.tick(180);                                         // préparation à 20 s de la fin
+    assert.equal(p.phase(), 'preparing');
+    p.media.currentTime = 188.5;                               // la fenêtre de fondu est déjà ouverte
+    p.t.mock.timers.tick(9500);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(p.phase(), 'mixing');
+    assert.equal(p.B.played, 1);
 });
 
 test('choosing another track during the crossfade gives the native player its sound back', async (t) => {

@@ -11,13 +11,17 @@
 (() => {
     'use strict';
     // 1. Réglages → page (chaque module applique ses propres valeurs par défaut ; une seule source : options.js)
+    let bridgeSettings = {};
+    const panelPinSide = () => bridgeSettings.panelPinSide === 'right' ? 'right' : 'left';
     function applySettings(settings) {
+        bridgeSettings = settings || {};
         let wasDisabled = false;
         try { wasDisabled = JSON.parse(localStorage.getItem?.('scsp:settings') || '{}').extensionDisabled === true; } catch {}
         try {
             localStorage.setItem('scsp:settings', JSON.stringify(settings || {}));
             window.dispatchEvent(new Event('sce:settings-change'));
         } catch {}
+        updatePanelPin(panelOpen);
         if (wasDisabled !== (settings?.extensionDisabled === true)) {
             try { location.reload(); } catch {}
         }
@@ -73,11 +77,13 @@
         : (open ? 'Close side player' : 'Open side player');
     function updatePanelPin(open) {
         panelOpen = open;
+        if (typeof document === 'undefined') return;
         const pin = document.querySelector('.sce-player-pin');
         if (!pin) return;
         pin.title = panelLabel(open);
         pin.setAttribute('aria-label', pin.title);
         pin.setAttribute('aria-expanded', String(open));
+        pin.dataset.side = panelPinSide();
     }
     function mountPanelPin() {
         if (!document.body || document.querySelector('.sce-player-pin')) return;
@@ -99,7 +105,7 @@
     }
     if (typeof document !== 'undefined') {
         const style = document.createElement('style');
-        style.textContent = '.sce-settings-button{float:left;display:grid;place-items:center;width:38px;height:46px;border:0;background:transparent;color:#ccc;cursor:pointer}.sce-settings-button:hover,.sce-settings-button:focus-visible{color:#fff;background:rgba(255,255,255,.12)}.sce-settings-button svg{width:16px;height:16px;fill:currentColor}.sce-player-pin{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483645;width:30px;height:48px;border:1px solid #555;border-right:0;border-radius:5px 0 0 5px;background:#252525;color:#ddd;box-shadow:0 2px 10px #0008;display:grid;place-items:center;cursor:pointer}.sce-player-pin:hover,.sce-player-pin:focus-visible,.sce-player-pin[aria-expanded=true]{color:var(--sce-accent,#f50);border-color:currentColor}.sce-player-pin svg{width:20px;height:20px}.sce-settings-overlay{position:fixed;inset:0;z-index:2147483646}.sce-settings-panel{position:absolute;top:54px;right:12px;width:min(480px,calc(100vw - 24px));height:min(660px,calc(100vh - 66px));background:#141414;border:1px solid #444;border-radius:7px;box-shadow:0 12px 36px #0009;overflow:hidden}.sce-settings-frame{display:block;width:100%;height:100%;border:0}.sce-settings-close{position:absolute;top:9px;right:10px;width:28px;height:28px;border:0;border-radius:50%;background:#303030;color:#bbb;cursor:pointer;font:22px/26px Arial,sans-serif}.sce-settings-close:hover,.sce-settings-close:focus-visible{background:#444;color:#fff}';
+        style.textContent = '.sce-settings-button{float:left;display:grid;place-items:center;width:38px;height:46px;border:0;background:transparent;color:#ccc;cursor:pointer}.sce-settings-button:hover,.sce-settings-button:focus-visible{color:#fff;background:rgba(255,255,255,.12)}.sce-settings-button svg{width:16px;height:16px;fill:currentColor}.sce-player-pin{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483645;width:30px;height:48px;border:1px solid #555;border-right:0;border-radius:5px 0 0 5px;background:#252525;color:#ddd;box-shadow:0 2px 10px #0008;display:grid;place-items:center;cursor:pointer}.sce-player-pin[data-side=left]{left:0;right:auto;border-left:0;border-right:1px solid #555;border-radius:0 5px 5px 0}.sce-player-pin[data-side=left] svg{transform:scaleX(-1)}.sce-player-pin:hover,.sce-player-pin:focus-visible,.sce-player-pin[aria-expanded=true]{color:var(--sce-accent,#f50);border-color:currentColor}.sce-player-pin svg{width:20px;height:20px}.sce-settings-overlay{position:fixed;inset:0;z-index:2147483646}.sce-settings-panel{position:absolute;top:54px;right:12px;width:min(480px,calc(100vw - 24px));height:min(660px,calc(100vh - 66px));background:#141414;border:1px solid #444;border-radius:7px;box-shadow:0 12px 36px #0009;overflow:hidden}.sce-settings-frame{display:block;width:100%;height:100%;border:0}.sce-settings-close{position:absolute;top:9px;right:10px;width:28px;height:28px;border:0;border-radius:50%;background:#303030;color:#bbb;cursor:pointer;font:22px/26px Arial,sans-serif}.sce-settings-close:hover,.sce-settings-close:focus-visible{background:#444;color:#fff}';
         (document.head || document.documentElement).append(style);
         mountSettingsButton();
         mountPanelPin();

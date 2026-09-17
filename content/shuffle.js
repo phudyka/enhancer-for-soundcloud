@@ -534,21 +534,24 @@
         .shuffleControl.${NS}-player.${NS}-loading::before { animation: ${NS}-pulse .8s ease-in-out infinite; }
 
         .${NS}-card-art { position: relative !important; }
-        .${NS}-card-shuffle {
-            position: absolute; right: 8px; bottom: 8px; z-index: 5; width: 34px; height: 34px;
+        .${NS}-card-action {
+            position: absolute; bottom: 8px; width: 34px; height: 34px;
             display: grid; place-items: center; padding: 8px; border: 0; border-radius: 50%;
             background: #fff; color: #111; cursor: pointer; opacity: 0; pointer-events: none;
             box-shadow: 0 2px 8px #0006;
         }
-        .${NS}-card-shuffle svg { width: 18px; height: 18px; }
-        .audibleTile:hover .${NS}-card-shuffle,
-        .soundList__item:hover .${NS}-card-shuffle,
-        .searchList__item:hover .${NS}-card-shuffle,
-        .sound:hover .${NS}-card-shuffle,
-        .playlist:hover .${NS}-card-shuffle,
-        .${NS}-card-art:hover > .${NS}-card-shuffle,
-        .${NS}-card-shuffle:focus-visible { opacity: 1; pointer-events: auto; }
-        .${NS}-card-shuffle:hover { color: var(--sce-accent, #f50); }
+        .${NS}-card-action svg { width: 18px; height: 18px; }
+        .${NS}-card-shuffle {
+            right: 8px; z-index: 5;
+        }
+        .audibleTile:hover .${NS}-card-action,
+        .soundList__item:hover .${NS}-card-action,
+        .searchList__item:hover .${NS}-card-action,
+        .sound:hover .${NS}-card-action,
+        .playlist:hover .${NS}-card-action,
+        .${NS}-card-art:hover > .${NS}-card-action,
+        .${NS}-card-action:focus-visible { opacity: 1; pointer-events: auto; }
+        .${NS}-card-action:hover { color: var(--sce-accent, #f50); }
 
         .${NS}-toast {
             position: fixed; left: 50%; bottom: 64px; transform: translate(-50%, 12px);
@@ -904,7 +907,7 @@
             art.classList.add(`${NS}-card-art`);
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = `${NS}-card-shuffle`;
+            button.className = `${NS}-card-action ${NS}-card-shuffle`;
             button.title = t('cardShuffle');
             button.setAttribute('aria-label', button.title);
             button.innerHTML = ICON;

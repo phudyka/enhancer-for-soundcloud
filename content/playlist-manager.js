@@ -11,6 +11,8 @@
         selected: 'sélectionnés', remove: 'Retirer', add: 'Ajouter à une playlist', create: 'Créer une playlist',
         unlike: 'Retirer des likes', playlistName: 'Nom de la playlist',
         noPlaylists: 'Aucune playlist trouvée', confirmRemove: 'Retirer {n} titre(s) de « {title} » ? Les morceaux ne seront pas supprimés de SoundCloud.',
+        deletePlaylist: 'Supprimer la playlist', confirmDeletePlaylist: 'Supprimer définitivement la playlist « {title} » ?',
+        deletedPlaylist: 'Playlist supprimée : {title}',
         confirmUnlike: 'Retirer {n} titre(s) de vos likes ?', removed: '{n} titre(s) retiré(s) de la playlist',
         added: '{n} titre(s) ajouté(s)', created: 'Playlist créée : {title}', unliked: '{n} like(s) retiré(s), {f} échec(s)',
         error: 'Action impossible : {error}', limit: 'Une playlist est limitée à {n} titres.', loading: 'Chargement des titres…',
@@ -19,6 +21,8 @@
         selected: 'selected', remove: 'Remove', add: 'Add to playlist', create: 'Create playlist',
         unlike: 'Remove from likes', playlistName: 'Playlist name',
         noPlaylists: 'No playlists found', confirmRemove: 'Remove {n} track(s) from “{title}”? The tracks will remain on SoundCloud.',
+        deletePlaylist: 'Delete playlist', confirmDeletePlaylist: 'Permanently delete playlist “{title}”?',
+        deletedPlaylist: 'Playlist deleted: {title}',
         confirmUnlike: 'Remove {n} track(s) from your likes?', removed: '{n} track(s) removed from playlist',
         added: '{n} track(s) added', created: 'Playlist created: {title}', unliked: '{n} like(s) removed, {f} failed',
         error: 'Action failed: {error}', limit: 'A playlist is limited to {n} tracks.', loading: 'Loading tracks…',
@@ -28,6 +32,9 @@
     const S = () => window.__scsp, D = () => window.__sceDialog;
     const isPlaylist = () => /^\/[^/]+\/sets\/[^/]+/.test(location.pathname);
     const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const cardSelector = '.soundList__item, .searchList__item, .audibleTile, .sound, .playlist';
+    const artSelector = '.playableTile__artwork, .sound__artwork, .audibleTile__artwork, .playlist__artwork, .sound__coverArt, .image';
+    const deleteIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5h3l.75 1H13V4H3V2.5h2.75l.75-1ZM4 5h8l-.5 8.5a1 1 0 0 1-1 .94h-5a1 1 0 0 1-1-.94L4 5Zm2 1.25.25 6h1.25l-.25-6H6Zm2.75 0-.25 6h1.25l.25-6H8.75Z" fill="currentColor"/></svg>';
 
     let current = null, sequence = 0, scheduled = null, mountingPath = null, unavailablePath = null, mePromise = null;
 
@@ -151,6 +158,95 @@
         }
     }
 
+    async function deletePlaylist(button, card, playlist) {
+        if (button.disabled) return;
+        try {
+            if (!await D().confirm(t('confirmDeletePlaylist', { title: playlist.title }), { ok: t('deletePlaylist'), danger: true })) return;
+            button.disabled = true;
+            await S().api(`/playlists/${playlist.id}`, { method: 'DELETE' });
+            card.remove();
+            S().toast(t('deletedPlaylist', { title: playlist.title }));
+            if (String(playlist.permalink_url || '').startsWith(location.origin + location.pathname)) location.assign('/you/library');
+        } catch (error) {
+            S().toast(t('error', { error: error.message }), { error: true });
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function injectCardDeleteStyle() {
+        if ($(`#${NS}-card-style`)) return;
+        const style = document.createElement('style');
+        style.id = `${NS}-card-style`;
+        style.textContent = `
+            .sce-card-art { position: relative !important; }
+            .sce-card-action {
+                position: absolute; bottom: 8px; width: 34px; height: 34px;
+                display: grid; place-items: center; padding: 8px; border: 0; border-radius: 50%;
+                background: #fff !important; color: #111 !important; opacity: 0; pointer-events: none;
+                box-shadow: 0 2px 8px #0006; cursor: pointer;
+            }
+            .${NS}-card-delete { right: 92px; z-index: 7; }
+            .${NS}-card-delete svg { width: 18px; height: 18px; }
+            .audibleTile:hover .${NS}-card-delete,
+            .soundList__item:hover .${NS}-card-delete,
+            .searchList__item:hover .${NS}-card-delete,
+            .sound:hover .${NS}-card-delete,
+            .playlist:hover .${NS}-card-delete,
+            .sce-card-art:hover > .${NS}-card-delete,
+            .${NS}-card-delete:focus-visible { opacity: 1; pointer-events: auto; }
+            .${NS}-card-delete:hover,
+            .${NS}-card-delete:focus-visible { color: #d00 !important; }
+        `;
+        (document.head || document.documentElement).append(style);
+    }
+
+    function setupPlaylistCardDelete() {
+        injectCardDeleteStyle();
+        const add = async (target) => {
+            if (!S() || !D()) return;
+            const card = target.closest?.(cardSelector);
+            if (!card || ['ready', 'skip', 'loading'].includes(card.dataset.scePlaylistDelete)) return;
+            const link = card.querySelector('a[href*="/sets/"]');
+            if (!link) { card.dataset.scePlaylistDelete = 'skip'; return; }
+            const path = new URL(link.href, location.origin).pathname;
+            if (!isPlaylistPath(path)) { card.dataset.scePlaylistDelete = 'skip'; return; }
+            const art = card.querySelector(artSelector);
+            if (!art || art.querySelector(`.${NS}-card-delete`)) return;
+            card.dataset.scePlaylistDelete = 'loading';
+            try {
+                const [me, playlist] = await Promise.all([
+                    mePromise || (mePromise = S().me().catch((error) => { mePromise = null; throw error; })),
+                    S().api(`/resolve?url=${encodeURIComponent(location.origin + path)}`),
+                ]);
+                if (playlist.kind !== 'playlist' || String(playlist.user?.id) !== String(me.id)) { card.dataset.scePlaylistDelete = 'skip'; return; }
+                art.classList.add('sce-card-art');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `sce-card-action ${NS}-card-delete`;
+                button.title = t('deletePlaylist');
+                button.setAttribute('aria-label', button.title);
+                button.innerHTML = deleteIcon;
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    deletePlaylist(button, card, playlist);
+                });
+                art.appendChild(button);
+                card.dataset.scePlaylistDelete = 'ready';
+            } catch (error) {
+                console.warn('[SCE] playlist card delete', error);
+                card.dataset.scePlaylistDelete = 'skip';
+            }
+        };
+        document.addEventListener('mouseover', (event) => add(event.target));
+        document.addEventListener('focusin', (event) => add(event.target));
+    }
+
+    function isPlaylistPath(path) {
+        return /^\/[^/]+\/sets\/[^/]+/.test(path);
+    }
+
     async function mount() {
         const path = location.pathname;
         if (unavailablePath !== path) unavailablePath = null;      // autre page : nouvel essai au retour
@@ -183,7 +279,9 @@
                 `${NS}-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px;border-bottom:1px solid #444}.` +
                 `${NS}-row label{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer}.` +
                 `${NS}-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.` +
-                `${NS}-row input{accent-color:var(--sce-accent,#f50)}`;
+                `${NS}-row input{accent-color:var(--sce-accent,#f50)}.` +
+                `${NS}-card-delete{right:92px;z-index:7}.` +
+                `${NS}-card-delete:hover,.${NS}-card-delete:focus-visible{color:#d00!important}`;
             if (!style.isConnected) document.head.appendChild(style);
             const ctx = { path, playlist, meId: me.id, button, panel: null, tracks: [], selected: new Set(), busy: false };
             button.addEventListener('click', () => open(ctx));
@@ -205,5 +303,6 @@
         if (current && (!current.button.isConnected || current.path !== location.pathname)) schedule();
         else if (!current && isPlaylist() && $('.soundActions')) schedule();
     });
+    setupPlaylistCardDelete();
     schedule();
 })();

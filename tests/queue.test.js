@@ -90,7 +90,7 @@ test('playing or removing a queued track targets it by index, checked against it
 
 test('queued tracks already analyzed carry their BPM, Camelot key and match with the current track', async (t) => {
     const analyses = { '/artist/track-3': { bpm: 124, key: 'A', mode: 'minor' }, '/artist/track-4': { bpm: 126, key: 'E', mode: 'minor' }, '/artist/track-5': { bpm: 90, key: 'F♯', mode: 'major' } };
-    const stored = new Map(Object.entries(analyses).map(([path, value]) => [`sce:analysis:${path}`, JSON.stringify({ ...value, conf: 0.6, version: 3 })]));
+    const stored = new Map(Object.entries(analyses).map(([path, value]) => [`sce:analysis:${path}`, JSON.stringify({ ...value, conf: 0.6, version: 4 })]));
     const sharedWindow = {};
     vm.runInNewContext(fs.readFileSync('content/shared.js', 'utf8'), {
         window: sharedWindow, URL, localStorage: { getItem: (key) => stored.get(key) ?? null, get length() { return stored.size; }, key: (i) => [...stored.keys()][i] ?? null },

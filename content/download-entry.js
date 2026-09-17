@@ -30,6 +30,9 @@
         });
         return element;
     }
+    function cardArtwork(tile) {
+        return tile.querySelector('.playableTile__artwork, .audibleTile__artwork, .playlist__artwork, .sound__artwork, .image');
+    }
     function itemUrl(item, selectors) {
         const href = item.querySelector(selectors)?.href;
         return href && new URL(href).origin === location.origin ? href : null;
@@ -56,9 +59,12 @@
             actions.dataset.sceDl = '';
         });
         document.querySelectorAll('.audibleTile:not([data-sce-dl])').forEach((tile) => {
-            const actions = tile.querySelector('.playableTile__actions .playableTile__actionWrapper');
-            if (!actions) return;
-            if (!actions.querySelector('.sce-download')) actions.append(button('sce-download-tile playableTile__actionButton', () => itemUrl(tile, '.playableTile__artworkLink')));
+            const art = cardArtwork(tile);
+            if (!art) return;
+            if (!art.querySelector('.sce-download-tile')) {
+                art.classList.add('sce-card-art');
+                art.append(button('sce-download-tile sce-card-action sce-card-download', () => itemUrl(tile, '.playableTile__artworkLink')));
+            }
             tile.dataset.sceDl = '';
         });
         document.querySelectorAll('.trackItem:not([data-sce-dl])').forEach((row) => {
@@ -78,6 +84,22 @@
         .sce-download svg { display: block; width: 16px; height: 16px; }
         .sce-download:hover, .sce-download:focus-visible { color: var(--sce-accent, #f50) !important; }
         .sc-button-group .sce-download-action { color: #fff !important; margin: 0 16px 0 0; }
+        .sce-card-art { position: relative !important; }
+        .sce-card-action {
+            position: absolute; bottom: 8px; width: 34px; height: 34px;
+            display: grid; place-items: center; padding: 8px; border: 0; border-radius: 50%;
+            background: #fff !important; color: #111 !important; opacity: 0; pointer-events: none;
+            box-shadow: 0 2px 8px #0006; z-index: 6;
+        }
+        .sce-card-download { right: 50px; }
+        .sce-card-action svg { width: 18px; height: 18px; }
+        .audibleTile:hover .sce-card-download,
+        .soundList__item:hover .sce-card-download,
+        .searchList__item:hover .sce-card-download,
+        .sound:hover .sce-card-download,
+        .playlist:hover .sce-card-download,
+        .sce-card-art:hover > .sce-card-download,
+        .sce-card-download:focus-visible { opacity: 1; pointer-events: auto; }
         .trackItem, .queueItemView { position: relative; }
         .sce-download-row { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); z-index: 2; opacity: 0; background: var(--background-surface, #222); }
         .trackItem:hover > .sce-download-row, .trackItem:focus-within > .sce-download-row,

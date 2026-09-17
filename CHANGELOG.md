@@ -1,5 +1,12 @@
 # Journal des versions
 
+## Non publié
+- Panneau latéral : l’onglet flottant d’ouverture se place à gauche par défaut, avec un réglage gauche/droite pour le caler sur le côté choisi dans le navigateur.
+- Transitions automatiques : le fondu démarre aussi quand la préparation du titre suivant finit après l’ouverture de la fenêtre de transition.
+- Les actions sur les pochettes de playlists sont alignées sur une même rangée : téléchargement et lecture aléatoire ne se chevauchent plus. Les playlists personnelles peuvent aussi être supprimées depuis leur pochette, après confirmation.
+- Analyse de tonalité : pics spectraux interpolés au lieu de l’énergie de toutes les bandes FFT, résolution accrue, rejet du bruit et des passages trop courts ou ambigus. La mesure tient compte de la vitesse réelle avant de classer les notes ; les effets de transposition ne modifient plus la tonalité originale mémorisée.
+- Les anciennes analyses sont ignorées et recalculées lors des prochaines écoutes, y compris pour le mix harmonique et la file « À suivre ».
+
 ## 0.16.0 — 17/09/2026
 - Mix harmonique dans la Bibliothèque : tri par BPM ou par tonalité (ordre de la roue de Camelot), BPM et code Camelot affichés sur chaque titre analysé, menu « Mix harmonique » pour ne garder que les titres analysés ou ceux compatibles avec le titre en cours (même clé, clé voisine ou relative, tempo à 6 % près, demi et double tempo compris), les meilleurs enchaînements d'abord. La liste suit le titre en cours.
 - File « À suivre » du panneau latéral : BPM et code Camelot des titres déjà analysés, mis en couleur quand l'enchaînement avec le titre en cours est harmonique.

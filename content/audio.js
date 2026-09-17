@@ -12,7 +12,7 @@
  *   · Bass boost (low-shelf 90 Hz, 0 → +12 dB) · Réverb (convolution, 0 → 100 %)
  *   · Presets : Normal · Bass boost · Slowed + Reverb · Nightcore
  *   · Analyse en direct : BPM et tonalité (+ code Camelot), affinés sur ~30 s,
- *     mémorisés par titre. Corrigés de la vitesse et du décalage de hauteur.
+ *     mémorisés par titre. Corrigés de la vitesse, dans la tonalité originale.
  *
  * Traitement : SoundCloud branche déjà son <audio> sur un AudioContext.
  * media-hook.js intercepte ce branchement et y insère une chaîne transparente
@@ -113,7 +113,7 @@
         const dry = ctx.createGain(), wet = ctx.createGain(); wet.gain.value = 0;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500;
         const conv = ctx.createConvolver(); conv.buffer = (graph.conv && graph.ctx === ctx) ? graph.conv.buffer : impulse(ctx);
-        const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
+        const an = ctx.createAnalyser(); an.fftSize = 8192; an.smoothingTimeConstant = 0;
         // Étage transitions : égaliseur bas (échange des basses) et fondu du lecteur natif, puis volume de l'utilisateur
         // (le second flux des transitions se branche sur `master`, après le fondu, pour suivre le même volume)
         const eqLow = ctx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 200; eqLow.gain.value = 0;
@@ -219,7 +219,7 @@
                           minor: { C: '5A', 'C♯': '12A', D: '7A', 'E♭': '2A', E: '9A', F: '4A', 'F♯': '11A', G: '6A', 'A♭': '1A', A: '8A', 'B♭': '3A', B: '10A' } };
         const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
         const MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, trackKey = null, result = null, binNote = null, liveTrack = null, lastTrackCheck = 0, pace = 0;
+        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, tonalFrames = 0, trackKey = null, result = null, liveTrack = null, lastTrackCheck = 0, pace = 0;
         /** 50 Hz seulement pendant l'analyse ; deux réveils par seconde le reste du temps. */
         const setPace = (ms) => { if (pace === ms) return; pace = ms; clearInterval(timer); timer = setInterval(tick, ms); };
 
@@ -228,14 +228,46 @@
         try {                                                   // entrées rangées avec leur contexte avant la 0.15.3
             for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k?.startsWith('sce:analysis:') && k.includes('?')) localStorage.removeItem(k); }
         } catch {}
-        const cacheGet = (k) => { try { const value = JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); return value?.version === 3 ? value : null; } catch { return null; } };
-        const cacheSet = (k, v) => { try { localStorage.setItem(`sce:analysis:${k}`, JSON.stringify({ ...v, version: 3 })); } catch {} };
+        const cacheGet = (k) => { try { const value = JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); return value?.version === 4 ? value : null; } catch { return null; } };
+        const cacheSet = (k, v) => { try { localStorage.setItem(`sce:analysis:${k}`, JSON.stringify({ ...v, version: 4 })); } catch {} };
 
-        function reset() { prevMag = null; flux = []; chroma = new Float64Array(12); frames = 0; result = null; }
-        function prepareBins() {
-            const an = graph.an, sr = graph.ctx.sampleRate, n = an.frequencyBinCount;
-            binNote = new Int8Array(n).fill(-1);
-            for (let i = 1; i < n; i++) { const f = i * sr / (2 * n); if (f < 110 || f > 1800) continue; binNote[i] = ((Math.round(12 * Math.log2(f / 440)) + 9) % 12 + 12) % 12; }
+        function reset() { prevMag = null; flux = []; chroma = new Float64Array(12); frames = 0; tonalFrames = 0; result = null; }
+        // Retenir les pics : le bruit large bande ne doit pas favoriser les notes
+        // dont les plages de fréquences contiennent davantage de bandes FFT.
+        const frameChroma = new Float64Array(12);
+        function collectChroma(mag) {
+            frameChroma.fill(0);
+            const hz = graph.ctx.sampleRate / graph.an.fftSize;
+            const speed = graph.el.preservesPitch === false ? graph.el.playbackRate : 1;
+            const lo = Math.max(3, Math.ceil(110 * speed / hz));
+            const hi = Math.min(mag.length - 4, Math.floor(1800 * speed / hz));
+            let peak = -Infinity, power = 0, logPower = 0, count = 0;
+            for (let i = lo; i <= hi; i++) {
+                const db = Number.isFinite(mag[i]) ? mag[i] : -120;
+                peak = Math.max(peak, db);
+                power += Math.exp(db * 2 * DB_TO_AMP);
+                logPower += db * 2 * DB_TO_AMP;
+                count++;
+            }
+            // Écarter le silence et les spectres bruités avant de chercher une tonalité.
+            if (!count || peak < -80 || Math.exp(logPower / count) / (power / count) > 0.35) return;
+            for (let i = lo; i <= hi; i++) {
+                const left = mag[i - 1], db = mag[i], right = mag[i + 1];
+                if (!Number.isFinite(db) || db < peak - 35 || db <= left || db < right) continue;
+                if (db - Math.max(mag[i - 3], mag[i + 3]) < 6) continue;
+                // Interpolation parabolique en dB : ne pas arrondir au centre de la bande FFT.
+                const den = left - 2 * db + right;
+                const offset = Number.isFinite(den) && den ? Math.max(-0.5, Math.min(0.5, 0.5 * (left - right) / den)) : 0;
+                const midi = 69 + 12 * Math.log2((i + offset) * hz / speed / 440);
+                const note = Math.round(midi);
+                const weight = Math.exp((db - peak) * DB_TO_AMP / 2);
+                frameChroma[((note % 12) + 12) % 12] += weight;
+            }
+            const total = frameChroma.reduce((a, b) => a + b, 0);
+            if (total) {
+                tonalFrames++;
+                for (let i = 0; i < 12; i++) chroma[i] += frameChroma[i] / total;
+            }
         }
         function tick() {
             const el = graph.el;
@@ -249,13 +281,12 @@
             const an = graph.an, n = an.frequencyBinCount;
             const mag = spareMag && spareMag.length === n ? spareMag : new Float32Array(n); // deux tampons en alternance : aucune allocation à 50 Hz
             an.getFloatFrequencyData(mag);
-            if (!binNote || binNote.length !== n) prepareBins();
-            // flux spectral (onsets) + chroma pondéré
+            collectChroma(mag);
+            // Flux spectral pour les attaques ; le chroma utilise les pics ci-dessus.
             let fl = 0;
             for (let i = 1; i < n; i++) {
                 const m = Math.exp(mag[i] * DB_TO_AMP); // dB → amplitude
                 if (prevMag) { const d = m - prevMag[i]; if (d > 0) fl += d; }
-                if (binNote[i] >= 0) chroma[binNote[i]] += m * m;
                 mag[i] = m;
             }
             spareMag = prevMag; prevMag = mag;
@@ -266,7 +297,7 @@
                 // Une fenêtre peu rythmée ne doit pas effacer le dernier tempo fiable du même titre.
                 result = { ...next, bpm: next.bpm ?? result?.bpm ?? null };
                 render();
-                if (frames >= 1500 && next.conf > 0.35 && next.bpm && next.key && tk) { cacheSet(tk, { bpm: next.bpm, key: next.key, mode: next.mode, conf: next.conf }); result.cached = true; prevMag = spareMag = null; flux = []; }   // acquis : plus d'analyse jusqu'au titre suivant
+                if (frames >= 1500 && next.conf > 0.35 && next.bpm && next.key && tk) { cacheSet(tk, { bpm: next.bpm, key: next.key, mode: next.mode, conf: next.conf, keyConf: next.keyConf }); result.cached = true; prevMag = spareMag = null; flux = []; }   // acquis : plus d'analyse jusqu'au titre suivant
             }
         }
         function estimate() {
@@ -300,11 +331,13 @@
                     if (r > bestR) { second = bestR; bestR = r; bestKey = k; bestMode = mode; } else if (r > second) second = r;
                 }
             }
-            // Corrections : la vitesse change le tempo mesuré ; sans conservation de hauteur, elle décale la tonalité
+            // La vitesse change le tempo mesuré.
             bpm = bpm / cfg.rate;
-            const speedSemis = cfg.preservePitch ? 0 : Math.round(12 * Math.log2(cfg.rate));
-            const keyIdx = ((bestKey - speedSemis + (cfg.pitchSemitones || 0)) % 12 + 12) % 12;
-            return { bpm: conf >= 0.2 ? Math.round(bpm) : null, key: bestR >= 0.45 && bestR - second >= 0.03 ? NOTES[keyIdx] : null, mode: bestMode, conf, keyConf: Math.max(0, bestR - second) };
+            // Le chroma corrige déjà la vitesse réelle avant l’arrondi des notes.
+            // L’analyseur précède notre transposition : mémoriser la tonalité originale.
+            const peakChroma = Math.max(...c);
+            const tonalNotes = c.filter((value) => value > peakChroma * 0.15).length;
+            return { bpm: conf >= 0.2 ? Math.round(bpm) : null, key: tonalFrames >= 150 && tonalNotes >= 3 && bestR >= 0.6 && bestR - second >= 0.05 ? NOTES[bestKey] : null, mode: bestMode, conf, keyConf: Math.max(0, bestR - second) };
         }
         function label(r = result) {
             if (!r) return L.listening;
