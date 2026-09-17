@@ -1,6 +1,6 @@
 # Journal des versions
 
-## Non publié
+## 0.15.0 — 17/09/2026
 - Transitions : choisir un autre titre, mettre en pause ou répéter le titre en cours pendant un fondu ne laisse plus le lecteur muet ; une erreur de préparation n'immobilise plus la transition suivante.
 - Audio : le décalage de hauteur n'est calculé que lorsqu'il est utilisé (moins de charge processeur), un navigateur sans ce traitement ne coupe plus le son, et l'avertissement « effets indisponibles » n'apparaît qu'une fois par titre.
 - Réglages : le sélecteur de couleur n'épuise plus le quota d'écritures synchronisées, les boutons « Tout masquer / Tout réafficher » et les libellés restants sont traduits en anglais, et la page suit les changements faits ailleurs.
