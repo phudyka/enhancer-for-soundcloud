@@ -223,7 +223,11 @@
         /** 50 Hz seulement pendant l'analyse ; deux réveils par seconde le reste du temps. */
         const setPace = (ms) => { if (pace === ms) return; pace = ms; clearInterval(timer); timer = setInterval(tick, ms); };
 
-        const currentTrack = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
+        // Clé sans le contexte de lecture (?in=playlist) : un titre n'est analysé qu'une fois
+        const currentTrack = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href')?.split('?')[0] || null;
+        try {                                                   // entrées rangées avec leur contexte avant la 0.15.3
+            for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k?.startsWith('sce:analysis:') && k.includes('?')) localStorage.removeItem(k); }
+        } catch {}
         const cacheGet = (k) => { try { const value = JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); return value?.version === 3 ? value : null; } catch { return null; } };
         const cacheSet = (k, v) => { try { localStorage.setItem(`sce:analysis:${k}`, JSON.stringify({ ...v, version: 3 })); } catch {} };
 
@@ -576,8 +580,9 @@
         q('.v-bass').textContent = cfg.bass > 0.01 ? `+${cfg.bass} dB` : 'off'; q('.r-bass').value = cfg.bass; paint(q('.r-bass'), cfg.bass / 12);
         q('.v-reverb').textContent = cfg.reverb > 0.01 ? `${Math.round(cfg.reverb * 100)} %` : 'off'; q('.r-reverb').value = cfg.reverb; paint(q('.r-reverb'), cfg.reverb);
         panel.querySelectorAll('[data-p]').forEach((b) => { const P = PRESETS[b.dataset.p]; b.classList.toggle('m-on', Math.abs(P.rate - cfg.rate) < 1e-6 && P.preservePitch === cfg.preservePitch && (P.pitchSemitones || 0) === (cfg.pitchSemitones || 0) && Math.abs(P.bass - cfg.bass) < .26 && Math.abs(P.reverb - cfg.reverb) < .06); });
+        const presets = customPresets();
         panel.querySelectorAll(`.${NS}-custom-item`).forEach((row, index) => {
-            const preset = customPresets()[index];
+            const preset = presets[index];
             row.firstElementChild?.classList.toggle('m-on', !!preset && Object.entries(preset.values).every(([key, value]) => cfg[key] === value));
         });
     }
@@ -660,7 +665,7 @@
             setTimeout(() => { if (track === trackHref()) { apply(); if (panel) syncPanel(); } }, 250);
         }
         if (track) lastTrack = track;
-        if (!btn?.isConnected || (analysisVisible() && !analysisBar?.isConnected)) mount();
+        if (enabled() && (!btn?.isConnected || (analysisVisible() && !analysisBar?.isConnected))) mount();   // désactivé : onSettings a déjà tout retiré
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
     // Réglage modifié : 'sce:settings-change' vient du pont (même onglet), 'storage' d'un autre onglet
     const onSettings = () => { flags = readFlags(); if (!enabled()) unmount(); else mount(); };

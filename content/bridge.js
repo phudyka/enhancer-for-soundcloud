@@ -103,7 +103,14 @@
         (document.head || document.documentElement).append(style);
         mountSettingsButton();
         mountPanelPin();
-        new MutationObserver(() => { mountSettingsButton(); mountPanelPin(); }).observe(document.documentElement, { childList: true, subtree: true });
+        let settingsButton = null, panelPin = null;
+        const observer = new MutationObserver(() => {
+            if (!chrome.runtime?.id) { observer.disconnect(); return; }   // extension rechargée : ce pont est orphelin
+            if (settingsButton?.isConnected && panelPin?.isConnected) return;
+            mountSettingsButton(); mountPanelPin();
+            settingsButton = document.querySelector('.sce-settings-button'); panelPin = document.querySelector('.sce-player-pin');
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
         document.addEventListener?.('keydown', (event) => { if (event.key === 'Escape' && settingsOverlay) closeSettings(); });
     }
 

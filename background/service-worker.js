@@ -74,8 +74,10 @@ function recordListen(entry) {
         const stored = await chrome.storage.local.get(key);
         const list = Array.isArray(stored[key]) ? stored[key] : [];
         const index = list.findIndex((item) => item.id === clean.id);
-        if (index >= 0) list[index] = { ...list[index], ...clean, listened: Math.max(list[index].listened, listened) };
-        else list.push(clean);
+        if (index >= 0) {
+            if (listened <= list[index].listened) return { ok: true, skipped: true };   // rien de nouveau : pas de réécriture du mois
+            list[index] = { ...list[index], ...clean, listened };
+        } else list.push(clean);
         await chrome.storage.local.set({ [key]: list });
         if (!Array.isArray(stored[key])) await pruneHistory();   // nouveau mois seulement : l'élagage relit tout le stockage
         return { ok: true };
@@ -260,7 +262,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
-        await chrome.storage.sync.set({ settings: { shuffleMode: 'queue', speedControl: true, library: true } });
+        // Réglages déjà synchronisés depuis un autre appareil : on ne complète que les valeurs absentes
+        const { settings: synced } = await chrome.storage.sync.get('settings');
+        await chrome.storage.sync.set({ settings: { shuffleMode: 'queue', speedControl: true, library: true, ...(synced || {}) } });
         chrome.tabs.create({ url: chrome.runtime.getURL('guide/guide.html') }).catch(() => chrome.runtime.openOptionsPage());
     }
     // Réaligne le blocage des pubs sur le réglage (au cas où le navigateur l'aurait réinitialisé)

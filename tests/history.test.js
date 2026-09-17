@@ -53,6 +53,17 @@ test('progress is flushed every 15 s of listening and on pause, keeping the same
     assert.equal(t.posted[2].entry.listened, 31);
 });
 
+test('a listen already sent is not sent again by the next pause or hidden tab', () => {
+    const t = startTracker();
+    t.state({ url: '/a/one', title: 'One', duration: 200 });
+    for (let s = 0; s <= 8; s += 0.5) t.tick(s);
+    t.state({ url: '/a/one', title: 'One', duration: 200, playing: false });
+    t.state({ url: '/a/one', title: 'One', duration: 200, playing: false });   // état republié sans progression
+    t.listeners.pagehide();
+    assert.equal(t.posted.length, 1);
+    assert.equal(t.posted[0].entry.listened, 8);
+});
+
 test('nothing is recorded when history is disabled', () => {
     const t = startTracker({ history: false });
     t.state({ url: '/a/one', title: 'One', duration: 200 });
@@ -91,6 +102,7 @@ test('the worker keeps one entry per listen, updated with the longest time', asy
     assert.deepEqual(plain(await w.send({ type: 'listen', entry: { id: 'x1', url: '/a/one', title: 'One', at, listened: 3 } })), { ok: true, skipped: true });
     await w.send({ type: 'listen', entry: { id: 'x1', url: '/a/one', title: 'One', artist: 'A', at, listened: 15 } });
     await w.send({ type: 'listen', entry: { id: 'x1', url: '/a/one', title: 'One', artist: 'A', at, listened: 42 } });
+    assert.deepEqual(plain(await w.send({ type: 'listen', entry: { id: 'x1', url: '/a/one', title: 'One', artist: 'A', at, listened: 42 } })), { ok: true, skipped: true });   // sans progression : mois non réécrit
     await w.send({ type: 'listen', entry: { id: 'x2', url: '/b/two', title: 'Two', at: at + 60000, listened: 9 } });
     assert.deepEqual(Object.keys(w.local), ['history:2026-09']);
     const { entries } = await w.send({ type: 'history-get' });
@@ -101,6 +113,24 @@ test('the worker keeps one entry per listen, updated with the longest time', asy
     assert.deepEqual(plain(await w.send({ type: 'listen', entry: { url: '/x' } })), { ok: false });
     await w.send({ type: 'history-clear' });
     assert.deepEqual(w.local, {});
+});
+
+test('installing keeps settings already synced from another device', async () => {
+    let onInstalled, sync = { settings: { shuffleMode: 'random', blockAds: true } };
+    const opened = [];
+    const chrome = {
+        action: { setBadgeText() {}, setBadgeBackgroundColor() {} },
+        commands: { onCommand: { addListener() {} } },
+        sidePanel: { setPanelBehavior: async () => {} },
+        runtime: { onMessage: { addListener() {} }, onInstalled: { addListener(listener) { onInstalled = listener; } }, getURL: (path) => path, openOptionsPage() {} },
+        tabs: { async query() { return []; }, async create(options) { opened.push(options.url); } },
+        declarativeNetRequest: { async updateEnabledRulesets() {} },
+        storage: { session: { async set() {} }, local: { async get() { return {}; }, async set() {} }, sync: { async get() { return sync; }, async set(value) { sync = value; } } },
+    };
+    vm.runInNewContext(fs.readFileSync('background/service-worker.js', 'utf8'), { chrome, console, Date });
+    await onInstalled({ reason: 'install' });
+    assert.deepEqual(plain(sync.settings), { shuffleMode: 'random', speedControl: true, library: true, blockAds: true });
+    assert.deepEqual(opened, ['guide/guide.html']);
 });
 
 /* ── stats/stats-model.js : agrégats ────────────────────────────────── */
@@ -137,6 +167,8 @@ test('statistics aggregate listens by track, artist and time', () => {
     assert.equal(days[4].seconds, 40);
     assert.equal(S.fmtDuration(3725), '1 h 02 min');
     assert.equal(S.fmtDuration(59), '59 s');
+    const merged = S.topTracks([...entries, { url: '/b/two?in=b/sets/mix', title: 'Two', artist: 'B', at: now, listened: 10 }], 1);   // même titre depuis une playlist
+    assert.deepEqual([merged[0].url, merged[0].plays, merged[0].seconds], ['/b/two', 2, 310]);
     const csv = S.toCSV(entries).split('\n');
     assert.equal(csv.length, 5);
     assert.match(csv[1], /"https:\/\/soundcloud\.com\/a\/one","95","100"/);

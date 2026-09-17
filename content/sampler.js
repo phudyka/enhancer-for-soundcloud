@@ -25,7 +25,7 @@
     const fmt = (s) => { if (!Number.isFinite(s)) return L.none; const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r.toFixed(2).padStart(5, '0')}`; };
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').sampler !== false; } catch { return true; } };
-    const trackUrl = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href') || null;
+    const trackUrl = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href')?.split('?')[0] || null;   // sans ?in=playlist
     const trackTitle = () => document.querySelector('.playbackSoundBadge__titleLink')?.title || '';
     const media = () => window.__sceMedia;
 
@@ -34,6 +34,15 @@
         list(url) { return (url && this.all()[url]) || []; },
         save(url, list) { const all = this.all(); if (list.length) all[url] = list; else delete all[url]; try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {} },
     };
+    // Avant la 0.15.3, les samples étaient rangés sous l'URL avec son contexte (?in=…) : regroupés sous celle du titre
+    {
+        const all = store.all(); let moved = false;
+        for (const key of Object.keys(all)) {
+            const base = key.split('?')[0]; if (base === key || !Array.isArray(all[key])) continue;
+            all[base] = [...(Array.isArray(all[base]) ? all[base] : []), ...all[key]]; delete all[key]; moved = true;
+        }
+        if (moved) try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {}
+    }
 
     // ── Boucle ────────────────────────────────────────────────────
     const loop = { a: NaN, b: NaN, on: false, url: null, timer: null };

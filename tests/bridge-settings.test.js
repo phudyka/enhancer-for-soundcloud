@@ -42,9 +42,9 @@ test('SoundCloud header exposes settings and remounts after header replacement',
     };
     const chrome = {
         storage: { onChanged: { addListener() {} }, sync: { get: async () => ({ settings: {} }) } },
-        runtime: { onMessage: { addListener() {} }, sendMessage: async () => ({ ok: true, open: false }), getURL: (path) => `chrome-extension://test/${path}` },
+        runtime: { id: 'test', onMessage: { addListener() {} }, sendMessage: async () => ({ ok: true, open: false }), getURL: (path) => `chrome-extension://test/${path}` },
     };
-    class MutationObserver { constructor(callback) { changed = callback; } observe() {} }
+    class MutationObserver { constructor(callback) { changed = callback; } observe() {} disconnect() {} }
     vm.runInNewContext(fs.readFileSync('content/bridge.js', 'utf8'), {
         window: { addEventListener() {}, dispatchEvent() {} }, document, chrome, MutationObserver,
         localStorage: { setItem() {} }, Event,

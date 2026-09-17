@@ -233,7 +233,7 @@
 
     let styleEl = null;
     let artistObserver = null;
-    let artistScanQueued = false;
+    let artistScanQueued = false, lastDebloatScan = 0;
     let lastArtistScan = 0, artistRetry = null;
     function markArtistTools(settings = readSettings()) {
         if (!settings.hideArtistTools) {
@@ -258,8 +258,10 @@
         if (!panel.classList.contains(`${NS}-artist-tools`)) panel.classList.add(`${NS}-artist-tools`);
     }
     function markTourUpsell(settings) {
-        document.querySelectorAll(`.${NS}-tour-upsell`).forEach((el) => el.classList.remove(`${NS}-tour-upsell`));
-        if (!settings.hideUpsell && !settings.hideUpsellTour) return;
+        const marked = new Set(document.querySelectorAll(`.${NS}-tour-upsell`));
+        // Retire la marque uniquement là où elle ne s'applique plus : pas de retrait-ajout à chaque passage
+        const unmark = () => marked.forEach((el) => el.classList.remove(`${NS}-tour-upsell`));
+        if (!settings.hideUpsell && !settings.hideUpsellTour) { unmark(); return; }
         for (const heading of document.querySelectorAll('h2, h3, h4, [class*="__title"]')) {
             if ((heading.textContent || '').trim().toLowerCase() !== 'on tour') continue;
             let panel = heading.closest('.sidebarModule');
@@ -267,8 +269,11 @@
                 panel = heading.parentElement;
                 for (let depth = 0; panel && depth < 5 && !/upgrade to artist pro/i.test(panel.textContent || ''); depth++) panel = panel.parentElement;
             }
-            if (panel && !panel.matches('body, main, .l-sidebar-right') && /upgrade to artist pro/i.test(panel.textContent || '')) panel.classList.add(`${NS}-tour-upsell`);
+            if (panel && !panel.matches('body, main, .l-sidebar-right') && /upgrade to artist pro/i.test(panel.textContent || '')) {
+                if (!marked.delete(panel)) panel.classList.add(`${NS}-tour-upsell`);
+            }
         }
+        unmark();
     }
     function watchArtistTools(settings) {
         artistObserver?.disconnect();
@@ -280,10 +285,17 @@
         const dynamicKeys = [...Object.keys(PROFILE_TABS), ...Object.keys(NAV_ITEMS), ...Object.keys(PROFILE_ACTIONS), ...Object.keys(HEADER_LINKS), ...Object.keys(MODULE_HEADINGS), 'hideArtistProPrompt'];
         const custom = customEntries(settings);
         if (!settings.hideArtistTools && !settings.hideUpsell && !settings.hideUpsellTour && !dynamicKeys.some((key) => settings[key]) && !custom.some((entry) => entry.startsWith('heading:') || entry.startsWith('text:'))) return;
-        artistObserver = new MutationObserver(() => {
+        // Réglages de la fermeture : apply() relance watchArtistTools à chaque changement.
+        // Rafales de mutations : au plus un parcours tous les 250 ms, le premier sans attendre.
+        const observer = artistObserver = new MutationObserver(() => {
             if (artistScanQueued) return;
             artistScanQueued = true;
-            requestAnimationFrame(() => { artistScanQueued = false; const current = readSettings(); markArtistTools(current); markTourUpsell(current); markDebloat(current); });
+            setTimeout(() => requestAnimationFrame(() => {
+                artistScanQueued = false;
+                if (observer !== artistObserver) return;                    // réglages changés entre-temps
+                lastDebloatScan = Date.now();
+                markArtistTools(settings); markTourUpsell(settings); markDebloat(settings);
+            }), Math.max(0, 250 - (Date.now() - lastDebloatScan)));
         });
         artistObserver.observe(document.documentElement, { childList: true, subtree: true });
     }

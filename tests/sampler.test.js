@@ -4,14 +4,14 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
-function start(t) {
+function start(t, { href = '/a/one', stored } = {}) {
     t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
-    const values = new Map();
+    const values = new Map(stored ? [['sce:samples', JSON.stringify(stored)]] : []);
     const media = { currentTime: 30, duration: 200, addEventListener() {} };
     const keys = {};
     const document = {
         documentElement: { lang: 'fr' }, activeElement: null, body: {},
-        querySelector: (sel) => sel.includes('titleLink') ? { getAttribute: () => '/a/one', title: 'One' } : null,
+        querySelector: (sel) => sel.includes('titleLink') ? { getAttribute: () => href, title: 'One' } : null,
         querySelectorAll: () => [], getElementById: () => null, addEventListener: (type, cb) => { keys[type] = cb; },
     };
     const window = { __sceMedia: media, __sceOnMedia: () => {}, addEventListener() {} };
@@ -50,4 +50,10 @@ test('samples are saved per track and can be replayed', (t) => {
     p.S.setPoint('a', 1); p.S.setPoint('b', 1.01);       // trop court : pas de boucle possible
     p.S.setLoop(true);
     assert.equal(p.S.loop.on, false);
+});
+
+test('samples ignore the playlist context of the track URL', (t) => {
+    const p = start(t, { href: '/a/one?in=a/sets/mix', stored: { '/a/one?in=a/sets/old': [{ name: 'Old', a: 1, b: 2 }], '/a/one': [{ name: 'Base', a: 3, b: 4 }] } });
+    assert.deepEqual(Object.keys(JSON.parse(p.values.get('sce:samples'))), ['/a/one']);
+    assert.deepEqual(p.S.list().map((sample) => sample.name), ['Base', 'Old']);
 });

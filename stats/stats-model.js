@@ -16,12 +16,14 @@
         return entries.filter((e) => e.at >= since);
     }
 
+    const trackKey = (url) => (url ? String(url).split('?')[0] : null);   // même titre joué depuis plusieurs playlists (?in=)
+
     function summarize(entries) {
         const tracks = new Set(), artists = new Set();
         let seconds = 0, completed = 0;
         for (const e of entries) {
             seconds += e.listened || 0;
-            tracks.add(e.url);
+            tracks.add(trackKey(e.url));
             if (e.artist) artists.add(e.artist);
             if (e.duration && e.listened >= e.duration * 0.9) completed++;
         }
@@ -40,10 +42,10 @@
         return [...map.values()].sort((a, b) => b.seconds - a.seconds || b.plays - a.plays || b.last - a.last);
     }
 
-    const topTracks = (entries, n = 10) => group(entries, (e) => e.url).slice(0, n)
+    const topTracks = (entries, n = 10) => group(entries, (e) => trackKey(e.url)).slice(0, n)
         .map((g) => ({ url: g.key, title: g.sample.title, artist: g.sample.artist, artwork: g.sample.artwork, seconds: g.seconds, plays: g.plays }));
     const topArtists = (entries, n = 10) => group(entries, (e) => e.artist).slice(0, n)
-        .map((g) => ({ artist: g.key, seconds: g.seconds, plays: g.plays, artwork: g.sample.artwork, tracks: new Set(entries.filter((e) => e.artist === g.key).map((e) => e.url)).size }));
+        .map((g) => ({ artist: g.key, seconds: g.seconds, plays: g.plays, artwork: g.sample.artwork, tracks: new Set(entries.filter((e) => e.artist === g.key).map((e) => trackKey(e.url))).size }));
 
     /** Secondes écoutées par heure de début (0–23), heure locale. */
     function byHour(entries) {

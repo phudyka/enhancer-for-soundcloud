@@ -18,6 +18,7 @@ test('download entry follows the playing track and each visible track', () => {
             return null;
         },
         append(button) { rowButtons.push(button); },
+        dataset: {},
     };
     let playing = 'https://soundcloud.com/artist/track-one';
     const document = {
@@ -28,7 +29,7 @@ test('download entry follows the playing track and each visible track', () => {
             if (selector === '.playbackSoundBadge__titleLink') return { href: playing };
             return null;
         },
-        querySelectorAll(selector) { return selector === '.trackItem' ? [row] : []; },
+        querySelectorAll(selector) { return selector.startsWith('.trackItem') && !(row.dataset.sceDl != null && selector.includes(':not([data-sce-dl])')) ? [row] : []; },
     };
     const window = { addEventListener() {}, postMessage(value) { messages.push(value); } };
     vm.runInNewContext(fs.readFileSync('content/download-entry.js', 'utf8'), {

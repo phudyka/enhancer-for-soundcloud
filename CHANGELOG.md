@@ -1,5 +1,11 @@
 # Journal des versions
 
+## 0.15.3 — 17/09/2026
+- Installation : les réglages déjà synchronisés depuis un autre appareil ne sont plus écrasés par les valeurs par défaut.
+- Analyse audio, samples, transitions, statistiques : un titre lancé depuis une playlist (adresse en `?in=…`) est reconnu comme le même titre. L'analyse BPM/tonalité n'est plus refaite, les samples mémorisés sont regroupés et le classement des titres les plus écoutés ne compte plus le même titre en double.
+- Historique : une écoute déjà enregistrée n'est plus renvoyée à chaque pause ou changement d'onglet, et le mois stocké n'est réécrit que si le temps écouté progresse.
+- Performances : masquages de la page (profil, menus, modules) recalculés au plus quatre fois par seconde pendant les chargements, sans retirer puis reposer les marques ; boutons de téléchargement déjà posés ignorés ; commande du son désactivée sans travail à chaque changement de la page ; transitions sans relecture des réglages à chaque progression ; bouton de réglages de l'en-tête arrêté proprement après une mise à jour de l'extension.
+
 ## 0.15.2 — 17/09/2026
 - Performances : un seul observateur de la page pour tous les modules (au lieu d'un par module), au plus un passage par image affichée ; aucun travail d'interface tant que l'onglet n'est pas affiché, un seul rattrapage au retour. Shuffle+ ne relance plus de minuteur hors des pages concernées.
 - Analyse audio : le calcul à 50 Hz ne tourne que pendant l'analyse ; en pause, affichage BPM/tonalité désactivé ou résultat déjà connu, il ne reste que deux réveils par seconde, et l'analyse s'arrête dès le résultat acquis jusqu'au titre suivant.

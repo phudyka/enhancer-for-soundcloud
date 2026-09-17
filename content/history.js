@@ -26,6 +26,7 @@
 
     function flush(final) {
         if (!current || current.listened <= 0) return;
+        if (current.listened === current.sentAt) return;             // déjà envoyé : pause, masquage, fin enchaînés
         if (!final && current.listened - current.sentAt < FLUSH_EVERY) return;
         current.sentAt = current.listened;
         const { sentAt, ...entry } = current;

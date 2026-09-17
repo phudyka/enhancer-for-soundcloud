@@ -44,28 +44,32 @@
             if (queue) queue.before(download);
             else actions.append(download);
         }
-        document.querySelectorAll('.soundActions').forEach((actions) => {
-            if (actions.querySelector('.sce-download')) return;
+        // Conteneurs déjà équipés marqués (data-sce-dl) : exclus par le sélecteur, pas réexaminés à chaque rafale
+        document.querySelectorAll('.soundActions:not([data-sce-dl])').forEach((actions) => {
+            if (actions.querySelector('.sce-download')) { actions.dataset.sceDl = ''; return; }
             const sound = actions.closest('.sound');
             const url = sound
                 ? () => itemUrl(sound, '.soundTitle__title a, .soundTitle__titleLink')
                 : () => /^\/[^/]+\/(?:sets\/[^/]+|albums\/[^/]+|[^/]+)\/?$/.test(location.pathname) ? location.href : null;
             if (!sound && !collectionPath() && !document.querySelector('.listenDetails')) return;
             (actions.querySelector('.sc-button-group') || actions).append(button('sce-download-action', url));
+            actions.dataset.sceDl = '';
         });
-        document.querySelectorAll('.audibleTile').forEach((tile) => {
+        document.querySelectorAll('.audibleTile:not([data-sce-dl])').forEach((tile) => {
             const actions = tile.querySelector('.playableTile__actions .playableTile__actionWrapper');
-            if (actions && !actions.querySelector('.sce-download')) {
-                actions.append(button('sce-download-tile playableTile__actionButton', () => itemUrl(tile, '.playableTile__artworkLink')));
-            }
+            if (!actions) return;
+            if (!actions.querySelector('.sce-download')) actions.append(button('sce-download-tile playableTile__actionButton', () => itemUrl(tile, '.playableTile__artworkLink')));
+            tile.dataset.sceDl = '';
         });
-        document.querySelectorAll('.trackItem').forEach((row) => {
+        document.querySelectorAll('.trackItem:not([data-sce-dl])').forEach((row) => {
             if (row.querySelector('.sce-download') || !row.classList.contains('m-playable') || !itemUrl(row, '.trackItem__trackTitle')) return;
             row.append(button('sce-download-row', () => itemUrl(row, '.trackItem__trackTitle')));
+            row.dataset.sceDl = '';
         });
-        document.querySelectorAll('.queueItemView').forEach((row) => {
+        document.querySelectorAll('.queueItemView:not([data-sce-dl])').forEach((row) => {
             if (row.querySelector('.sce-download') || !itemUrl(row, '.queueItemView__title a, a.queueItemView__title')) return;
             row.append(button('sce-download-row', () => itemUrl(row, '.queueItemView__title a, a.queueItemView__title')));
+            row.dataset.sceDl = '';
         });
     }
     const style = document.createElement('style');

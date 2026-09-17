@@ -24,10 +24,11 @@
         ? { to: 'Transition vers', off: 'Transition annulée' }
         : { to: 'Transition to', off: 'Transition cancelled' };
     const readSettings = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}'); } catch { return {}; } };
-    const enabled = () => readSettings().autoMix === true;
-    const duration = () => Math.min(30, Math.max(4, Number(readSettings().autoMixSeconds) || 12));
+    let settings = readSettings();   // relu sur changement seulement, pas à chaque timeupdate
+    const enabled = () => settings.autoMix === true;
+    const duration = () => Math.min(30, Math.max(4, Number(settings.autoMixSeconds) || 12));
     const S = () => window.__scsp, A = () => window.__sceAudio;
-    const currentUrl = () => $(SEL.title)?.getAttribute('href') || null;
+    const currentUrl = () => $(SEL.title)?.getAttribute('href')?.split('?')[0] || null;   // la file et le lecteur n'indiquent pas toujours le même ?in=
     const isPlaying = () => !!$(SEL.play)?.classList.contains('playing');
     const repeatsOne = () => !!$(SEL.repeat)?.classList.contains('m-one');   // le titre reprend au début : rien à enchaîner
     const PREPARE_AHEAD = 10;         // secondes avant le fondu pour résoudre et précharger le flux
@@ -50,7 +51,7 @@
         if (!tc || track.policy === 'SNIP') return null;
         const res = await S().api(`${tc.url.replace('https://api-v2.soundcloud.com', '')}?track_authorization=${track.track_authorization}`).catch(() => null);
         if (!res?.url) return null;
-        return { url: next.url, title: next.title || track.title || '', stream: res.url };
+        return { url: next.url.split('?')[0], title: next.title || track.title || '', stream: res.url };
     }
     /** Second flux, branché après le volume de l'utilisateur (master) dans le contexte de SoundCloud. */
     function ensureB() {
@@ -136,8 +137,8 @@
     }
     function onTime(media) {
         if (media !== window.__sceMedia || media.__sceIgnore) return;
-        const url = currentUrl();
         if (!enabled()) { if (state.phase !== 'idle') reset(true); return; }
+        const url = currentUrl();
         if (state.phase === 'mixing' || state.phase === 'swapping') return;
         if (state.forUrl && state.forUrl !== url) { reset(true); }
         if (!Number.isFinite(media.duration) || media.duration <= 0 || media.paused) return;
@@ -149,6 +150,8 @@
     if (typeof window.__sceOnMedia === 'function') {
         window.__sceOnMedia((el) => { if (!el.__sceMixHooked) { el.__sceMixHooked = true; el.addEventListener('timeupdate', () => onTime(el)); } });
     }
-    window.addEventListener('sce:settings-change', () => { if (!enabled() && state.phase !== 'idle') reset(true); });
+    const onSettings = () => { settings = readSettings(); if (!enabled() && state.phase !== 'idle') reset(true); };
+    window.addEventListener('sce:settings-change', onSettings);
+    window.addEventListener('storage', (e) => { if (e.key === 'scsp:settings') onSettings(); });
     window.__sceTransitions = Object.freeze({ get phase() { return state.phase; }, reset: () => reset(true) });
 })();
