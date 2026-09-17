@@ -21,11 +21,12 @@ function start(t) {
         __scsp: { api: async (path) => { apiCalls.push(path); if (path.startsWith('/resolve')) return { kind: 'track', track_authorization: 'tok', media: { transcodings: [{ url: 'https://api-v2.soundcloud.com/media/1/stream/progressive', format: { protocol: 'progressive', mime_type: 'audio/mpeg' } }] } }; return { url: 'https://cf.sndcdn.com/stream.mp3' }; }, toast: (m) => toasts.push(m) },
         addEventListener() {},
     };
-    const document = { documentElement: { lang: 'fr' }, querySelector: (sel) => sel === '.playControl' ? { classList: { contains: () => true } } : { getAttribute: () => title.href } };
+    const flags = { playing: true, repeatOne: false };
+    const document = { documentElement: { lang: 'fr' }, querySelector: (sel) => sel === '.playControl' ? { classList: { contains: () => flags.playing } } : sel === '.repeatControl' ? { classList: { contains: () => flags.repeatOne } } : { getAttribute: () => title.href } };
     const context = { window, document, localStorage: { getItem: () => JSON.stringify({ autoMix: true, autoMixSeconds: '12' }) }, Audio: function () { return B; }, Float32Array, Math, Number, JSON, console, setTimeout, clearTimeout, setInterval, clearInterval, Date, Promise, encodeURIComponent };
     vm.runInNewContext(fs.readFileSync('content/transitions.js', 'utf8'), context);
     const tick = async (time) => { media.currentTime = time; media.handlers.timeupdate(); await new Promise((resolve) => setImmediate(resolve)); };   // vide la file des microtâches (résolution du flux)
-    return { tick, media, audio, B, toasts, apiCalls, setTitle: (href) => { title = { href }; }, phase: () => window.__sceTransitions.phase, t };
+    return { tick, media, audio, B, toasts, apiCalls, flags, setTitle: (href) => { title = { href }; }, phase: () => window.__sceTransitions.phase, t };
 }
 
 test('the next track is resolved ahead of time, crossfaded, then the native player is aligned and takes over', async (t) => {
@@ -62,5 +63,38 @@ test('a transition is abandoned when SoundCloud does not move on to the expected
     p.t.mock.timers.tick(21000);                              // 12 s de fondu + 8 s d'attente dépassés
     assert.equal(p.phase(), 'idle');
     assert.equal(p.toasts.at(-1), 'Transition annulée');
+    assert.equal(p.audio.xfade.gain.value, 1);
+});
+
+test('choosing another track during the crossfade gives the native player its sound back', async (t) => {
+    const skipped = start(t);
+    await skipped.tick(181);
+    await skipped.tick(189);
+    assert.equal(skipped.phase(), 'mixing');
+    skipped.setTitle('/c/three');                             // ni le titre sortant, ni le titre attendu
+    skipped.t.mock.timers.tick(250);
+    assert.equal(skipped.phase(), 'idle');
+    assert.equal(skipped.audio.xfade.gain.value, 1);
+    assert.notEqual(skipped.toasts.at(-1), 'Transition annulée');
+});
+
+test('no transition starts while the current track repeats', async (t) => {
+    const p = start(t);
+    p.flags.repeatOne = true;
+    await p.tick(181);
+    await p.tick(189);
+    assert.notEqual(p.phase(), 'mixing');
+    assert.equal(p.B.played, 0);
+});
+
+test('a pause that lasts during the crossfade cancels it', async (t) => {
+    const p = start(t);
+    await p.tick(181);
+    await p.tick(189);
+    p.flags.playing = false;
+    p.t.mock.timers.tick(450);                                // bref passage hors lecture : toléré
+    assert.equal(p.phase(), 'mixing');
+    p.t.mock.timers.tick(800);
+    assert.equal(p.phase(), 'idle');
     assert.equal(p.audio.xfade.gain.value, 1);
 });

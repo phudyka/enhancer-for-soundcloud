@@ -24,6 +24,7 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     if (window.__sceMediaHooked) return;
     window.__sceMediaHooked = true;
 

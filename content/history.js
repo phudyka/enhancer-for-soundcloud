@@ -16,6 +16,7 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const FLUSH_EVERY = 15;          // secondes écoutées entre deux envois
     const MAX_STEP = 2;              // au-delà, c'est un saut (seek), pas de l'écoute
     const enabled = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}').history !== false; } catch { return true; } };

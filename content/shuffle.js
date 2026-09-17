@@ -53,6 +53,7 @@
 
 (function () {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
 
     // ═══════════════════════════════════════════════════════════════
     //  CONFIG
@@ -112,7 +113,9 @@
     /** Adresse de playlist sans le jeton secret « /s-xxxx » ni barre finale, pour comparer. */
     const normPath = (p) => (p || '').replace(/\/s-[A-Za-z0-9]+\/?$/, '').replace(/\/+$/, '');
     /** La page (ou l'adresse donnée) est-elle la playlist tampon ? */
-    const isBufferPath = (p = location.pathname) => { const b = store.get('buffer_path'); return !!b && normPath(p) === normPath(b); };
+    let bufferPath = normPath(store.get('buffer_path'));   // en mémoire : consulté à chaque mutation du DOM
+    window.addEventListener('storage', (e) => { if (e.key === `${NS}:buffer_path`) bufferPath = normPath(store.get('buffer_path')); });
+    const isBufferPath = (p = location.pathname) => !!bufferPath && normPath(p) === bufferPath;
 
     function detectPageType(pathname = location.pathname) {
         const p = pathname.replace(/\/+$/, '');
@@ -179,7 +182,11 @@
             yourLikes:  'your Likes',
             userLikes:  "{u}'s Likes",
             shuffle:    'Shuffle',
-            playerTip:  'True shuffle of what is playing  (Alt+click = native shuffle)',
+            playerPlus: 'Shuffle+ (private playlist) · Alt+click = native shuffle',
+            playerNative: 'SoundCloud shuffle',
+            playerQueue: 'Full shuffle of the queue (no API) · Alt+click = native shuffle',
+            error: 'Error', noQueue: 'Play queue not found', queueIncomplete: 'Queue loading incomplete',
+            cardShuffle: 'Play this playlist shuffled', noPlay: 'Could not start the playlist',
             likesName:  'Likes',
             userLikesName: 'Likes · {u}',
             round: 'round {n}', remaining: '{n} left',
@@ -206,7 +213,11 @@
             yourLikes:  'tes Likes',
             userLikes:  'les Likes de {u}',
             shuffle:    'Shuffle',
-            playerTip:  'Vrai shuffle de la lecture en cours  (Alt+clic = shuffle natif)',
+            playerPlus: 'Shuffle+ (playlist privée) · Alt+clic = shuffle natif',
+            playerNative: 'Aléatoire SoundCloud',
+            playerQueue: 'Shuffle complet de la file (sans API) · Alt+clic = shuffle natif',
+            error: 'Erreur', noQueue: 'File de lecture introuvable', queueIncomplete: 'Chargement de la file incomplet',
+            cardShuffle: 'Lire cette playlist en aléatoire', noPlay: 'Lecture de la playlist introuvable',
             likesName:  'Likes',
             userLikesName: 'Likes · {u}',
             round: 'tour {n}', remaining: '{n} restants',
@@ -315,35 +326,18 @@
     //  API SOUNDCLOUD (session du navigateur)
     // ═══════════════════════════════════════════════════════════════
     const API = (() => {
-        let clientId = store.get('client_id');
+        let clientId = null;
 
         function token() {
             const m = document.cookie.match(/(?:^|;\s*)oauth_token=([^;]+)/);
             return m ? decodeURIComponent(m[1]) : null;
         }
 
-        /** client_id : URL d'un appel api-v2 déjà fait par la page, sinon scan des bundles JS. */
-        async function resolveClientId() {
-            const fromPerf = performance.getEntriesByType('resource')
-                .map((e) => (e.name.match(/api-v2\.soundcloud\.com.*[?&]client_id=([A-Za-z0-9]{20,})/) || [])[1])
-                .find(Boolean);
-            if (fromPerf) return fromPerf;
-
-            const srcs = [...document.scripts].map((s) => s.src).filter((s) => s.includes('sndcdn')).reverse();
-            for (const src of srcs) {
-                try {
-                    const txt = await fetch(src).then((r) => r.text());
-                    const m = txt.match(/client_id\s*[:=]\s*"([A-Za-z0-9]{20,})"/);
-                    if (m) return m[1];
-                } catch {}
-            }
-            throw new Error(t('noClient'));
-        }
-
         async function call(path, { method = 'GET', body, retryAuth = true } = {}) {
             const tok = token();
             if (!tok) throw new Error(t('notLogged'));
-            if (!clientId) { clientId = await resolveClientId(); store.set('client_id', clientId); }
+            if (!clientId) clientId = await window.__sceShared.clientId(!retryAuth);   // après un 401 : ni historique ni cache
+            if (!clientId) throw new Error(t('noClient'));
 
             const sep = path.includes('?') ? '&' : '?';
             const url = `${CFG.API}${path}${sep}client_id=${clientId}`;
@@ -353,7 +347,7 @@
             const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
             if (res.status === 401 && retryAuth) {
                 // client_id périmé → on le re-résout une fois
-                store.del('client_id'); clientId = null;
+                clientId = null;
                 return call(path, { method, body, retryAuth: false });
             }
             if (res.status === 204) return null;
@@ -473,7 +467,7 @@
         }
         const path = new URL(pl.permalink_url, location.origin).pathname;
         store.set('buffer_id', pl.id);
-        store.set('buffer_path', path);
+        store.set('buffer_path', path); bufferPath = normPath(path);
         return { id: pl.id, path };
     }
 
@@ -484,7 +478,7 @@
         try { await API.call(`/playlists/${id}`, { method: 'DELETE' }); }
         catch (e) { if (!/API 404/.test(e.message)) log('suppression tampon', e.message); }
         store.del('buffer_id');
-        store.del('buffer_path');
+        store.del('buffer_path'); bufferPath = '';
     }
 
     /** Balayage des orphelines (au plus une fois par jour, en arrière-plan). */
@@ -498,7 +492,7 @@
             while (url && victims.length < CFG.MAX_CLEANUP) {
                 const page = await API.call(url);
                 for (const p of page.collection || []) {
-                    if (p.title.startsWith(CFG.BUFFER_TITLE) && p.id !== keepId) victims.push(p.id);
+                    if (p.title?.startsWith(CFG.BUFFER_TITLE) && p.id !== keepId) victims.push(p.id);
                 }
                 url = page.next_href ? API.rel(page.next_href) : null;
             }
@@ -516,10 +510,8 @@
         .sc-button.${NS}-btn { position: relative; }
         .collectionSection__top > .${NS}-btn, .userNetworkTabs > .${NS}-btn { margin-left: 8px; }
         .listDisplayToggle__options > li > .${NS}-btn { margin: 0; }
-        .${NS}-btn svg { width: 16px; height: 16px; display: block; transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
-        .${NS}-btn:hover svg { transform: rotate(180deg); }
-        .${NS}-btn[data-state="loading"] svg { animation: ${NS}-spin .9s linear infinite; }
-        .${NS}-btn[data-state="loading"]:hover svg { animation: ${NS}-spin .9s linear infinite; }
+        .${NS}-btn svg { width: 16px; height: 16px; display: block; }
+        .${NS}-btn[data-state="loading"] svg { animation: ${NS}-mix .8s ease-in-out infinite; }
         .sc-button.${NS}-btn[data-state="done"]  { color: #2ecc71; }
         .sc-button.${NS}-btn[data-state="error"] { color: #ff6b6b; animation: ${NS}-shake .32s ease; }
         .${NS}-btn .${NS}-count {
@@ -528,16 +520,35 @@
             display: none; pointer-events: none;
         }
         .${NS}-btn[data-state="loading"] .${NS}-count:not(:empty) { display: block; }
-        @keyframes ${NS}-spin  { to { transform: rotate(360deg); } }
+        @keyframes ${NS}-mix { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(2px); } }
+        @keyframes ${NS}-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
         @keyframes ${NS}-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 60%{transform:translateX(4px)} }
 
-        /* Bouton « Aléatoire » du lecteur détourné : point orange + rotation pendant le travail */
+        /* Bouton « Aléatoire » du lecteur détourné : va-et-vient discret pendant le mélange. */
         .shuffleControl.${NS}-player { position: relative; }
         .shuffleControl.${NS}-player::before {
             content: ''; position: absolute; top: 3px; right: 3px; width: 5px; height: 5px;
             border-radius: 50%; background: var(--sce-accent, #f50); pointer-events: none;
         }
-        .shuffleControl.${NS}-player.${NS}-loading svg { animation: ${NS}-spin .9s linear infinite; }
+        .shuffleControl.${NS}-player.${NS}-loading svg { animation: ${NS}-mix .8s ease-in-out infinite; }
+        .shuffleControl.${NS}-player.${NS}-loading::before { animation: ${NS}-pulse .8s ease-in-out infinite; }
+
+        .${NS}-card-art { position: relative !important; }
+        .${NS}-card-shuffle {
+            position: absolute; right: 8px; bottom: 8px; z-index: 5; width: 34px; height: 34px;
+            display: grid; place-items: center; padding: 8px; border: 0; border-radius: 50%;
+            background: #fff; color: #111; cursor: pointer; opacity: 0; pointer-events: none;
+            box-shadow: 0 2px 8px #0006;
+        }
+        .${NS}-card-shuffle svg { width: 18px; height: 18px; }
+        .audibleTile:hover .${NS}-card-shuffle,
+        .soundList__item:hover .${NS}-card-shuffle,
+        .searchList__item:hover .${NS}-card-shuffle,
+        .sound:hover .${NS}-card-shuffle,
+        .playlist:hover .${NS}-card-shuffle,
+        .${NS}-card-art:hover > .${NS}-card-shuffle,
+        .${NS}-card-shuffle:focus-visible { opacity: 1; pointer-events: auto; }
+        .${NS}-card-shuffle:hover { color: var(--sce-accent, #f50); }
 
         .${NS}-toast {
             position: fixed; left: 50%; bottom: 64px; transform: translate(-50%, 12px);
@@ -550,7 +561,7 @@
         .${NS}-toast.m-visible { opacity: 1; transform: translate(-50%, 0); }
         .${NS}-toast.m-error   { border-color: rgba(255,107,107,.5); color: #ffb3b3; }
         @media (prefers-reduced-motion: reduce) {
-            .${NS}-btn svg, .${NS}-toast { animation: none !important; transition: none !important; }
+            .${NS}-btn svg, .${NS}-toast, .shuffleControl.${NS}-player svg, .shuffleControl.${NS}-player::before { animation: none !important; transition: none !important; }
         }
     `;
 
@@ -639,7 +650,7 @@
                 await this.run({ force });
             } catch (err) {
                 console.warn('[Shuffle+]', err);
-                Toast.show(err.message || 'Erreur', { error: true });
+                Toast.show(err.message || t('error'), { error: true });
                 this.flash(State.ERROR, CFG.ERROR_RESET_MS);
             } finally {
                 this.busy = false;
@@ -687,8 +698,9 @@
         const opts = { force, onProgress: progress, meId: me.id };
         let source = await pickSource(me, opts);
         const isBufferSource = (src) => !!src && (src.key === `playlist:${store.get('buffer_id')}` || (src.name || '').startsWith(CFG.BUFFER_TITLE));
-        if (isBufferSource(source)) source = await sourceFromLast(me, opts); // jamais la playlist tampon comme source
-        if (!source) source = await sourceFromLast(me, opts);
+        const fromLast = () => sourceFromLast(me, opts).catch((e) => { log('dernière source indisponible', e.message); store.del('last_source'); return null; });
+        if (isBufferSource(source)) source = await fromLast(); // jamais la playlist tampon comme source
+        if (!source) source = await fromLast();
         if (!source) source = await resolveSource('Likes', opts); // dernier recours : tes Likes
 
         Toast.show(t('reading', { src: source.label }), { sticky: true });
@@ -750,10 +762,61 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  BOUTON « ALÉATOIRE » DU LECTEUR — détourné vers le vrai shuffle
+    //  BOUTON « ALÉATOIRE » DU LECTEUR — trois modes au choix
     // ═══════════════════════════════════════════════════════════════
     const PlayerShuffle = (() => {
-        let btn = null, busy = false;
+        let btn = null, busy = false, nativeClicks = false;
+
+        function mode() {
+            const s = store.get('settings') || {};
+            return ['queue', 'native', 'plus'].includes(s.shuffleMode) ? s.shuffleMode : s.hijackPlayerShuffle === false ? 'native' : 'queue';
+        }
+
+        function nativeClick() {
+            nativeClicks = true;
+            try { btn?.click(); } finally { nativeClicks = false; }
+        }
+
+        /** Charge progressivement toute la file, puis relance le mélange du lecteur sans requête API. */
+        async function shuffleLoadedQueue() {
+            const queue = $('.queue');
+            const toggle = $('.playbackSoundBadge__showQueue');
+            if (!queue || !toggle || !btn) throw new Error(t('noQueue'));
+            const wasOpen = queue.classList.contains('m-visible');
+            let hidden = false;
+            if (!wasOpen) {
+                let style = document.getElementById(`${NS}-queue-style`);
+                if (!style) {
+                    style = document.createElement('style'); style.id = `${NS}-queue-style`;
+                    style.textContent = `.queue.${NS}-queue-loading { visibility: hidden !important; pointer-events: none !important; transition: none !important; }`;
+                    document.head.appendChild(style);
+                }
+                queue.classList.add(`${NS}-queue-loading`); hidden = true;
+                toggle.click();
+                await sleep(500);
+            }
+            try {
+                const scroller = $('.queue__scrollableInner, .queue__scrollable', queue);
+                if (!scroller) throw new Error(t('noQueue'));
+                let previous = -1, unchanged = 0;
+                const start = Date.now();
+                while (unchanged < 4 && Date.now() - start < 90000) {
+                    const height = scroller.scrollHeight;
+                    scroller.scrollTop = height;
+                    scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
+                    await sleep(700);
+                    const next = scroller.scrollHeight;
+                    unchanged = next === previous && scroller.scrollTop + scroller.clientHeight >= next - 2 ? unchanged + 1 : 0;
+                    previous = next;
+                }
+                if (unchanged < 4) throw new Error(t('queueIncomplete'));
+                if (btn.classList.contains('m-shuffling')) { nativeClick(); await sleep(80); }
+                nativeClick();
+            } finally {
+                if (!wasOpen) $('.queue__hide')?.click();
+                if (hidden) queue.classList.remove(`${NS}-queue-loading`);
+            }
+        }
 
         /** Contexte de lecture : playlist du titre en cours (?in=…), sinon page courante. */
         async function pickSource(me, opts) {
@@ -775,17 +838,19 @@
         }
 
         async function onClick(e) {
-            if (e.altKey || !settings().hijackPlayerShuffle) return; // Alt+clic ou réglage : natif
+            const selected = mode();
+            if (nativeClicks || e.altKey || selected === 'native') return;
             e.preventDefault();
             e.stopImmediatePropagation();
             if (busy) { Toast.show(t('busy')); return; }
             busy = true;
             btn?.classList.add(`${NS}-loading`);
             try {
-                await doShuffle({ force: e.shiftKey, pickSource });
+                if (selected === 'plus') await doShuffle({ force: e.shiftKey, pickSource });
+                else await shuffleLoadedQueue();
             } catch (err) {
                 console.warn('[Shuffle+]', err);
-                Toast.show(err.message || 'Erreur', { error: true });
+                Toast.show(err.message || t('error'), { error: true });
             } finally {
                 busy = false;
                 btn?.classList.remove(`${NS}-loading`);
@@ -794,10 +859,10 @@
 
         function mark() {
             const el = $(SEL.shuffleControl);
-            if (!el || el === btn) return;
+            if (!el) return;
             btn = el;
             btn.classList.add(`${NS}-player`);
-            btn.title = t('playerTip');
+            btn.title = t({ plus: 'playerPlus', native: 'playerNative', queue: 'playerQueue' }[mode()]);
         }
 
         return {
@@ -807,13 +872,68 @@
                     if (e.target?.closest?.(SEL.shuffleControl)) onClick(e);
                 }, true);
                 mark();
+                window.addEventListener('sce:settings-change', mark);   // l'infobulle suit le mode choisi
             },
             /** Appelé par l'observateur DOM : coût nul si le bouton est toujours là. */
             ensure() { if (!btn?.isConnected) mark(); },
             /** Shuffle de la lecture en cours, sans passer par un clic. */
-            trigger(force = false) { onClick({ altKey: false, shiftKey: force, preventDefault() {}, stopImmediatePropagation() {} }); },
+            trigger(force = false) {
+                mark();
+                if (mode() === 'native') { nativeClick(); return; }
+                return onClick({ altKey: false, shiftKey: force, preventDefault() {}, stopImmediatePropagation() {} });
+            },
+            mode,
+            enableNative() { mark(); if (btn && !btn.classList.contains('m-shuffling')) nativeClick(); },
+            disableNative() { mark(); if (btn?.classList.contains('m-shuffling')) nativeClick(); },
         };
     })();
+
+    /** Bouton sur les pochettes de playlists, ajouté lors du survol (les cartes sont chargées à la demande). */
+    function setupPlaylistCardShuffle() {
+        const cardSelector = '.soundList__item, .searchList__item, .audibleTile, .sound, .playlist';
+        const artSelector = '.playableTile__artwork, .sound__artwork, .audibleTile__artwork, .playlist__artwork, .sound__coverArt, .image';
+        const add = (target) => {
+            const card = target.closest?.(cardSelector);
+            if (!card) return;
+            const link = card.querySelector('a[href*="/sets/"]');
+            if (!link) return;
+            const path = new URL(link.href, location.origin).pathname;
+            if (detectPageType(path) !== 'Playlist' || isBufferPath(path)) return;
+            const art = card.querySelector(artSelector);
+            if (!art || art.querySelector(`.${NS}-card-shuffle`)) return;
+            art.classList.add(`${NS}-card-art`);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `${NS}-card-shuffle`;
+            button.title = t('cardShuffle');
+            button.setAttribute('aria-label', button.title);
+            button.innerHTML = ICON;
+            button.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (button.disabled) return;
+                button.disabled = true;
+                try {
+                    if (PlayerShuffle.mode() === 'plus') {
+                        await doShuffle({ pickSource: (_me, opts) => resolveSource('Playlist', opts, link.href) });
+                    } else {
+                        const play = card.querySelector('.sc-button-play, .playButton');
+                        if (play && !play.classList.contains('sc-button-pause')) play.click();
+                        else if (!await navigateAndPlay(path)) throw new Error(t('noPlay'));
+                        await waitFor(SEL.shuffleControl, { timeout: 8000 });
+                        await sleep(500);
+                        if (PlayerShuffle.mode() === 'native') PlayerShuffle.enableNative();
+                        else await PlayerShuffle.trigger();
+                    }
+                } catch (error) {
+                    Toast.show(error.message || t('error'), { error: true });
+                } finally { button.disabled = false; }
+            });
+            art.appendChild(button);
+        };
+        document.addEventListener('mouseover', (event) => add(event.target));
+        document.addEventListener('focusin', (event) => add(event.target));
+    }
 
     /** Clique sur un lien interne (routeur SPA), attend le gros bouton Lecture, clique. */
     async function navigateAndPlay(path) {
@@ -840,8 +960,7 @@
             await sleep(120);
             play.click();
             await sleep(600);
-            const sc = $(SEL.shuffleControl);
-            if (sc?.classList.contains('m-shuffling')) sc.click(); // ordre déjà mélangé
+            PlayerShuffle.disableNative(); // ordre déjà mélangé
             return true;
         } catch (e) {
             log('navigation SPA sans lecteur, repli rechargement :', e.message);
@@ -862,8 +981,7 @@
             // Ordre déjà mélangé : on désactive le shuffle natif pour que la
             // liste affichée corresponde à l'ordre de lecture.
             await sleep(800);
-            const sc = $(SEL.shuffleControl);
-            if (sc?.classList.contains('m-shuffling')) sc.click();
+            PlayerShuffle.disableNative();
             const msg = store.get('pending_toast');
             if (msg) { store.del('pending_toast'); Toast.show(msg); }
         } catch (e) {
@@ -971,7 +1089,7 @@
         document.addEventListener('keydown', (e) => {
             const el = document.activeElement;
             if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
-            if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && e.key.toUpperCase() === CFG.HOTKEY && current) {
+            if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && e.key?.toUpperCase() === CFG.HOTKEY && current) {
                 e.preventDefault();
                 current.ctrl.toggle();
             }
@@ -981,11 +1099,10 @@
     // ═══════════════════════════════════════════════════════════════
     //  RÉGLAGES (synchronisés par le pont) + COMMANDES EXTERNES
     // ═══════════════════════════════════════════════════════════════
-    const settings = () => ({ hijackPlayerShuffle: true, noRepeat: true, ...(store.get('settings') || {}) });
+    const settings = () => ({ shuffleMode: 'queue', noRepeat: true, ...(store.get('settings') || {}) });
 
     /** Déclenche un shuffle depuis l'extérieur (popup, raccourci global). */
     function triggerShuffle(force = false) {
-        if (current) { current.ctrl.toggle({ force }); return; }
         PlayerShuffle.trigger(force);
     }
 
@@ -1017,6 +1134,7 @@
     setupRouter();
     setupHotkeys();
     PlayerShuffle.start();
+    setupPlaylistCardShuffle();
     mount();
     autoplayIfRequested();
 })();

@@ -5,7 +5,8 @@ const { play: ICON_PLAY, pause: ICON_PAUSE } = window.__sceShared.icons;
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const T = (s) => (window.SCE_T || ((x) => x))(s);
 
-let state = null, tabId = null, timer = null;
+let state = null, tabId = null, timer = null, noTab = false, standaloneUrl = '';
+let audioLoading = false;
 
 const fmtTime = window.__sceShared.formatTime;
 const fmtRate = (r) => `${parseFloat((r || 1).toFixed(2))}×`;
@@ -14,7 +15,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 function render() {
     const has = state && state.sce === 'state' && state.title;
     $('#player').hidden = !has;
-    $('#empty').hidden = !!has;
+    $('#empty').hidden = !!has || noTab;
+    $('#standalone').hidden = !noTab;
+    if (!has && !$('#audio-panel').hidden) closeAudioPanel();
+    const frame = $('#standalone-player');
+    if (!noTab && frame.hasAttribute('src')) frame.removeAttribute('src');
+    if (noTab && standaloneUrl && !frame.hasAttribute('src')) frame.src = widgetUrl(standaloneUrl);
+    frame.hidden = !noTab || !standaloneUrl;
     if (!has) return;
     $('#art').style.backgroundImage = state.artwork ? `url("${state.artwork}")` : '';
     $('#title').textContent = state.title;
@@ -35,8 +42,37 @@ function render() {
     $('#sleep-cancel').hidden = sleep == null;
 }
 
+function soundcloudUrl(value) {
+    try {
+        const url = new URL(value);
+        if (url.protocol !== 'https:' || !['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com'].includes(url.hostname)) return '';
+        if (url.pathname === '/' || !url.pathname.slice(1)) return '';
+        url.hostname = 'soundcloud.com';
+        url.search = '';
+        url.hash = '';
+        return url.href;
+    } catch { return ''; }
+}
+
+function widgetUrl(url) {
+    const params = new URLSearchParams({ url, auto_play: 'false', hide_related: 'true', show_comments: 'false', show_user: 'true', show_reposts: 'false' });
+    return `https://w.soundcloud.com/player/?${params}`;
+}
+
+function setStandaloneUrl(value) {
+    const url = soundcloudUrl(value);
+    $('#standalone-error').hidden = !!url;
+    if (!url) return false;
+    standaloneUrl = url;
+    $('#standalone-url').value = url;
+    $('#standalone-player').src = widgetUrl(url);
+    chrome.storage.local.set({ standaloneUrl: url }).catch(() => {});
+    render();
+    return true;
+}
+
 /* File d'attente : demandée au chargement, à chaque changement de titre et après une action. */
-let queue = [], queueSig = '', queueTimer = null;
+let queue = [], queueSig = '', queueTimer = null, lastQueueLoad = 0, queueLoading = false;
 function renderQueue() {
     const has = state && state.sce === 'state' && state.title;
     $('#queue').hidden = !has;
@@ -50,9 +86,20 @@ function renderQueue() {
         <button class="qx" data-remove title="${esc(T('Retirer de la file'))}"><svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button></li>`).join('');
 }
 async function loadQueue() {
-    const r = await send({ type: 'popup-get-queue' });
-    queue = (r && r.sce === 'queue' && Array.isArray(r.items)) ? r.items : [];
-    renderQueue();
+    if (queueLoading || !queueSig || document.hidden) return;
+    queueLoading = true;
+    const requestedSig = queueSig;
+    try {
+        const r = await send({ type: 'popup-get-queue' });
+        if (requestedSig === queueSig && r?.sce === 'queue' && Array.isArray(r.items)) {
+            queue = r.items;
+            lastQueueLoad = Date.now();
+            renderQueue();
+        }
+    } finally {
+        queueLoading = false;
+        if (requestedSig !== queueSig && queueSig) scheduleQueue();
+    }
 }
 const scheduleQueue = (delay = 400) => { clearTimeout(queueTimer); queueTimer = setTimeout(loadQueue, delay); };
 $('#queue-list').addEventListener('click', async (e) => {
@@ -65,17 +112,92 @@ $('#queue-refresh').addEventListener('click', () => loadQueue());
 
 async function poll() {
     const r = await send({ type: 'popup-get-state' });
-    if (r && r.sce === 'state') { state = r; tabId = r.tabId ?? tabId; }
-    else state = null;
+    noTab = r?.reason === 'no-tab';
+    if (r && r.sce === 'state') {
+        state = r; tabId = r.tabId ?? tabId;
+        const url = soundcloudUrl(r.url);
+        if (url && url !== standaloneUrl) {
+            standaloneUrl = url;
+            chrome.storage.local.set({ standaloneUrl: url }).catch(() => {});
+        }
+    } else { state = null; if (noTab) tabId = null; }
     render();
     const sig = state ? `${state.url}|${state.title}` : '';
     if (sig !== queueSig) { queueSig = sig; if (sig) scheduleQueue(); else { queue = []; renderQueue(); } }
+    else if (sig && Date.now() - lastQueueLoad >= 10000) scheduleQueue();
 }
 
 async function command(cmd, extra = {}) {
     await send({ type: 'popup-command', command: cmd, ...extra });
     setTimeout(poll, 120);
 }
+
+function closeAudioPanel() {
+    $('#audio-panel').hidden = true;
+    $('#audio-options').setAttribute('aria-expanded', 'false');
+}
+
+function renderAudio(audio) {
+    if (audio?.sce !== 'audio-state' || !audio.settings) return;
+    const settings = audio.settings;
+    $('[data-audio="volume"]').max = settings.allowVolumeBoost ? '2' : '1';
+    for (const input of document.querySelectorAll('[data-audio]')) {
+        const value = settings[input.dataset.audio];
+        if (value == null || document.activeElement === input) continue;
+        if (input.type === 'checkbox') input.checked = !!value;
+        else input.value = value;
+    }
+    $('#audio-keep-next').checked = !!audio.keepNext;
+    const labels = {
+        volume: `${Math.round(settings.volume * 100)} %`,
+        rate: fmtRate(settings.rate),
+        pitchSemitones: `${settings.pitchSemitones > 0 ? '+' : ''}${settings.pitchSemitones} ${T('demi-tons')}`,
+        bass: settings.bass ? `+${settings.bass} dB` : T('désactivé'),
+        reverb: settings.reverb ? `${Math.round(settings.reverb * 100)} %` : T('désactivé'),
+    };
+    for (const [key, value] of Object.entries(labels)) $(`#audio-${key}-value`).textContent = value;
+    const select = $('#audio-custom-presets');
+    const names = Array.isArray(audio.presets) ? audio.presets.filter((name) => typeof name === 'string') : [];
+    const current = select.value;
+    select.replaceChildren(new Option(T('Mes presets'), ''), ...names.map((name) => new Option(name, name)));
+    select.value = names.includes(current) ? current : '';
+    select.hidden = !names.length;
+}
+
+async function loadAudio() {
+    if (audioLoading || $('#audio-panel').hidden) return;
+    audioLoading = true;
+    try { renderAudio(await send({ type: 'popup-get-audio' })); }
+    finally { audioLoading = false; }
+}
+
+$('#audio-options').addEventListener('click', () => {
+    const panel = $('#audio-panel');
+    panel.hidden = !panel.hidden;
+    $('#audio-options').setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden) loadAudio();
+});
+$('#audio-close').addEventListener('click', closeAudioPanel);
+document.querySelectorAll('[data-audio]').forEach((input) => {
+    input.addEventListener(input.type === 'checkbox' ? 'change' : 'input', () => {
+        const key = input.dataset.audio;
+        const value = input.type === 'checkbox' ? input.checked : Number(input.value);
+        if (input.type !== 'checkbox') {
+            const display = key === 'volume' ? `${Math.round(value * 100)} %` : key === 'rate' ? fmtRate(value) : key === 'pitchSemitones' ? `${value > 0 ? '+' : ''}${value} ${T('demi-tons')}` : key === 'bass' ? (value ? `+${value} dB` : T('désactivé')) : (value ? `${Math.round(value * 100)} %` : T('désactivé'));
+            $(`#audio-${key}-value`).textContent = display;
+        }
+        send({ type: 'popup-command', command: 'audio-set', value: { [key]: value } });
+    });
+    input.addEventListener('change', () => setTimeout(loadAudio, 150));
+});
+$('#audio-keep-next').addEventListener('change', (event) => send({ type: 'popup-command', command: 'audio-keep-next', value: event.target.checked }));
+$('#audio-presets').addEventListener('click', async (event) => {
+    const name = event.target.closest('[data-preset]')?.dataset.preset;
+    if (name) { await send({ type: 'popup-command', command: 'audio-preset', value: name }); setTimeout(loadAudio, 150); }
+});
+$('#audio-custom-presets').addEventListener('change', async (event) => {
+    if (event.target.value) { await send({ type: 'popup-command', command: 'audio-preset', value: event.target.value }); setTimeout(loadAudio, 150); }
+});
 
 document.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', async (e) => {
     const cmd = b.dataset.cmd;
@@ -108,12 +230,40 @@ $('#sleep-menu').addEventListener('click', (e) => {
 document.addEventListener('click', () => { $('#sleep-menu').hidden = true; });
 
 const focusTab = async () => { await send({ type: 'popup-focus-tab' }); };
+const separateWindow = new URLSearchParams(location.search).has('window');
+let panelWindowId = null;
+if (!separateWindow) chrome.windows.getCurrent().then((current) => {
+    panelWindowId = current.id;
+    send({ type: 'panel-opened', windowId: panelWindowId });
+}).catch(() => {});
+chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
+    if (msg?.type !== 'panel-request-close' || separateWindow || msg.windowId !== panelWindowId) return false;
+    respond({ ok: true });
+    window.close();
+    return false;
+});
+window.addEventListener('pagehide', () => {
+    if (panelWindowId != null) send({ type: 'panel-disposed', windowId: panelWindowId });
+});
+$('#open-soundcloud').addEventListener('click', focusTab);
+$('#close-side-panel').hidden = separateWindow;
+$('#close-side-panel').addEventListener('click', async () => {
+    const current = await chrome.windows.getCurrent().catch(() => null);
+    const result = await send({ type: 'panel-close', windowId: current?.id });
+    if (result?.reason === 'unsupported') window.close();
+});
 $('#open-tab').addEventListener('click', focusTab);
 $('#title').addEventListener('click', focusTab);
 $('#show-soundcloud').addEventListener('click', focusTab);
+$('#download-track').addEventListener('click', () => {
+    if (state?.url) send({ type: 'open-download', url: new URL(state.url, 'https://soundcloud.com').href });
+});
 $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
 $('#open-stats').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('stats/stats.html') }));
+$('#standalone-form').addEventListener('submit', (event) => { event.preventDefault(); setStandaloneUrl($('#standalone-url').value); });
+$('#standalone-open-tab').addEventListener('click', focusTab);
+$('#standalone-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
 
 chrome.storage.sync.get('settings').then(({ settings }) => {
@@ -124,17 +274,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'session' && changes.playerState) {
         const next = changes.playerState.newValue;
         if (next && (!tabId || next.tabId === tabId)) {
-            state = next; render();
+            state = next; noTab = false; render();
             const sig = `${next.url}|${next.title}`;
             if (sig !== queueSig) { queueSig = sig; scheduleQueue(); }
         }
     }
     if (area === 'sync' && changes.settings) document.documentElement.style.setProperty('--accent', changes.settings.newValue?.accent || '#ff5500');
 });
-if (!new URLSearchParams(location.search).has('window')) {
-    send({ type: 'popup-ensure-tab' }).then(poll);
-} else {
+chrome.storage.local.get('standaloneUrl').then(({ standaloneUrl: saved }) => {
+    const url = soundcloudUrl(saved);
+    if (url && !standaloneUrl) { standaloneUrl = url; $('#standalone-url').value = url; }
     poll();
-}
-timer = setInterval(() => { if (!document.hidden) poll(); }, 5000);
-window.addEventListener('unload', () => clearInterval(timer));
+}).catch(poll);
+timer = setInterval(() => { if (!document.hidden) { poll(); loadAudio(); } }, 5000);
+window.addEventListener('pagehide', () => clearInterval(timer));

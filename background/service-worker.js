@@ -32,6 +32,17 @@ async function ensureSoundcloudTab() {
     return pendingSoundcloudTab;
 }
 
+const openPanels = new Set();
+async function notifyPanel(windowId, open) {
+    if (!Number.isInteger(windowId)) return;
+    if (open) openPanels.add(windowId);
+    else openPanels.delete(windowId);
+    const tabs = await chrome.tabs.query({ windowId, url: 'https://soundcloud.com/*' });
+    for (const tab of tabs) chrome.tabs.sendMessage(tab.id, { type: 'panel-state-changed', open }).catch(() => {});
+}
+chrome.sidePanel?.onOpened?.addListener(({ windowId }) => { notifyPanel(windowId, true).catch(() => {}); });
+chrome.sidePanel?.onClosed?.addListener(({ windowId }) => { notifyPanel(windowId, false).catch(() => {}); });
+
 async function sendToPage(message) {
     const tab = await soundcloudTab();
     if (!tab) return { ok: false, reason: 'no-tab' };
@@ -66,7 +77,7 @@ function recordListen(entry) {
         if (index >= 0) list[index] = { ...list[index], ...clean, listened: Math.max(list[index].listened, listened) };
         else list.push(clean);
         await chrome.storage.local.set({ [key]: list });
-        await pruneHistory();
+        if (!Array.isArray(stored[key])) await pruneHistory();   // nouveau mois seulement : l'élagage relit tout le stockage
         return { ok: true };
     });
 }
@@ -111,10 +122,84 @@ if (chrome.sidePanel?.setPanelBehavior) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    // Message destiné au panneau : ne pas répondre à notre propre diffusion.
+    if (msg?.type === 'panel-request-close') return false;
     (async () => {
         switch (msg?.type) {
+            case 'panel-state':
+                if (!sender.tab?.url?.startsWith('https://soundcloud.com/')) { sendResponse({ ok: false }); break; }
+                sendResponse({ ok: true, open: openPanels.has(sender.tab.windowId) });
+                break;
+            case 'panel-toggle': {
+                if (!sender.tab?.url?.startsWith('https://soundcloud.com/')) { sendResponse({ ok: false }); break; }
+                const windowId = sender.tab.windowId;
+                const closing = openPanels.has(windowId) && !!(chrome.sidePanel?.close || chrome.sidebarAction?.toggle);
+                if (chrome.sidePanel?.open) {
+                    if (closing) await chrome.sidePanel.close({ windowId });
+                    else if (openPanels.has(windowId)) {
+                        const result = await chrome.runtime.sendMessage({ type: 'panel-request-close', windowId }).catch(() => null);
+                        if (!result?.ok) { sendResponse({ ok: false }); break; }
+                        await notifyPanel(windowId, false);
+                        sendResponse({ ok: true, open: false });
+                        break;
+                    }
+                    else await chrome.sidePanel.open({ windowId });
+                } else if (chrome.sidebarAction?.toggle) await chrome.sidebarAction.toggle();
+                else { sendResponse({ ok: false }); break; }
+                const open = !closing;
+                await notifyPanel(windowId, open);
+                sendResponse({ ok: true, open });
+                break;
+            }
+            case 'panel-opened':
+            case 'panel-disposed': {
+                if (!sender.url?.startsWith(chrome.runtime.getURL('popup/popup.html'))) { sendResponse({ ok: false }); break; }
+                const windowId = Number(msg.windowId);
+                if (!Number.isInteger(windowId)) { sendResponse({ ok: false }); break; }
+                await notifyPanel(windowId, msg.type === 'panel-opened');
+                sendResponse({ ok: true });
+                break;
+            }
+            case 'panel-close': {
+                if (!sender.url?.startsWith(chrome.runtime.getURL('popup/popup.html'))) { sendResponse({ ok: false }); break; }
+                const windowId = Number(msg.windowId);
+                if (!Number.isInteger(windowId)) { sendResponse({ ok: false }); break; }
+                if (chrome.sidePanel?.close) await chrome.sidePanel.close({ windowId });
+                else if (chrome.sidebarAction?.close) await chrome.sidebarAction.close();
+                else { sendResponse({ ok: false, reason: 'unsupported' }); break; }
+                await notifyPanel(windowId, false);
+                sendResponse({ ok: true });
+                break;
+            }
+            case 'open-download': {
+                if (sender.tab && !sender.tab.url?.startsWith('https://soundcloud.com/')) { sendResponse({ ok: false }); break; }
+                const url = new URL(msg.url || '', 'https://soundcloud.com');
+                if (url.origin !== 'https://soundcloud.com' || !/^\/[A-Za-z0-9_-]+\/(?:(?:sets|albums)\/)?[A-Za-z0-9_-]+/.test(url.pathname)) { sendResponse({ ok: false }); break; }
+                const params = new URLSearchParams({ url: url.href });
+                if (msg.preset && typeof msg.preset.name === 'string' && msg.preset.values && typeof msg.preset.values === 'object') {
+                    const values = {};
+                    for (const [key, min, max] of [['rate', 0.1, 3], ['volume', 0, 1], ['bass', 0, 12], ['reverb', 0, 1], ['pitchSemitones', -12, 12]]) {
+                        const value = msg.preset.values[key];
+                        if (Number.isFinite(value) && value >= min && value <= max) values[key] = value;
+                    }
+                    for (const key of ['muted', 'preservePitch']) {
+                        if (typeof msg.preset.values[key] === 'boolean') values[key] = msg.preset.values[key];
+                    }
+                    if (Object.keys(values).length) params.set('preset', JSON.stringify({ name: msg.preset.name.slice(0, 40), values }));
+                }
+                await chrome.tabs.create({ url: chrome.runtime.getURL(`downloads/downloads.html?${params}`) });
+                sendResponse({ ok: true });
+                break;
+            }
+            case 'download-client-id': {
+                const tab = await soundcloudTab();
+                if (!tab) { sendResponse({ ok: false, reason: 'no-tab' }); break; }
+                try { sendResponse(await chrome.tabs.sendMessage(tab.id, { type: 'download-client-id', refresh: !!msg.refresh })); }
+                catch (error) { sendResponse({ ok: false, reason: String(error) }); }
+                break;
+            }
             case 'page-event': {
-                if (msg.event.type === 'pip-fallback') {          // navigateur sans Document PiP : le lecteur popup dans une petite fenêtre
+                if (msg.event?.type === 'pip-fallback') {          // navigateur sans Document PiP : le lecteur popup dans une petite fenêtre
                     await chrome.windows.create({ url: chrome.runtime.getURL('popup/popup.html?window=1'), type: 'popup', width: 324, height: 560 });
                 }
                 sendResponse({ ok: true });
@@ -122,7 +207,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
             case 'player-state':
                 await chrome.storage.session.set({ playerState: { ...msg.state, tabId: sender.tab?.id, at: Date.now() } });
-                setBadge(msg.state.playing);
+                setBadge(!!msg.state?.playing);
                 sendResponse({ ok: true });
                 break;
             case 'popup-focus-tab': {
@@ -146,19 +231,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 sendResponse(await clearHistory());
                 break;
             case 'set-ad-blocking':
-                await chrome.declarativeNetRequest.updateEnabledRulesets(msg.enabled ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] });
+                await chrome.declarativeNetRequest.updateEnabledRulesets(msg.enabled && !(await chrome.storage.sync.get('settings')).settings?.extensionDisabled ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] });
                 sendResponse({ ok: true });
                 break;
             case 'popup-command':      // depuis le popup : relayer à la page
                 sendResponse(await sendToPage({ type: 'command', command: msg.command, value: msg.value, force: msg.force }));
                 break;
-            case 'popup-get-queue': {
-                const tab = await soundcloudTab();
-                if (!tab) { sendResponse({ ok: false, reason: 'no-tab' }); break; }
-                try { sendResponse(await chrome.tabs.sendMessage(tab.id, { type: 'get-queue' }) || { ok: false }); }
-                catch (e) { sendResponse({ ok: false, reason: String(e) }); }
+            case 'popup-get-queue':
+            case 'popup-get-audio':
+                sendResponse(await sendToPage({ type: msg.type === 'popup-get-queue' ? 'get-queue' : 'get-audio' }) || { ok: false });
                 break;
-            }
             case 'popup-get-state': {
                 const tab = await soundcloudTab();
                 if (!tab) { setBadge(false); sendResponse({ ok: false, reason: 'no-tab' }); break; }
@@ -169,16 +251,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             default:
                 sendResponse({ ok: false });
         }
-    })();
+    })().catch((error) => {                 // jamais de promesse sans réponse côté appelant
+        console.warn('[SCE] message', msg?.type, error);
+        sendResponse({ ok: false, reason: String(error) });
+    });
     return true;
 });
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
-        await chrome.storage.sync.set({ settings: { hijackPlayerShuffle: true, speedControl: true, library: true } });
+        await chrome.storage.sync.set({ settings: { shuffleMode: 'queue', speedControl: true, library: true } });
         chrome.tabs.create({ url: chrome.runtime.getURL('guide/guide.html') }).catch(() => chrome.runtime.openOptionsPage());
     }
     // Réaligne le blocage des pubs sur le réglage (au cas où le navigateur l'aurait réinitialisé)
     const { settings } = await chrome.storage.sync.get('settings');
-    await chrome.declarativeNetRequest.updateEnabledRulesets(settings?.blockAds ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] }).catch(() => {});
+    await chrome.declarativeNetRequest.updateEnabledRulesets(settings?.blockAds && !settings?.extensionDisabled ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] }).catch(() => {});
 });

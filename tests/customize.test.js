@@ -53,3 +53,13 @@ test('hovering a fragment targets its enclosing module', () => {
     const pick = load([module]);
     assert.equal(pick.target(inner), module);
 });
+
+test('the player bar stays visible while an extension control can be selected', () => {
+    const icon = el('span', ['sc-icon']);
+    const pin = el('button', ['sce-pip-pin', 'sc-button'], { children: [icon] });
+    const bar = el('div', ['playControls'], { children: [pin] });
+    const pick = load([bar, pin, icon]);
+    assert.equal(pick.target(bar), null);
+    assert.equal(pick.target(icon), pin);
+    assert.equal(pick.entryFor(pin).entry, 'sel:button.sce-pip-pin');
+});

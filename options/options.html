@@ -7,8 +7,11 @@
   :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --card: #1f1f1f; --text: #eee; --muted: #999; --line: #333; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 20px 24px 28px; min-width: 460px; max-width: 640px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .embedded body { min-width: 0; max-width: none; padding: 20px 24px 28px; }
+  .embedded h1 { padding-right: 28px; }
+  @media (max-width: 440px) { .embedded body { padding: 16px; } .embedded .row { flex-wrap: wrap; } }
   h1 { font-size: 18px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
-  h1 img { width: 24px; height: 24px; }
+  h1 .brand-icon { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 6px; background: var(--accent); color: var(--brand-mark, #fff); padding: 4px; }
   p.lead { color: var(--muted); margin: 0 0 20px; }
   fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 8px 16px 12px; margin: 0 0 14px; }
   legend { padding: 0 6px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
@@ -32,6 +35,8 @@
   .swatches { display: flex; gap: 6px; }
   .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
   .swatches button.on { border-color: #fff; }
+  .accent-default { width: 22px; height: 22px; flex: 0 0 22px; border: 2px solid transparent; border-radius: 50%; background: #ff5500; cursor: pointer; padding: 0; }
+  .accent-default.on { border-color: #fff; }
   .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
   .btn { background: var(--accent); color: #fff; border: 0; border-radius: 3px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; }
   .custom-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid #262626; font-size: 13px; }
@@ -39,17 +44,31 @@
   .custom-item code { color: var(--muted); font-size: 11px; }
   .saved { color: #2ecc71; font-size: 12px; height: 16px; margin-top: 4px; }
   .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .hide-group-actions { display: flex; gap: 12px; justify-content: flex-end; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+  .hide-group-actions button { color: var(--muted); font-size: 12px; }
+  .hide-group-actions button:hover, .hide-group-actions button:focus-visible { color: var(--accent); }
   a { color: var(--accent); }
 </style>
 </head>
 <body>
-<h1><img src="../icons/icon-48.png" alt="">Enhancer for SoundCloud™</h1>
+<h1><svg class="brand-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" d="M8 36.5 31.5 13l3.5 3.5L11.5 40zM33 3l1.7 5.3L40 10l-5.3 1.7L33 17l-1.7-5.3L26 10l5.3-1.7zM20 2l1.1 3.9L25 7l-3.9 1.1L20 12l-1.1-3.9L15 7l3.9-1.1zM42 18l1.1 3.9L47 23l-3.9 1.1L42 28l-1.1-3.9L37 23l3.9-1.1z"/></svg>Enhancer for SoundCloud™</h1>
 <p class="lead">Tout tourne dans votre navigateur. Aucune donnée n'est envoyée ailleurs. Les changements s'appliquent immédiatement. <a href="#" id="open-guide">Guide des fonctions</a></p>
 
 <fieldset>
+  <legend>Activation</legend>
+  <label><input type="checkbox" id="extensionEnabled"><span>Activer les améliorations sur SoundCloud<small>Désactive toutes les fonctions et tous les masquages sans effacer vos préférences. L'onglet SoundCloud se recharge pour retrouver l'interface d'origine.</small></span></label>
+  <div class="row"><span>Profils rapides<br><small style="color:var(--muted)">« Recommandés » active les fonctions de base. « Tout activer » active toutes les fonctions facultatives, sans masquer le contenu SoundCloud.</small></span></div>
+  <div class="row"><button class="btn" id="enable-recommended" type="button">Réglages recommandés</button><button class="btn" id="enable-all" type="button">Tout activer</button></div>
+  <div class="row"><button class="btn" id="disable-all" type="button">Tout désactiver</button><button class="btn" id="restore-defaults" type="button">Réglages par défaut</button></div>
+</fieldset>
+
+<fieldset>
   <legend>Fonctionnalités de lecture</legend>
-  <label><input type="checkbox" id="hijackPlayerShuffle"><span>Le bouton « Aléatoire » du lecteur lance un vrai shuffle<small>Alt+clic conserve le shuffle natif de SoundCloud.</small></span></label>
+  <div class="row"><span>Mode du bouton « Aléatoire »<br><small style="color:var(--muted)">Le mode complet charge la file sans API, puis lance le mélange SoundCloud. Shuffle+ crée une playlist privée.</small></span><select id="shuffleMode"><option value="queue">Complet (défaut)</option><option value="native">Natif SoundCloud</option><option value="plus">Shuffle+ (playlist)</option></select></div>
   <label><input type="checkbox" id="speedControl"><span>Panneau Audio à gauche du volume : vitesse, bass boost, réverb, presets<small>Slowed + Reverb, Nightcore, Bass boost. Raccourcis : Maj+, Maj+. Maj+0.</small></span></label>
+  <label><input type="checkbox" id="hideCastButton"><span>Masquer le bouton Cast du lecteur</span></label>
+  <label><input type="checkbox" id="hidePipButton"><span>Masquer le bouton du lecteur épinglable</span></label>
+  <label><input type="checkbox" id="showAnalysis"><span>Afficher l’analyse BPM et tonalité sur la barre de lecture</span></label>
   <label><input type="checkbox" id="noRepeat" data-i18n="opt_noRepeat"><span>Shuffle+ sans répétition<small>Chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque, puis nouveau tour.</small></span></label>
   <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
   <label><input type="checkbox" id="autoMix"><span>Transitions automatiques entre les titres<small>Fondu croisé avec le titre suivant de la file, basses échangées à mi-parcours. Le titre suivant doit être lisible en flux (pas d'extrait Go+).</small></span></label>
@@ -59,7 +78,7 @@
   <div class="row"><span></span><button class="link" id="open-stats" type="button">Voir les statistiques</button></div>
 </fieldset>
 
-<p class="lead">Debloat : cochez les éléments à masquer. Tous restent visibles par défaut, sauf le bandeau cookies. Ces choix sont réversibles et ne suppriment aucune donnée du compte.</p>
+<p class="lead">Personnalisation : chaque case masque un élément. Les commandes de chaque rubrique permettent de tout masquer ou tout réafficher d'un coup. Pour un élément absent de la liste, utilisez « Personnalisation libre ».</p>
 
 <fieldset>
   <legend>Profil</legend>
@@ -108,16 +127,22 @@
 <fieldset>
   <legend>Lecture</legend>
   <label><input type="checkbox" id="hideComments"><span>Masquer les commentaires sous les titres</span></label>
-  <label><input type="checkbox" id="hideRelated"><span>Masquer les modules latéraux : titres similaires, playlists, artistes à suivre</span></label>
+  <label><input type="checkbox" id="hideRelatedTracks"><span>Masquer les titres similaires</span></label>
+  <label><input type="checkbox" id="hideRelatedPlaylists"><span>Masquer les playlists contenant ce titre</span></label>
+  <label><input type="checkbox" id="hideRelatedArtists"><span>Masquer les artistes recommandés</span></label>
+  <label><input type="checkbox" id="hideTrackStations"><span>Masquer les stations associées au titre</span></label>
+  <label><input type="checkbox" id="hideStationAutoplay"><span>Masquer « Lecture automatique de la station » dans la file d'attente</span></label>
 </fieldset>
 
 <fieldset>
   <legend>Fil</legend>
+  <label><input type="checkbox" id="hideRecentlyPlayed"><span>Masquer « Récemment écouté » dans la bibliothèque</span></label>
   <p class="note">Colonne de droite du fil :</p>
   <label><input type="checkbox" id="hideSidebarNewTracks"><span>Masquer « Nouveaux titres »</span></label>
   <label><input type="checkbox" id="hideSidebarWhoToFollow"><span>Masquer « Artistes que vous devriez suivre »</span></label>
   <label><input type="checkbox" id="hideSidebarLikes"><span>Masquer « Mentions J'aime »</span></label>
   <label><input type="checkbox" id="hideSidebarHistory"><span>Masquer « Historique d'écoute »</span></label>
+  <label><input type="checkbox" id="hideSidebarInsights"><span>Masquer le module « Vos statistiques »</span></label>
   <label><input type="checkbox" id="hideSidebarMobile"><span>Masquer « Passer sur mobile »</span></label>
   <p class="note">Contenu du fil :</p>
   <label><input type="checkbox" id="hideFeedReposts"><span>Masquer les reposts dans le fil d'actualités</span></label>
@@ -128,7 +153,14 @@
 
 <fieldset>
   <legend>Promotions</legend>
-  <label><input type="checkbox" id="hideUpsell"><span>Masquer les promotions Go+ et Artist Pro<small>Liens de l'en-tête, titres épinglés premium, boutons Artist Pro dans les titres, jauge d'uploads et panneau du lecteur.</small></span></label>
+  <label><input type="checkbox" id="hideUpsellHeader"><span>Masquer la promotion Go+ dans l'en-tête</span></label>
+  <label><input type="checkbox" id="hideUpsellBanners"><span>Masquer les bannières promotionnelles</span></label>
+  <label><input type="checkbox" id="hideUpsellPlayer"><span>Masquer la promotion du lecteur</span></label>
+  <label><input type="checkbox" id="hideUpsellSidebar"><span>Masquer les promotions dans les colonnes latérales</span></label>
+  <label><input type="checkbox" id="hideUpsellTracks"><span>Masquer les promotions sur les titres et playlists</span></label>
+  <label><input type="checkbox" id="hideUpsellUpload"><span>Masquer le texte promotionnel de la jauge d'uploads</span></label>
+  <label><input type="checkbox" id="hideUpsellArtistLink"><span>Masquer le lien d'abonnement Artist Pro</span></label>
+  <label><input type="checkbox" id="hideUpsellTour"><span>Masquer le bloc « On Tour »</span></label>
   <label><input type="checkbox" id="hideArtistProPrompt"><span>Masquer la mention « Essayez Artist Pro » sous la jauge d'uploads<small>Ne masque pas la jauge elle-même.</small></span></label>
   <label><input type="checkbox" id="hideCookieBanner"><span>Masquer le bandeau cookies répétitif<small>Masque uniquement le bandeau, sans modifier les cookies ni votre consentement.</small></span></label>
 </fieldset>
@@ -149,8 +181,8 @@
     <div class="ctl">
       <div class="swatches" id="swatches"></div>
       <span class="custom" id="custom" title="Couleur personnalisée"><input type="color" id="accent" value="#ff5500"></span>
+      <button class="accent-default" id="accent-reset" type="button" aria-label="Couleur par défaut : orange SoundCloud" title="Couleur par défaut : orange SoundCloud"></button>
       <input class="hex" id="accentHex" type="text" inputmode="text" maxlength="7" spellcheck="false" aria-label="Couleur hexadécimale" title="Code hexadécimal, par exemple #FF5500" value="#FF5500">
-      <button class="link" id="accent-reset" title="Revenir à l'orange SoundCloud" style="margin-left:4px">Défaut</button>
     </div>
   </div>
   <div class="row"><span>Page d'accueil<br><small style="color:var(--muted)">Page ouverte à l'arrivée sur soundcloud.com, à la place de Découvrir.</small></span>

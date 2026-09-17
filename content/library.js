@@ -17,6 +17,7 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const NS = 'sce-lib';
     const BATCH = 50, PARALLEL = 4, PAGE = 120;
     const SEL = { top: '.collectionSection__top', list: '.collectionSection .lazyLoadingList, .collectionSection__list', section: '.collectionSection' };
@@ -27,11 +28,11 @@
         fr: { search: 'Rechercher dans vos likes : titre, artiste, tag…', sort: 'Trier', added: "Date d'ajout", title: 'Titre', artist: 'Artiste', duration: 'Durée', plays: 'Écoutes', year: 'Année', genre: 'Tous les genres',
               play: 'Lire', shuffle: 'Shuffle+', playlist: 'Créer une playlist', tracks: 'titres', indexing: 'Indexation des likes… {n} / {t}', indexed: 'Bibliothèque à jour : {n} titres',
               plName: 'Nom de la playlist', created: 'Playlist créée : {t}', tooMany: '{n} titres maximum par playlist. Réduisez la sélection.', none: 'Aucun titre ne correspond', reset: 'Réinitialiser', likes: 'Likes', filter: 'Filtre',
-              select: 'Sélectionner des titres', selectAll: 'Tout sélectionner', selectResults: 'Sélectionner les résultats', clear: 'Effacer la sélection', selected: '{n} sélectionnés', add: 'Ajouter à une playlist', remove: 'Retirer des favoris', choosePlaylist: 'Numéro de la playlist :', confirmRemove: 'Retirer {n} titres de vos favoris ? Cette action ne supprime pas les morceaux de SoundCloud.', removed: '{n} favoris retirés', partial: '{n} favoris retirés ; {f} échecs', addedTo: '{n} titres ajoutés à la playlist', noPlaylists: 'Aucune playlist trouvée', actionError: 'Action impossible : {error}' },
+              select: 'Sélectionner des titres', selectAll: 'Tout sélectionner', selectResults: 'Sélectionner les résultats', clear: 'Effacer la sélection', selected: '{n} sélectionnés', add: 'Ajouter à une playlist', remove: 'Retirer des favoris', removePlaylist: 'Retirer d’une playlist', choosePlaylist: 'Numéro de la playlist :', confirmRemove: 'Retirer {n} titres de vos favoris ? Cette action ne supprime pas les morceaux de SoundCloud.', confirmPlaylistRemove: 'Retirer les titres sélectionnés de « {title} » ? Cette action ne supprime pas les morceaux de SoundCloud.', removed: '{n} favoris retirés', partial: '{n} favoris retirés ; {f} échecs', addedTo: '{n} titres ajoutés à la playlist', removedFrom: '{n} titres retirés de la playlist', noPlaylists: 'Aucune playlist trouvée', actionError: 'Action impossible : {error}' },
         en: { search: 'Search your likes: title, artist, tag…', sort: 'Sort', added: 'Date liked', title: 'Title', artist: 'Artist', duration: 'Duration', plays: 'Plays', year: 'Year', genre: 'All genres',
               play: 'Play', shuffle: 'Shuffle+', playlist: 'Create playlist', tracks: 'tracks', indexing: 'Indexing likes… {n} / {t}', indexed: 'Library up to date: {n} tracks',
               plName: 'Playlist name', created: 'Playlist created: {t}', tooMany: '{n} tracks maximum per playlist. Reduce the selection.', none: 'No matching tracks', reset: 'Reset', likes: 'Likes', filter: 'Filter',
-              select: 'Select tracks', selectAll: 'Select all', selectResults: 'Select results', clear: 'Clear selection', selected: '{n} selected', add: 'Add to playlist', remove: 'Remove from likes', choosePlaylist: 'Playlist number:', confirmRemove: 'Remove {n} tracks from your likes? This will not delete the tracks from SoundCloud.', removed: '{n} likes removed', partial: '{n} likes removed; {f} failed', addedTo: '{n} tracks added to playlist', noPlaylists: 'No playlists found', actionError: 'Action failed: {error}' },
+              select: 'Select tracks', selectAll: 'Select all', selectResults: 'Select results', clear: 'Clear selection', selected: '{n} selected', add: 'Add to playlist', remove: 'Remove from likes', removePlaylist: 'Remove from a playlist', choosePlaylist: 'Playlist number:', confirmRemove: 'Remove {n} tracks from your likes? This will not delete the tracks from SoundCloud.', confirmPlaylistRemove: 'Remove selected tracks from “{title}”? This will not delete the tracks from SoundCloud.', removed: '{n} likes removed', partial: '{n} likes removed; {f} failed', addedTo: '{n} tracks added to playlist', removedFrom: '{n} tracks removed from playlist', noPlaylists: 'No playlists found', actionError: 'Action failed: {error}' },
     };
     const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
     const t = (k, v = {}) => (L[k] || T.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (typeof v[x] === 'number' ? v[x].toLocaleString() : (v[x] ?? '')));
@@ -78,7 +79,6 @@
             const missing = ids.filter((id) => !known.has(id));
             if (missing.length) {
                 const batches = []; for (let i = 0; i < missing.length; i += BATCH) batches.push(missing.slice(i, i + BATCH));
-                let done = 0;
                 const worker = async () => {
                     while (batches.length) {
                         const b = batches.shift();
@@ -86,7 +86,6 @@
                             const res = await S().api(`/tracks?ids=${b.join(',')}`);
                             const got = (res || []).map(slim); await DB.put(got); got.forEach((r) => known.set(r.id, r));
                         } catch (e) { console.warn('[SCE] lot ignoré', e.message); }
-                        done += b.length;
                         S().toast(t('indexing', { n: known.size, t: ids.length }), { sticky: true });
                     }
                 };
@@ -101,22 +100,25 @@
     const state = { q: '', sort: 'added', dir: 'desc', genre: '' };
     const active = () => !!(state.q || state.genre || state.sort !== 'added' || state.dir !== 'desc');
 
+    /** Clés de tri et de recherche sans accents, calculées une fois par titre (et non à chaque comparaison). */
+    const folded = new WeakMap();
+    const keys = (r) => { let k = folded.get(r); if (!k) { k = { title: fold(r.title), artist: fold(r.artist), all: fold(`${r.title} ${r.artist} ${r.genre} ${r.tags}`) }; folded.set(r, k); } return k; };
+
     function selection() {
         const q = fold(state.q).trim();
         const terms = q ? q.split(/\s+/) : [];
-        const order = new Map(ids.map((id, i) => [id, i]));
         let list = ids.map((id) => rows.get(id) || (!terms.length && !state.genre ? { id, title: `#${id}`, artist: '', dur: 0, genre: '', tags: '', plays: 0, year: 0 } : null)).filter(Boolean);
         if (state.genre) list = list.filter((r) => r.genre === state.genre);
-        if (terms.length) list = list.filter((r) => { const h = fold(`${r.title} ${r.artist} ${r.genre} ${r.tags}`); return terms.every((w) => h.includes(w)); });
+        if (terms.length) list = list.filter((r) => { const h = keys(r).all; return terms.every((w) => h.includes(w)); });
         const cmp = {
-            added:    (a, b) => order.get(a.id) - order.get(b.id),
-            title:    (a, b) => fold(a.title).localeCompare(fold(b.title)),
-            artist:   (a, b) => fold(a.artist).localeCompare(fold(b.artist)) || fold(a.title).localeCompare(fold(b.title)),
+            added:    null,                                              // `ids` est déjà dans l'ordre d'ajout
+            title:    (a, b) => keys(a).title.localeCompare(keys(b).title),
+            artist:   (a, b) => keys(a).artist.localeCompare(keys(b).artist) || keys(a).title.localeCompare(keys(b).title),
             duration: (a, b) => a.dur - b.dur,
             plays:    (a, b) => a.plays - b.plays,
             year:     (a, b) => a.year - b.year,
         }[state.sort];
-        list.sort(cmp);
+        if (cmp) list.sort(cmp);
         if ((state.sort === 'added') !== (state.dir === 'desc')) list.reverse(); // « ajout » : plus récent d'abord par défaut
         return list;
     }
@@ -254,7 +256,8 @@
             <span class="bulk-count" aria-live="polite"></span>
             <button type="button" class="sc-button sc-button-small sc-button-primary" data-a="create">${t('playlist')}</button>
             <button type="button" class="sc-button sc-button-small sc-button-secondary" data-a="add">${t('add')}</button>
-            <button type="button" class="sc-button sc-button-small sc-button-secondary" data-a="remove">${t('remove')}</button>`;
+            <button type="button" class="sc-button sc-button-small sc-button-secondary" data-a="remove">${t('remove')}</button>
+            <button type="button" class="sc-button sc-button-small sc-button-secondary" data-a="removePlaylist">${t('removePlaylist')}</button>`;
         h.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => {
             if (b.dataset.a === 'select') { selecting = !selecting; refresh(); }
             else if (b.dataset.a === 'all') { selecting = true; window.__sceLibraryBulk.scopeIds(ids, current, active()).forEach((id) => selectedIds.add(id)); refresh(); }
@@ -275,6 +278,7 @@
     const mode = () => (document.querySelector('.listDisplayToggle__listToggle')?.classList.contains('sc-button-selected') ? 'list' : 'badges');
 
     function refresh() {
+        if (!mounted || !list) return;                                   // page quittée pendant une action ou l'indexation
         current = selection();
         syncMenuLabels();
         list.classList.toggle('m-badges', mode() === 'badges');
@@ -286,7 +290,7 @@
         head.querySelector('.c').innerHTML = `<b>${count.toLocaleString()}</b> ${t('tracks')}${active() ? ` · ${fmtTotal(current.reduce((a, r) => a + r.dur, 0))}` : ''}`;
         head.querySelector('.bulk-count').textContent = t('selected', { n: selectedIds.size });
         head.querySelector('[data-a="all"]').textContent = t(active() ? 'selectResults' : 'selectAll');
-        for (const button of head.querySelectorAll('[data-a="create"], [data-a="add"], [data-a="remove"]')) button.disabled = busy || !selectedIds.size;
+        for (const button of head.querySelectorAll('[data-a="create"], [data-a="add"], [data-a="remove"], [data-a="removePlaylist"]')) button.disabled = busy || !selectedIds.size;
         if (!on) return;
         list.innerHTML = ''; rendered = 0;
         if (!current.length) { list.innerHTML = `<div class="${NS}-empty">${t('none')}</div>`; return; }
@@ -330,31 +334,25 @@
 
     async function act(kind, fromId) {
         if (busy) return;
-        if (['create', 'add', 'remove'].includes(kind)) {
+        if (['create', 'add', 'remove', 'removePlaylist'].includes(kind)) {
             const chosen = [...selectedIds];
             if (!chosen.length) return;
             const bulk = window.__sceLibraryBulk;
-            if (kind !== 'remove' && chosen.length > S().maxTracks) { S().toast(t('tooMany', { n: S().maxTracks }), { error: true }); return; }
+            if (['create', 'add'].includes(kind) && chosen.length > S().maxTracks) { S().toast(t('tooMany', { n: S().maxTracks }), { error: true }); return; }
             if (kind === 'remove' && !confirm(t('confirmRemove', { n: chosen.length }))) return;
-            let title, playlistId;
+            let title, playlistId, targetPlaylist, me;
             if (kind === 'create') { title = prompt(t('plName'), label()); if (!title?.trim()) return; }
-            if (kind === 'add') {
-                const me = await S().me();
-                const playlists = [];
-                let url = `/users/${me.id}/playlists_without_albums?limit=200`;
-                while (url) {
-                    const page = await S().api(url);
-                    playlists.push(...(page.collection || []));
-                    if (page.next_href) {
-                        url = window.__sceShared.nextPath(page.next_href);
-                    } else url = null;
-                }
+            if (kind === 'add' || kind === 'removePlaylist') {
+                me = await S().me();
+                const playlists = await bulk.ownPlaylists(S().api, me.id);
                 if (!playlists.length) { S().toast(t('noPlaylists'), { error: true }); return; }
                 const answer = prompt(`${t('choosePlaylist')}\n${playlists.map((pl, i) => `${i + 1}. ${pl.title}`).join('\n')}`);
                 if (answer === null) return;
                 const index = Number(answer) - 1;
                 if (!Number.isInteger(index) || index < 0 || index >= playlists.length) return;
-                playlistId = playlists[index].id;
+                targetPlaylist = playlists[index];
+                playlistId = targetPlaylist.id;
+                if (kind === 'removePlaylist' && !confirm(t('confirmPlaylistRemove', { title: targetPlaylist.title }))) return;
             }
             busy = true; refresh();
             try {
@@ -365,6 +363,9 @@
                 } else if (kind === 'add') {
                     const n = await bulk.addToPlaylist(S().api, playlistId, chosen, S().maxTracks);
                     S().toast(t('addedTo', { n }));
+                } else if (kind === 'removePlaylist') {
+                    const n = await bulk.removeFromPlaylist(S().api, playlistId, chosen, me.id);
+                    S().toast(t('removedFrom', { n }));
                 } else {
                     const result = await bulk.unlikeMany(S().api, chosen);
                     const gone = new Set(result.done);
@@ -423,7 +424,7 @@
             const id = Number(box.dataset.pick);
             if (box.checked) selectedIds.add(id); else selectedIds.delete(id);
             head.querySelector('.bulk-count').textContent = t('selected', { n: selectedIds.size });
-            for (const button of head.querySelectorAll('[data-a="create"], [data-a="add"], [data-a="remove"]')) button.disabled = busy || !selectedIds.size;
+            for (const button of head.querySelectorAll('[data-a="create"], [data-a="add"], [data-a="remove"], [data-a="removePlaylist"]')) button.disabled = busy || !selectedIds.size;
         });
         // Le choix natif « Afficher » (badges / liste) bascule aussi notre rendu
         top.querySelector('.listDisplayToggle__options')?.addEventListener('click', () => setTimeout(() => { if (active() || selecting) refresh(); }, 50));
@@ -452,6 +453,7 @@
     window.addEventListener('sce:settings-change', schedule); // réglage « Bibliothèque » appliqué sans recharger
     for (const fn of ['pushState', 'replaceState']) { const o = history[fn]; history[fn] = function (...a) { const r = o.apply(this, a); schedule(); return r; }; }
     window.addEventListener('popstate', schedule);
-    new MutationObserver(() => { if (!mounted || !sortMenu?.isConnected) schedule(); }).observe(document.body, { childList: true, subtree: true });
+    const onLikes = () => location.pathname.startsWith('/you/likes');
+    new MutationObserver(() => { if (mounted ? !sortMenu?.isConnected : onLikes()) schedule(); }).observe(document.body, { childList: true, subtree: true });
     schedule();
 })();

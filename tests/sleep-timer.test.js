@@ -11,6 +11,7 @@ function startPlayer(t) {
     const play = { classList: { contains: (c) => playClasses.has(c) }, click() { playClasses.has('playing') ? playClasses.delete('playing') : playClasses.add('playing'); } };
     const title = { title: 'One', textContent: 'One', getAttribute: () => '/a/one' };
     const document = {
+        addEventListener() {},
         querySelector(sel) { if (sel === '.playControl') return play; if (sel === '.playbackSoundBadge__titleLink') return title; return null; },
         body: {},
     };

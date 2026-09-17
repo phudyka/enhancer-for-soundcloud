@@ -12,12 +12,22 @@
   },
   "minimum_chrome_version": "116",
   "host_permissions": [
-    "https://soundcloud.com/*"
+    "https://soundcloud.com/*",
+    "https://api-v2.soundcloud.com/*",
+    "https://*.sndcdn.com/*",
+    "https://*.soundcloud.cloud/*"
   ],
   "permissions": [
     "storage",
+    "downloads",
     "sidePanel",
     "declarativeNetRequest"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["options/options.html"],
+      "matches": ["https://soundcloud.com/*"]
+    }
   ],
   "background": {
     "service_worker": "background/service-worker.js",
@@ -88,9 +98,12 @@
         "content/shuffle.js",
         "content/library-bulk.js",
         "content/library.js",
+        "content/playlist-manager.js",
+        "content/pitch-shifter.js",
         "content/audio.js",
         "content/scrub.js",
         "content/player-api.js",
+        "content/download-entry.js",
         "content/history.js",
         "content/customize.js",
         "content/transitions.js",

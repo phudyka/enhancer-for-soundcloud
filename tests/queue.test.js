@@ -24,11 +24,15 @@ function startPlayer(t) {
     const items = [item(1), item(2), item(3, true), item(4), item(5), item(6)];
     let open = false;
     const queue = node('queue');
-    const toggle = { click() { open = !open; clicks.push(open ? 'open' : 'close'); queue.classList[open ? 'add' : 'remove']('m-visible'); } };
+    const inside = {};
+    queue.contains = (target) => target === queue || target === inside;
+    const toggle = { contains: (target) => target === toggle, click() { open = !open; clicks.push(open ? 'open' : 'close'); queue.classList[open ? 'add' : 'remove']('m-visible'); } };
     const hide = { click: () => toggle.click() };
     const play = { classList: { contains: () => true }, click() {} };
     const styles = [];
+    const documentListeners = {};
     const document = {
+        addEventListener(name, cb) { documentListeners[name] = cb; },
         querySelector(sel) {
             if (sel === '.playControl') return play;
             if (sel === '.queue') return queue;
@@ -47,8 +51,21 @@ function startPlayer(t) {
     const context = { window, document, location: { origin: 'https://soundcloud.com' }, MutationObserver: class { observe() {} disconnect() {} }, requestAnimationFrame: (cb) => cb(), setTimeout, clearTimeout, setInterval, clearInterval, Date, Number, Math, Promise, CustomEvent: class {} };
     vm.runInNewContext(fs.readFileSync('content/player-api.js', 'utf8'), context);
     const command = async (command, value) => { listeners.message({ source: window, data: { sce: 'command', command, value } }); for (let i = 0; i < 12; i++) { t.mock.timers.tick(200); await Promise.resolve(); await Promise.resolve(); } };
-    return { command, posted, clicks, queue, isOpen: () => open };
+    return { command, posted, clicks, queue, toggle, inside, outsideClick: (target) => documentListeners.click({ target }), isOpen: () => open };
 }
+
+test('clicking outside closes the visible queue while queue and toggle clicks leave it alone', (t) => {
+    const p = startPlayer(t);
+    p.toggle.click();
+    p.outsideClick(p.inside);
+    p.outsideClick(p.toggle);
+    assert.equal(p.isOpen(), true);
+    p.outsideClick({});
+    assert.equal(p.isOpen(), false);
+    assert.deepEqual(p.clicks, ['open', 'close']);
+    p.outsideClick({});
+    assert.deepEqual(p.clicks, ['open', 'close']);
+});
 
 test('the queue is read through a silently opened panel and closed afterwards', async (t) => {
     const p = startPlayer(t);

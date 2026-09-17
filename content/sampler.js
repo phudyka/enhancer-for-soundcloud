@@ -14,6 +14,7 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const NS = 'sce-smp';
     const KEY = 'sce:samples';
     const T = {
@@ -154,6 +155,6 @@
     });
     window.addEventListener('sce:audio-panel', (e) => { if (enabled() && e.detail?.panel) build(e.detail.panel); });
     if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', resetForTrack); el.addEventListener('loadedmetadata', () => { resetForTrack(); render(); }); });
-    new MutationObserver(() => { if (document.querySelector('.playbackTimeline__progressWrapper') && !document.querySelector(`.${NS}-mark`) && (Number.isFinite(loop.a) || Number.isFinite(loop.b))) renderMarks(); }).observe(document.body, { childList: true, subtree: true });
+    new MutationObserver(() => { if ((Number.isFinite(loop.a) || Number.isFinite(loop.b)) && !document.querySelector(`.${NS}-mark`) && document.querySelector('.playbackTimeline__progressWrapper')) renderMarks(); }).observe(document.body, { childList: true, subtree: true });
     window.__sceSampler = Object.freeze({ setPoint, setLoop, get loop() { return { a: loop.a, b: loop.b, on: loop.on }; }, save, list: () => store.list(trackUrl()) });
 })();

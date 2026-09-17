@@ -20,6 +20,7 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const SEL = {
         play:    '.playControl',
         next:    '.skipControl__next',
@@ -37,6 +38,14 @@
     const SILENT = 'sce-queue-silent';
     const QUEUE_LIMIT = 30;
     const $ = (s) => document.querySelector(s);
+
+    document.addEventListener('click', (event) => {
+        const queue = $(SEL.queue);
+        if (!queue?.classList.contains('m-visible') || queue.classList.contains(SILENT)) return;
+        const toggle = $(SEL.queueToggle);
+        if (queue.contains(event.target) || toggle?.contains(event.target)) return;
+        $(SEL.queueHide)?.click();
+    }, true);
 
     function artworkUrl() {
         const el = $(SEL.artwork);
@@ -128,14 +137,26 @@
     /** Élément de la file → données du panneau. `index` est relatif au titre actif (1 = suivant). */
     function queueItemData(el, index) {
         const titleEl = el.querySelector('.queueItemView__title a, a.queueItemView__title, .queueItemView__title');
-        const art = el.querySelector('.queueItemView__artworkImage, [style*="background-image"]');
-        const m = art && (art.style?.backgroundImage || '').match(/url\("?(.*?)"?\)/);
+        const artSelector = '.queueItemView__artworkImage, .queueItemView__artwork .image__full, .queueItemView__artwork img, .queueItemView__artwork [style*="background-image"], [style*="background-image"]';
+        const artNodes = el.querySelectorAll ? [...el.querySelectorAll(artSelector)] : [el.querySelector(artSelector)];
+        let artwork = null;
+        for (const art of artNodes) {
+            if (!art) continue;
+            const sources = [art.style?.backgroundImage, art.getAttribute?.('data-original'), art.getAttribute?.('src'),
+                typeof getComputedStyle === 'function' ? getComputedStyle(art).backgroundImage : ''];
+            for (const source of sources) {
+                if (!source || source === 'none') continue;
+                const url = source.match(/url\(["']?([^"')]+)["']?\)/)?.[1] || source;
+                if (/^https?:\/\//.test(url)) { artwork = url; break; }
+            }
+            if (artwork) break;
+        }
         return {
             index,
             title: (titleEl?.textContent || '').trim(),
             artist: (el.querySelector('.queueItemView__username')?.textContent || '').trim(),
             url: titleEl?.getAttribute?.('href') || null,
-            artwork: m ? m[1].replace(/-t\d+x\d+\./, '-t120x120.') : null,
+            artwork: artwork?.replace(/-t\d+x\d+\./, '-t120x120.') || null,
             duration: (el.querySelector('.queueItemView__duration')?.textContent || '').trim(),
         };
     }

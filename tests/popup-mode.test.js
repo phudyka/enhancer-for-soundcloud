@@ -10,7 +10,8 @@ test('the toolbar action opens the browser sidebar instead of a compact popup', 
     assert.equal(manifest.sidebar_action.default_panel, 'popup/popup.html');
     assert.match(worker, /setPanelBehavior\(\{ openPanelOnActionClick: true \}\)/);
     assert.match(worker, /chrome\.sidebarAction\.toggle\(\)/);
-    assert.doesNotMatch(worker, /chrome\.sidePanel\.open\(/);
+    assert.match(worker, /case 'panel-toggle'/);
+    assert.match(worker, /chrome\.sidePanel\.open\(\{ windowId \}\)/);
     assert.doesNotMatch(popup, /compactPopup|closeIfPopup/);
     assert.match(popup, /chrome\.storage\.onChanged\.addListener/);
 });

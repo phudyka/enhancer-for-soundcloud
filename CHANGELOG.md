@@ -1,5 +1,43 @@
 # Journal des versions
 
+## Non publié
+- Transitions : choisir un autre titre, mettre en pause ou répéter le titre en cours pendant un fondu ne laisse plus le lecteur muet ; une erreur de préparation n'immobilise plus la transition suivante.
+- Audio : le décalage de hauteur n'est calculé que lorsqu'il est utilisé (moins de charge processeur), un navigateur sans ce traitement ne coupe plus le son, et l'avertissement « effets indisponibles » n'apparaît qu'une fois par titre.
+- Réglages : le sélecteur de couleur n'épuise plus le quota d'écritures synchronisées, les boutons « Tout masquer / Tout réafficher » et les libellés restants sont traduits en anglais, et la page suit les changements faits ailleurs.
+- Bibliothèque : plus d'erreur en quittant la page pendant l'indexation ou une action groupée ; tri par titre ou artiste nettement plus rapide sur les grandes collections.
+- Playlists personnelles : plus de requêtes répétées quand la page n'est pas prête ou après une erreur réseau.
+- Shuffle+ : une dernière source supprimée renvoie vers les Likes au lieu d'échouer ; un identifiant client périmé est réellement renouvelé ; infobulles du bouton du lecteur traduites et à jour après un changement de mode.
+- Performances : moins de lectures des réglages et de parcours de la page à chaque mutation du DOM ; l'historique n'est élagué qu'à l'ouverture d'un nouveau mois.
+- Service worker : toute erreur renvoie une réponse au lieu de laisser l'appelant en attente. Personnalisation : le bouton de fin s'intitule « Terminer » en français.
+- Panneau latéral : épingle sur le bord de SoundCloud pour ouvrir et fermer le lecteur, commande de fermeture dans le panneau et accès direct à l'onglet SoundCloud en permanence.
+- Audio : les options de son sont accessibles depuis la barre du panneau latéral et restent synchronisées avec le lecteur SoundCloud. Le volume peut atteindre 200 % après activation explicite, désactivée par défaut, depuis les deux panneaux audio. Textes français et anglais ajoutés.
+- Panneau latéral : sans onglet SoundCloud, lecture des titres et playlists publics avec le lecteur intégré officiel et mémorisation du dernier lien. La barre de défilement est masquée, le contenu peut descendre à 120 px et le bouton sur la pochette redevient cliquable. Le réglage de masquage Cast reconnaît davantage de formes du bouton.
+- Téléchargement : le renouvellement de l'identifiant SoundCloud ignore les anciennes requêtes et actualise le cache ; les entrées indisponibles d'une playlist ne bloquent plus son chargement et les longs noms conservent l'extension du fichier. Volume : le clic sur le haut-parleur bloque aussi les événements natifs précédant le clic pour éviter une sourdine involontaire.
+- Réglages : « Tout désactiver » conserve les préférences pour plus tard et « Réglages par défaut » rétablit immédiatement toutes les valeurs initiales.
+- Apparence : la forme d’onde dessinée sur canvas reprend la couleur d’accent sans modifier ses niveaux gris.
+- Panneau latéral : la largeur minimale du contenu passe de 220 à 180 px.
+- Volume : le curseur au survol ne déclenche plus la sourdine native quand on le manipule.
+- Lecture aléatoire : le bouton indique le mélange par un va-et-vient discret, sans rotation.
+- Téléchargement : le bouton reprend la couleur et l'espacement des actions SoundCloud voisines.
+- Apparence : le contour du curseur de progression prend une teinte liée à la couleur d'accent choisie.
+- File d'attente native : un clic en dehors du panneau le ferme, sans interférer avec son bouton d'ouverture ni avec les commandes de la file.
+- Téléchargement : bouton intégré aux actions du lecteur, des titres en liste, des pochettes et de la file d'attente ; page de téléchargement des titres publics, sélection de 10 titres maximum par playlist ou album, choix du transcodage disponible, conversion MP3 locale, métadonnées ID3 et sauvegarde JPG de la pochette.
+- Volume : curseur vertical au survol du haut-parleur, réglage immédiat ; le clic ouvre toujours les options audio. Les boutons Cast et lecteur épinglable ont chacun un réglage de masquage.
+- Fil : le module « Vos statistiques » peut être masqué. File d'attente : le commutateur de lecture automatique suit la couleur d'accent et peut être masqué séparément.
+- Audio : la barre de défilement du panneau est invisible, tout en conservant le défilement.
+- Réglages : bouton d'accès direct dans l'en-tête SoundCloud, sans ouvrir le panneau latéral.
+- Analyse audio : correction du décalage des notes et des tempos détectés à mi-cadence ; anciens résultats mis en cache recalculés. Affichage du bloc BPM/tonalité facultatif depuis les réglages.
+- En-tête : les badges de notifications et de messages retrouvent leur affichage natif et ne simulent plus des éléments non lus.
+- Audio : choix de conserver vitesse et effets au titre suivant ou de revenir à Normal, presets personnels nommés avec sélection des réglages inclus, analyse BPM/tonalité/Camelot compacte dans la barre de lecture.
+- Bibliothèque : « Récemment écouté » peut être masqué depuis les réglages.
+- Playlists personnelles : gestion directe des titres avec retrait individuel, sélection multiple, ajout à une autre playlist, création d'une playlist et retrait des likes. Depuis la bibliothèque des likes, la sélection peut aussi être retirée d'une playlist personnelle.
+- Panneau latéral : la file d'attente s'actualise automatiquement quand le panneau est visible et reconnaît davantage de formats de pochettes ; la largeur minimale du contenu passe de 300 à 220 px.
+- Personnalisation : le bouton rond de fin remplace le bandeau pour libérer le haut de la page ; les masquages s'appliquent immédiatement. Le pied de page latéral est pris en charge par son réglage existant.
+- Apparence : le logo des réglages suit la couleur d'accent, avec un motif contrasté ; l'orange devient le contrôle « Défaut » à gauche du champ hexadécimal.
+- Lecture aléatoire : mode complet sans API par défaut, avec choix du mode natif ou de Shuffle+ dans les réglages. Un bouton apparaît au survol des pochettes de playlists pour lancer leur lecture aléatoire.
+- Personnalisation : la barre de lecture reste visible, mais ses commandes peuvent être masquées individuellement. La promotion « On Tour » suit le réglage Artist Pro.
+- Audio : un clic hors du panneau le ferme.
+
 ## 0.14.0 — 16/09/2026
 - Sampler : points A/B au clavier ([ et ]), boucle (\), réglage fin, boucles nommées mémorisées par titre dans le panneau Audio, repères sur la barre du lecteur, liste copiable. Sans extraction audio.
 - Le mode DJ (deux platines) est retiré, remplacé par des **transitions automatiques** : fondu croisé avec le titre suivant de la file (6 à 24 s), basses échangées à mi-parcours, calage du lecteur natif à la fin. Option dans les réglages, désactivée par défaut.

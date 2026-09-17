@@ -4,12 +4,12 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 
 ## Fonctions (v0.14.0)
 
-- **Shuffle+** : vrai shuffle instantané des Likes, playlists et sets Discover via l'API interne, playlist tampon privée, bouton du lecteur détourné. **Sans répétition** : chaque shuffle tire parmi les titres pas encore joués, tour après tour. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
-- **Audio** : le bouton haut-parleur ouvre un panneau unique. Volume linéaire 0–100 % avec sourdine (molette sur le bouton), vitesse 0,1× à 3× sur un curseur logarithmique avec aimant sur 1×, boutons ±0,01, flèches et saisie directe de la valeur, conservation de la hauteur, bass boost jusqu'à +12 dB, réverbération, presets Slowed + Reverb, Nightcore, Bass boost. **Analyse en direct : BPM et tonalité avec code Camelot**, affinés sur les 30 premières secondes, corrigés de la vitesse, mémorisés par titre. Traitement Web Audio sur le flux SoundCloud. Raccourcis Maj+, Maj+. Maj+0.
+- **Lecture aléatoire** : par défaut, charge entièrement la file de lecture puis active le shuffle SoundCloud sans API ; les réglages permettent de choisir le shuffle natif ou **Shuffle+**, qui mélange les Likes et playlists via une playlist privée. Un bouton de lecture aléatoire apparaît au survol des playlists. **Sans répétition** dans Shuffle+ : chaque mélange tire parmi les titres pas encore joués, tour après tour. Reprise du userscript [soundcloud-shuffle-plus](https://github.com/phudyka/soundcloud-shuffle-plus).
+- **Audio** : le bouton haut-parleur ouvre un panneau unique. Volume linéaire 0–100 % avec sourdine (molette sur le bouton) et option désactivée par défaut pour monter jusqu'à 200 %, vitesse 0,1× à 3× sur un curseur logarithmique avec aimant sur 1×, boutons ±0,01, flèches et saisie directe de la valeur, conservation de la hauteur, bass boost jusqu'à +12 dB, réverbération, presets Slowed + Reverb, Nightcore, Bass boost. Choix de conserver vitesse et effets au titre suivant ou de revenir à Normal ; presets personnels nommés où chaque réglage peut être inclus ou exclu. **Analyse en direct : BPM et tonalité avec code Camelot sur la barre de lecture**, facultative dans les réglages, affinée sur les 30 premières secondes, corrigée de la vitesse, mémorisée par titre. Traitement Web Audio sur le flux SoundCloud. Raccourcis Maj+, Maj+. Maj+0.
 - **Lecteur épinglable** : fenêtre Picture-in-Picture toujours au premier plan (Chromium 116+, repli en fenêtre popup ailleurs), pochette, titre, progression cliquable, précédent / lecture / suivant / Shuffle+ / répéter, vitesse, hauteur, basses, réverbération et presets. Bouton 📌 dans la barre du lecteur, depuis le popup, ou par raccourci.
-- **Panneau latéral** : un clic sur l'icône ouvre ou ferme le lecteur intégré au navigateur, avec pochette, progression, précédent / lecture / suivant, Shuffle+, vitesse, **minuteur d'arrêt** (15 à 90 min avec fondu de 8 s avant la pause, ou fin du titre en cours) et **file d'attente** « À suivre » : clic pour lire un titre, croix pour le retirer. Si aucun onglet SoundCloud n'existe, le panneau en ouvre un automatiquement pour choisir un titre ; la lecture reste assurée par cet onglet. Il reste accessible pendant la navigation ; les mises à jour d'état sont événementielles, avec un contrôle léger toutes les 5 secondes lorsque le panneau est visible. Repli en petite fenêtre sur les navigateurs sans API de panneau.
+- **Panneau latéral** : un clic sur l'icône ouvre ou ferme le lecteur intégré au navigateur, avec pochette, progression, précédent / lecture / suivant, Shuffle+, vitesse, un bouton d'options audio (volume, hauteur, basses, réverbération, presets et volume jusqu'à 200 % sur activation), **minuteur d'arrêt** (15 à 90 min avec fondu de 8 s avant la pause, ou fin du titre en cours) et **file d'attente** « À suivre » : clic pour lire un titre, croix pour le retirer. Le contenu s'adapte jusqu'à 120 px de large et reste défilable sans barre visible, sous réserve de la largeur minimale imposée par le navigateur. La file se recharge automatiquement toutes les 10 secondes lorsque le panneau est visible. Sans onglet SoundCloud, le panneau propose le lecteur intégré officiel pour un titre ou une playlist publics ; le dernier titre est repris comme lien proposé. Ce mode possède les commandes du lecteur intégré SoundCloud, tandis que les commandes avancées de l'extension nécessitent un onglet SoundCloud. Il reste accessible pendant la navigation ; les mises à jour d'état sont événementielles, avec un contrôle léger toutes les 5 secondes lorsque le panneau est visible. Repli en petite fenêtre sur les navigateurs sans API de panneau.
 - **Raccourcis globaux** : Shuffle+ et lecture/pause même quand l'onglet n'a pas le focus.
-- **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes ou année, filtre par genre. Résultats en badges ou en liste selon le choix natif « Afficher » ; un clic sur un titre le lit seul. Sélection individuelle ou de tous les résultats filtrés (ou de tous les favoris, même non chargés) pour créer une playlist, ajouter à une playlist existante ou retirer des favoris après confirmation. Les playlists sont limitées à 500 titres sans troncature silencieuse. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement.
+- **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes ou année, filtre par genre. Résultats en badges ou en liste selon le choix natif « Afficher » ; un clic sur un titre le lit seul. Sélection individuelle ou de tous les résultats filtrés (ou de tous les favoris, même non chargés) pour créer une playlist, ajouter à une playlist existante, retirer des favoris ou retirer des titres d'une playlist personnelle après confirmation. Sur une playlist personnelle, « Gérer les titres » donne accès au retrait individuel et aux actions groupées. Les playlists sont limitées à 500 titres sans troncature silencieuse. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement.
 - **Sampler** : points A et B (touches `[` et `]`), boucle entre les deux (`\`), réglage fin ±0,1 s, boucles nommées mémorisées par titre dans la section « Samples » du panneau Audio, repères sur la barre du lecteur, liste copiable (horodatages + lien). Aucune extraction audio.
 - **Loupe de timeline** : molette sur la forme d'onde ou la barre du lecteur, zoom 2× à 32× avec la forme d'onde redessinée, règle de temps, placement au centième de seconde, flèches ±1 s / Maj ±0,1 s / Alt ±0,01 s.
 - **Transitions automatiques** (option) : à l'approche de la fin d'un titre, le suivant de la file démarre en fondu croisé à puissance constante (6 à 24 s) avec échange des basses à mi-parcours ; SoundCloud enchaîne ensuite normalement, calé sur la position du fondu.
@@ -19,7 +19,9 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 - **Bandeau cookies** : masque par défaut le dialogue répétitif de SoundCloud sans effacer les cookies ni enregistrer un choix de consentement ; désactivable dans Promotions.
 - **Publicités** : blocage optionnel des domaines publicitaires et traceurs tiers via declarativeNetRequest, sans lecture des pages. Désactivé par défaut, inutile sur Brave.
 - **Guide intégré** (français / anglais) ouvert à l'installation, accessible depuis les réglages.
-- **Réglages** synchronisés entre appareils.
+- **Réglages** accessibles depuis l'en-tête SoundCloud ou le panneau latéral, synchronisés entre appareils. Packs recommandés ou complets, commande pour tout désactiver en conservant les choix et retour immédiat aux réglages par défaut.
+- **Lecteur latéral** : une épingle sur le bord de SoundCloud ouvre ou ferme le panneau sans passer par l'icône de l'extension. Le panneau possède aussi une fermeture et un accès permanent à l'onglet SoundCloud ; sans onglet, il peut afficher le lecteur intégré d'un titre ou d'une playlist publics.
+- **Téléchargements** : depuis le lecteur, le panneau latéral ou une playlist/un album, sélection de 10 titres maximum par lot avec progression. Les flux publics disponibles sont décodés et convertis localement en MP3 avec titre, artiste, album, genre et pochette ID3 ; la pochette peut aussi être enregistrée en JPG. Le choix de qualité dépend des transcodages proposés pour chaque titre.
 
 ## Installer en mode développeur
 
@@ -43,12 +45,13 @@ content/
   transitions.js  monde principal : transitions automatiques (second flux en fondu croisé)
   sampler.js      monde principal : boucles A/B mémorisées par titre, section du panneau Audio
   player-api.js   monde principal : état et commandes du lecteur natif
+  download-entry.js  boutons de téléchargement sur SoundCloud
   history.js      monde principal : temps écouté par titre, remonté au service worker
   pip.js          monde principal : lecteur épinglable (Document Picture-in-Picture)
   bridge.js       monde isolé : seul accès à chrome.*, relais page ⇄ extension
 background/
   service-worker.js  raccourcis globaux, historique d'écoute (storage.local), état du lecteur
-popup/  options/  stats/ (statistiques d'écoute)  guide/ (guide intégré)  ui/i18n.js  icons/  rules/ads.json (blocage optionnel)
+popup/  options/  stats/ (statistiques d'écoute)  guide/ (guide intégré)  downloads/ (conversion locale MP3)  ui/i18n.js  icons/  rules/ads.json (blocage optionnel)
 scripts/package.sh  archive zip pour les boutiques  ·  PRIVACY.md  politique de confidentialité
 ```
 
@@ -60,10 +63,10 @@ Les scripts du **monde principal** voient la page comme un userscript `@grant no
 
 Faits : thème (SoundCloud gère clair / sombre nativement ; l'extension ajoute le fond OLED), historique et statistiques d'écoute locaux, guide intégré.
 
-Déjà exposés par SoundCloud, donc non dupliqués : téléchargement des titres autorisés par l'artiste et lien d'achat, présents nativement sur la page du titre.
-
-Hors périmètre, volontairement : extraction des flux audio (rip MP3/M4A), contraire aux conditions de SoundCloud et au droit des artistes.
+Le téléchargement local utilise les flux publics que SoundCloud fournit au navigateur. Certains titres ou formats peuvent rester indisponibles. Respectez les droits des artistes et les conditions applicables à votre usage.
 
 ## Licence
 
 MIT.
+
+Le convertisseur MP3 embarque `lamejs` sous LGPL 2.1 ; sa licence figure dans `downloads/vendor/LAME-LICENSE.txt`.

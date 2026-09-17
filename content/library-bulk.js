@@ -1,6 +1,7 @@
 /* Shared selection and safe bulk mutations for the likes library. */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
 
     function scopeIds(allIds, visibleRows, filtered) {
         return filtered ? visibleRows.map((row) => row.id) : allIds.slice();
@@ -12,7 +13,19 @@
         return ids;
     }
 
-    async function addToPlaylist(api, playlistId, selected, limit = 500) {
+    /** Toutes les playlists (hors albums) d'un utilisateur, pagination comprise. */
+    async function ownPlaylists(api, userId) {
+        const playlists = [];
+        let path = `/users/${userId}/playlists_without_albums?limit=200`;
+        while (path) {
+            const page = await api(path);
+            playlists.push(...(page.collection || []));
+            path = page.next_href ? window.__sceShared.nextPath(page.next_href) : null;
+        }
+        return playlists;
+    }
+
+    async function readPlaylist(api, playlistId) {
         const playlist = await api(`/playlists/${playlistId}`);
         let existing = playlist.tracks;
         if (!Array.isArray(existing)) throw new Error('Incomplete playlist track list; update cancelled');
@@ -22,18 +35,31 @@
             while (path && all.length < playlist.track_count) {
                 const page = await api(path);
                 all.push(...(Array.isArray(page) ? page : page?.collection || []));
-                if (page?.next_href) {
-                    path = window.__sceShared.nextPath(page.next_href);
-                } else path = null;
+                path = page?.next_href ? window.__sceShared.nextPath(page.next_href) : null;
             }
             existing = all;
         }
         if (playlist.track_count != null && existing.length !== playlist.track_count) {
             throw new Error('Incomplete playlist track list; update cancelled');
         }
+        return { playlist, existing };
+    }
+
+    async function addToPlaylist(api, playlistId, selected, limit = 500) {
+        const { existing } = await readPlaylist(api, playlistId);
         const tracks = playlistTracks(selected, existing, limit);
         await api(`/playlists/${playlistId}`, { method: 'PUT', body: { playlist: { tracks } } });
         return tracks.length - existing.length;
+    }
+
+    async function removeFromPlaylist(api, playlistId, selected, ownerId) {
+        const { playlist, existing } = await readPlaylist(api, playlistId);
+        if (String(playlist.user?.id) !== String(ownerId)) throw new Error('Playlist owner mismatch; update cancelled');
+        const unwanted = new Set(selected.map(String));
+        const tracks = existing.map((track) => track.id).filter((id) => !unwanted.has(String(id)));
+        if (tracks.length === existing.length) return 0;
+        await api(`/playlists/${playlistId}`, { method: 'PUT', body: { playlist: { tracks } } });
+        return existing.length - tracks.length;
     }
 
     async function unlikeMany(api, selected) {
@@ -45,5 +71,5 @@
         return { done, failed };
     }
 
-    window.__sceLibraryBulk = { scopeIds, playlistTracks, addToPlaylist, unlikeMany };
+    window.__sceLibraryBulk = { scopeIds, playlistTracks, ownPlaylists, readPlaylist, addToPlaylist, removeFromPlaylist, unlikeMany };
 })();

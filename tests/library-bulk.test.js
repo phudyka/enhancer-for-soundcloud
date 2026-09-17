@@ -51,6 +51,30 @@ test('appends only new tracks while preserving the playlist order', async () => 
     assert.equal(calls[1][1].method, 'PUT');
 });
 
+test('removes only selected tracks from an owned complete playlist, preserving order', async () => {
+    const calls = [];
+    const count = await bulk().removeFromPlaylist(async (path, opts) => {
+        calls.push([path, opts]);
+        if (!opts) return { user: { id: 42 }, track_count: 4, tracks: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 2 }] };
+    }, 7, [2], 42);
+    assert.equal(count, 2);
+    assert.deepEqual(Array.from(calls.at(-1)[1].body.playlist.tracks), [1, 3]);
+});
+
+test('refuses to update another user’s playlist or an incomplete track list', async () => {
+    const calls = [];
+    const api = async (path, opts) => {
+        calls.push([path, opts]);
+        if (path === '/playlists/7') return { user: { id: 99 }, track_count: 1, tracks: [{ id: 2 }] };
+    };
+    await assert.rejects(bulk().removeFromPlaylist(api, 7, [2], 42), /owner mismatch/i);
+    assert.equal(calls.filter(([, opts]) => opts?.method === 'PUT').length, 0);
+    await assert.rejects(bulk().removeFromPlaylist(async (path) => {
+        if (path === '/playlists/7') return { user: { id: 42 }, track_count: 2, tracks: [{ id: 2 }] };
+        return { collection: [{ id: 2 }] };
+    }, 7, [2], 42), /incomplete/i);
+});
+
 test('unlikes only requested tracks and reports partial failures', async () => {
     const calls = [];
     const result = await bulk().unlikeMany(async (path, opts) => {

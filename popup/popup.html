@@ -8,16 +8,23 @@
      barre 2 px, icônes monochromes 16 px sans fond, angles 2 px, aucune ombre. */
   :root { color-scheme: dark; --bg: #1a1a1a; --bg2: #262626; --line: #333; --text: #fff; --muted: #999; --accent: #f50; }
   * { box-sizing: border-box; }
-  body { margin: 0; min-width: 300px; width: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; user-select: none; }
+  html { scrollbar-width: none; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+  body { margin: 0; min-width: 120px; width: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; user-select: none; }
   button { border: 0; background: transparent; color: #ccc; cursor: pointer; padding: 0; font: inherit; }
   button svg { width: 16px; height: 16px; fill: currentColor; display: block; }
   button:hover { color: #fff; }
   button:disabled { opacity: .35; cursor: default; }
+  .panel-header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 10px; border-bottom:1px solid var(--line); }
+  .panel-header button { padding:5px; border-radius:2px; font-size:12px; }
+  .panel-header button:hover { background:rgba(255,255,255,.07); }
+  .panel-header #close-side-panel { font-size:18px; line-height:16px; }
+  .panel-header #close-side-panel[hidden] { display:none; }
 
   .player { padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 10px; }
   .art { position: relative; width: 100%; aspect-ratio: 1; border-radius: 2px; background: #333 center/cover no-repeat; }
-  .art::after { content: ''; position: absolute; inset: 0; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
-  .art .open { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; border-radius: 2px; background: rgba(0,0,0,.55); color: #ddd; display: grid; place-items: center; opacity: 0; transition: opacity .12s; }
+  .art::after { content: ''; position: absolute; inset: 0; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); pointer-events: none; }
+  .art .open { position: absolute; z-index: 1; right: 6px; top: 6px; width: 26px; height: 26px; border-radius: 2px; background: rgba(0,0,0,.55); color: #ddd; display: grid; place-items: center; opacity: 0; transition: opacity .12s; }
   .art:hover .open { opacity: 1; }
   .art .open svg { width: 12px; height: 12px; }
   .meta { min-width: 0; }
@@ -51,6 +58,21 @@
   .tools button svg { width: 14px; height: 14px; }
   .tools .speed { font-variant-numeric: tabular-nums; font-weight: 500; }
   .tools .speed.on { color: var(--accent); }
+  .tools #audio-options[aria-expanded="true"] { color: var(--accent); }
+  @media (max-width: 270px) {
+    .player { padding-inline: 8px; }
+    .ctl { gap: 0; }
+    .ctl button { width: 32px; }
+    .tools button { min-width: 24px; padding-inline: 4px; }
+    .queue { padding-inline: 8px; }
+  }
+  @media (max-width: 190px) {
+    .ctl button { width: 24px; height: 30px; }
+    .ctl .play { width: 30px; height: 30px; margin: 0 2px; }
+    .tools { flex-wrap: wrap; }
+    .standalone form { flex-wrap: wrap; }
+    .standalone form button { height: 30px; }
+  }
 
   .sleep-wrap { position: relative; }
   .tools #sleep.on { color: var(--accent); }
@@ -79,18 +101,42 @@
   .queue[hidden], .qempty[hidden] { display: none; }
   .empty { padding: 36px 20px 30px; text-align: center; color: var(--muted); }
   .empty button { display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 3px; background: var(--accent); color: #fff; font-weight: 600; }
-  .player[hidden], .empty[hidden] { display: none; }
+  .player[hidden], .empty[hidden], .standalone[hidden], .standalone iframe[hidden] { display: none; }
+  .standalone { padding: 16px 12px; }
+  .standalone h1 { margin: 0 0 6px; font-size: 15px; }
+  .standalone p { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+  .standalone form { display: flex; gap: 5px; margin-bottom: 12px; }
+  .standalone input { min-width: 0; flex: 1; padding: 8px; background: var(--bg2); border: 1px solid #555; border-radius: 2px; color: var(--text); font: inherit; }
+  .standalone form button { padding: 0 10px; background: var(--accent); border-radius: 2px; color: #111; font-weight: 600; }
+  .standalone iframe { display: block; width: 100%; height: 390px; border: 0; }
+  .standalone .error { color: #ff9a9a; }
+  .standalone .links { margin-top: 12px; display: flex; gap: 14px; }
+  .standalone .links button { color: var(--accent); }
+  .audio-panel { border-top: 1px solid var(--line); padding: 12px; background: var(--bg2); }
+  .audio-panel[hidden] { display: none; }
+  .audio-panel header { display: flex; justify-content: space-between; align-items: center; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; margin-bottom: 10px; }
+  .audio-panel label { display: block; margin: 8px 0; color: #bbb; font-size: 12px; }
+  .audio-panel label span { float: right; color: #fff; font-variant-numeric: tabular-nums; }
+  .audio-panel input[type="range"] { display: block; width: 100%; margin: 5px 0 0; accent-color: var(--accent); }
+  .audio-panel .checks label { display: flex; align-items: center; gap: 6px; }
+  .audio-panel input[type="checkbox"] { accent-color: var(--accent); }
+  .audio-panel .presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+  .audio-panel .presets button { padding: 6px 8px; border-radius: 2px; background: #393939; font-size: 11px; }
+  .audio-panel .presets button:hover { background: #555; }
+  .audio-panel select { width: 100%; margin-top: 8px; background: #393939; color: #fff; border: 1px solid #555; padding: 6px; }
 
 </style>
 </head>
 <body>
+<header class="panel-header"><button id="open-soundcloud" type="button">Ouvrir SoundCloud ↗</button><button id="close-side-panel" type="button" title="Fermer le lecteur latéral" aria-label="Fermer le lecteur latéral">×</button></header>
 <section class="player" id="player" hidden>
   <div class="art" id="art"><button class="open" id="open-tab" title="Aller à l'onglet SoundCloud"><svg viewBox="0 0 16 16"><path d="M6 2h8v8h-2V5.4l-7.3 7.3-1.4-1.4L10.6 4H6z"/></svg></button></div>
   <div class="meta"><div class="title" id="title"></div><div class="artist" id="artist"></div></div>
+  <button id="download-track" type="button" style="align-self:flex-start;color:var(--accent);font-size:12px">↓ Télécharger le titre</button>
   <div class="bar" id="bar"><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div>
   <div class="times"><span class="cur" id="cur">0:00</span><span id="dur">0:00</span></div>
   <div class="ctl">
-    <button data-cmd="shuffle" id="shuffle" title="Shuffle+ de la lecture en cours (Maj+clic : resynchro)"><svg viewBox="0 0 16 16"><path d="M11.5 1.5l3 3-3 3V5.75h-1.2c-.5 0-.97.25-1.25.66L7.9 8l-1.15-1.6.6-.84A3 3 0 0 1 10.3 4.25h1.2V1.5zM1 4.25h2.3a3 3 0 0 1 2.45 1.27l3.3 4.62c.28.41.75.66 1.25.66h1.2V8.5l3 3-3 3v-2.25h-1.2a3 3 0 0 1-2.45-1.27L4.55 6.36a1.5 1.5 0 0 0-1.25-.61H1v-1.5zM1 10.25h2.3c.5 0 .97-.25 1.25-.66l.6-.84L6.3 10.35l-.55.77A3 3 0 0 1 3.3 12.4H1v-1.5z"/></svg></button>
+    <button data-cmd="shuffle" id="shuffle" title="Lecture aléatoire (mode choisi dans les réglages)"><svg viewBox="0 0 16 16"><path d="M11.5 1.5l3 3-3 3V5.75h-1.2c-.5 0-.97.25-1.25.66L7.9 8l-1.15-1.6.6-.84A3 3 0 0 1 10.3 4.25h1.2V1.5zM1 4.25h2.3a3 3 0 0 1 2.45 1.27l3.3 4.62c.28.41.75.66 1.25.66h1.2V8.5l3 3-3 3v-2.25h-1.2a3 3 0 0 1-2.45-1.27L4.55 6.36a1.5 1.5 0 0 0-1.25-.61H1v-1.5zM1 10.25h2.3c.5 0 .97-.25 1.25-.66l.6-.84L6.3 10.35l-.55.77A3 3 0 0 1 3.3 12.4H1v-1.5z"/></svg></button>
     <button data-cmd="prev-track" title="Précédent"><svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM13 2v12L5.5 8z"/></svg></button>
     <button data-cmd="toggle-play" class="play" id="play" title="Lecture / pause"><svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg></button>
     <button data-cmd="next-track" title="Suivant"><svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM3 2v12l7.5-6z"/></svg></button>
@@ -99,6 +145,7 @@
   <div class="tools">
     <div class="left">
       <button class="speed" id="speed" title="Vitesse de lecture (clic : suivante, Maj+clic : précédente)">1×</button>
+      <button id="audio-options" type="button" title="Options de son" aria-label="Options de son" aria-expanded="false" aria-controls="audio-panel"><svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="4" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="7" cy="12" r="1.6"/></svg></button>
       <span class="sleep-wrap">
         <button id="sleep" title="Minuteur d'arrêt"><svg viewBox="0 0 16 16"><path d="M9.2 1.3a6.7 6.7 0 1 0 5.5 9.9 5.4 5.4 0 0 1-5.5-9.9z"/></svg><span id="sleep-left"></span></button>
         <div class="menu" id="sleep-menu" hidden>
@@ -121,6 +168,18 @@
   </div>
 </section>
 
+<section class="audio-panel" id="audio-panel" hidden>
+  <header><strong>Audio</strong><button id="audio-close" type="button" aria-label="Fermer les options de son">×</button></header>
+  <label>Volume <span id="audio-volume-value"></span><input data-audio="volume" type="range" min="0" max="1" step="0.01"></label>
+  <label>Vitesse <span id="audio-rate-value"></span><input data-audio="rate" type="range" min="0.1" max="3" step="0.01"></label>
+  <label>Hauteur <span id="audio-pitchSemitones-value"></span><input data-audio="pitchSemitones" type="range" min="-12" max="12" step="1"></label>
+  <label>Bass boost <span id="audio-bass-value"></span><input data-audio="bass" type="range" min="0" max="12" step="0.1"></label>
+  <label>Réverb <span id="audio-reverb-value"></span><input data-audio="reverb" type="range" min="0" max="1" step="0.01"></label>
+  <div class="checks"><label><input data-audio="allowVolumeBoost" type="checkbox"> Autoriser le volume jusqu’à 200 %</label><label><input data-audio="preservePitch" type="checkbox"> Conserver la hauteur</label><label><input id="audio-keep-next" type="checkbox"> Conserver au prochain titre</label></div>
+  <div class="presets" id="audio-presets"><button type="button" data-preset="normal">Normal</button><button type="button" data-preset="bass">Bass boost</button><button type="button" data-preset="slowed">Slowed + Reverb</button><button type="button" data-preset="nightcore">Nightcore</button></div>
+  <select id="audio-custom-presets" aria-label="Mes presets" hidden><option value="">Mes presets</option></select>
+</section>
+
 <section class="queue" id="queue" hidden>
   <div class="qhead"><span id="queue-title">À suivre</span><button id="queue-refresh" title="Actualiser la file"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9l1.1-1.1A4 4 0 1 0 4.2 6H6.5v1.5h-5V2.5H3v2.2A5.5 5.5 0 0 1 13.5 8z"/></svg></button></div>
   <ol id="queue-list"></ol>
@@ -128,6 +187,18 @@
 </section>
 
 <div class="empty" id="empty">Choisissez un titre dans SoundCloud pour commencer.<br><button id="show-soundcloud" type="button">Afficher SoundCloud</button></div>
+
+<section class="standalone" id="standalone" hidden>
+  <h1>Lecteur SoundCloud</h1>
+  <p>Écoutez un titre ou une playlist publics sans garder un onglet SoundCloud ouvert.</p>
+  <form id="standalone-form">
+    <input id="standalone-url" type="url" placeholder="Lien du titre ou de la playlist" aria-label="Lien SoundCloud" required>
+    <button type="submit">Lire</button>
+  </form>
+  <p class="error" id="standalone-error" role="alert" hidden>Utilisez un lien public soundcloud.com.</p>
+  <iframe id="standalone-player" title="Lecteur SoundCloud" allow="autoplay" referrerpolicy="strict-origin-when-cross-origin" hidden></iframe>
+  <div class="links"><button id="standalone-open-tab" type="button">Ouvrir SoundCloud</button><button id="standalone-options" type="button">Réglages</button></div>
+</section>
 
 <script src="../ui/i18n.js"></script>
 <script src="../content/shared.js"></script>

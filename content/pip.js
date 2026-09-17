@@ -15,6 +15,7 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const NS = 'sce-pip';
     const SEL = {
         play:     '.playControl',

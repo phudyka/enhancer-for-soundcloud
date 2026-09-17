@@ -22,11 +22,15 @@ test('profile and promotional items can be hidden independently and restored', (
     const values = new Map([['scsp:settings', JSON.stringify({ hideProfileStation: true, hideProfilePopular: true, hideArtistProPrompt: true, hideNavLikes: true })]]);
     const listeners = {};
     const style = { textContent: '' };
+    const matrix = { setAttribute(name, value) { if (name === 'values') this.values = value; } };
+    let waveFilter;
     const document = {
         readyState: 'loading',
-        documentElement: { style: { setProperty() {} } },
+        documentElement: { style: { setProperty() {} }, appendChild(node) { waveFilter = node; } },
         head: { appendChild() {} },
         createElement: () => style,
+        createElementNS(_namespace, tag) { return tag === 'feColorMatrix' ? matrix : { style: {}, setAttribute() {}, appendChild() {}, querySelector() { return matrix; } }; },
+        getElementById() { return waveFilter; },
         querySelectorAll(selector) { return selector.includes('h2, h3') ? [] : nodes; },
         addEventListener() {},
     };
@@ -63,6 +67,13 @@ test('profile and promotional items can be hidden independently and restored', (
     assert.equal(style.textContent.includes('a[href^="https://checkout.soundcloud.com/artist"]'), false);
     assert.equal(style.textContent.includes('.quotaMeter__upsellText'), false);
 
+    values.set('scsp:settings', JSON.stringify({ hideUpsellTour: true, hideRelatedTracks: true }));
+    listeners.storage({ key: 'scsp:settings' });
+    assert.equal(style.textContent.includes('.sce-look-tour-upsell { display: none !important; }'), true);
+    assert.equal(style.textContent.includes('.l-sidebar-right .sidebarModule:has(.relatedSoundsModule) { display: none !important; }'), true);
+    assert.equal(style.textContent.includes('.l-sidebar-right .sidebarModule:has(.soundInSetsModule)'), false);
+    assert.equal(style.textContent.includes('.quotaMeter__upsellText'), false);
+
     values.set('scsp:settings', JSON.stringify({ hideUploadMeter: true }));
     listeners.storage({ key: 'scsp:settings' });
     assert.equal(style.textContent.includes('.quotaMeter { display: none !important; }'), true);
@@ -71,13 +82,38 @@ test('profile and promotional items can be hidden independently and restored', (
     listeners.storage({ key: 'scsp:settings' });
     assert.equal(style.textContent.includes('.quotaMeter { display: none !important; }'), false);
 
+    values.set('scsp:settings', JSON.stringify({ hideRecentlyPlayed: true }));
+    listeners.storage({ key: 'scsp:settings' });
+    assert.equal(style.textContent.includes('.collection__historyContextsSection { display: none !important; }'), true);
+    values.set('scsp:settings', '{}');
+    listeners.storage({ key: 'scsp:settings' });
+    assert.equal(style.textContent.includes('.collection__historyContextsSection { display: none !important; }'), false);
+
+    values.set('scsp:settings', JSON.stringify({ hideSidebarInsights: true, hideStationAutoplay: true }));
+    listeners.storage({ key: 'scsp:settings' });
+    assert.equal(style.textContent.includes('.insightsSidebarModule { display: none !important; }'), true);
+    assert.equal(style.textContent.includes('.queueFallback__stationMode { display: none !important; }'), true);
+    values.set('scsp:settings', '{}');
+    listeners.storage({ key: 'scsp:settings' });
+    assert.equal(style.textContent.includes('.insightsSidebarModule { display: none !important; }'), false);
+    assert.equal(style.textContent.includes('.queueFallback__stationMode { display: none !important; }'), false);
+
     values.set('scsp:settings', JSON.stringify({ accent: '#ffffff' }));
     listeners.storage({ key: 'scsp:settings' });
     assert.match(style.textContent, /\.sc-button-primary, \.sc-button-primary \* \{ color: #111 !important; \}/);
+    assert.match(style.textContent, /\.queueItemView__title \* \{ color: #111 !important; \}/);
 
     values.set('scsp:settings', JSON.stringify({ accent: '#222222' }));
     listeners.storage({ key: 'scsp:settings' });
     assert.match(style.textContent, /\.sc-button-primary, \.sc-button-primary \* \{ color: #fff !important; \}/);
+    assert.match(style.textContent, /\.queueFallback__stationMode \.sc-toggle\.sc-toggle-on::before \{ background-color: #222222 !important; \}/);
+    const coefficients = matrix.values.split(' ').map(Number);
+    assert.equal(coefficients.length, 20);
+    for (let channel = 0; channel < 3; channel++) {
+        const row = coefficients.slice(channel * 5, channel * 5 + 5);
+        assert.ok(Math.abs((row[0] * 255 + row[1] * 85 + row[4] * 255) - 34) < 0.001);
+        assert.ok(Math.abs((row[0] + row[1] + row[2]) * 128 + row[4] * 255 - 128) < 0.001);
+    }
 });
 
 

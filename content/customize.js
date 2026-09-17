@@ -13,17 +13,24 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const NS = 'sce-pick';
     const T = {
-        fr: { hint: 'Personnalisation : survolez un élément et cliquez pour le masquer. Réaffichez-le depuis les réglages.', done: 'Terminer', hidden: 'Élément masqué', undo: 'Annuler' },
-        en: { hint: 'Customization: hover an element and click to hide it. Restore it from the settings.', done: 'Done', hidden: 'Element hidden', undo: 'Undo' },
+        fr: { done: 'Terminer', hidden: 'Élément masqué', undo: 'Annuler' },
+        en: { done: 'Stop hiding', hidden: 'Element hidden', undo: 'Undo' },
     };
     const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
     const readSettings = () => { try { return JSON.parse(localStorage.getItem('scsp:settings') || '{}'); } catch { return {}; } };
-    const patch = (values) => window.postMessage({ sce: 'settings-patch', patch: values }, location.origin);
+    const patch = (values) => {
+        try {
+            localStorage.setItem('scsp:settings', JSON.stringify({ ...readSettings(), ...values }));
+            window.dispatchEvent(new Event('sce:settings-change'));
+        } catch {}
+        window.postMessage({ sce: 'settings-patch', patch: values }, location.origin);
+    };
 
     // Conteneurs préférés : on masque le bloc entier plutôt qu'un fragment
-    const CONTAINERS = '.sidebarModule, .mixedSelectionModule, .header__navMenuItem, .header__userNavItem, .headerMenu__link, .header__upsellWrapper, .soundList__item, .searchList__item, .trackList__item, .listenEngagement, .commentsList, .sidebarFooter, .footer__localeSelector, .l-listen-hero, .profileHeader, .quotaMeter, .sidebarHeader, section, article, li, [class*="Module"], [class*="module"]';
+    const CONTAINERS = '.sidebarModule, .mixedSelectionModule, .header__navMenuItem, .header__userNavItem, .headerMenu__link, .header__upsellWrapper, .soundList__item, .searchList__item, .trackList__item, .listenEngagement, .commentsList, .sidebarFooter, .l-footer, .footer__localeSelector, .l-listen-hero, .profileHeader, .quotaMeter, .sidebarHeader, section, article, li, [class*="Module"], [class*="module"]';
     const IGNORED_CLASS = /^(sc-|g-|m-|l-|selected|active|hover|focus|playing|expanded|open|visible|hidden|first|last|current|disabled|sce-|scsp-|is-|has-|js-)|\d/;
     const GENERIC_MODULE = new Set(['sidebarModule', 'mixedSelectionModule', 'lazyLoadingList']);
     const stableClasses = (el) => [...(el.classList || [])].filter((c) => !IGNORED_CLASS.test(c)).slice(0, 3);
@@ -33,7 +40,9 @@
     /** Cible d'un survol : le conteneur le plus proche, sinon l'élément lui-même. */
     function target(el) {
         if (!el || el === document.body || el === document.documentElement) return null;
-        if (el.closest(`.${NS}-bar, .${NS}-box, .${NS}-toast`)) return null;
+        if (el.closest(`.${NS}-done, .${NS}-box, .${NS}-toast`)) return null;
+        // La barre de lecture doit toujours rester présente. Ses commandes restent sélectionnables une par une.
+        if (el.closest('.playControls')) return el.closest('.playControls__volume, .playbackTimeline, .playbackSoundBadge, .shuffleControl, .repeatControl, .skipControl__next, .skipControl__prev, .playControl, .queueControl, .sce-pip-pin, .sce-audio-analysis-bar, .playControls button') || null;
         const container = el.closest(CONTAINERS);
         if (container && container !== document.body) return container;
         let cur = el;
@@ -43,7 +52,8 @@
     /** Sélecteur tag + classes stables, précédé d'un ancêtre si besoin. */
     function selectorFor(el) {
         const count = (sel) => { try { return document.querySelectorAll(sel).length; } catch { return Infinity; } };
-        let best = `${el.tagName.toLowerCase()}${stableClasses(el).map((c) => `.${CSS.escape(c)}`).join('')}`;
+        const playerClasses = el.closest('.playControls') ? [...el.classList].filter((c) => /^sce-[\w-]+$/.test(c)).slice(0, 1) : [];
+        let best = `${el.tagName.toLowerCase()}${[...stableClasses(el), ...playerClasses].map((c) => `.${CSS.escape(c)}`).join('')}`;
         let bestCount = count(best);
         if (!Number.isFinite(bestCount)) return null;
         let parent = el.parentElement;
@@ -72,14 +82,16 @@
     }
 
     // ── Mode personnalisation ──────────────────────────────────────
-    let active = false, bar = null, box = null, hover = null, toast = null;
+    let active = false, done = null, box = null, hover = null, toast = null;
     // Entrées de cette session : le retour des réglages (pont → sync → localStorage) est asynchrone,
     // deux clics rapprochés ne doivent pas s'écraser.
     const session = new Set();
     const currentList = () => [...new Set([...(Array.isArray(readSettings().hiddenCustom) ? readSettings().hiddenCustom.filter((x) => typeof x === 'string') : []), ...session])];
     const STYLE = `
-        .${NS}-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 16px; background: var(--sce-accent, #f50); color: #fff; font: 600 13px system-ui, sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
-        .${NS}-bar button { height: 28px; padding: 0 12px; border: 0; border-radius: 3px; background: #fff; color: #111; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+        .${NS}-done { position: fixed; right: 18px; bottom: 76px; z-index: 2147483000; display: flex; align-items: center; gap: 9px; padding: 5px 13px 5px 5px; border: 0; border-radius: 24px; background: #242424; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.4); font: 600 13px system-ui, sans-serif; cursor: pointer !important; }
+        .${NS}-done:hover, .${NS}-done:focus-visible { background: #333; outline: 2px solid var(--sce-accent, #f50); outline-offset: 2px; }
+        .${NS}-done-icon { width: 32px; height: 32px; display: grid; place-items: center; flex: none; border-radius: 50%; background: var(--sce-accent, #f50); color: var(--sce-on-accent, #fff); font: 700 20px system-ui, sans-serif; }
+        body.${NS}-on .${NS}-done, body.${NS}-on .${NS}-done * { cursor: pointer !important; }
         .${NS}-box { position: fixed; z-index: 2147482999; pointer-events: none; border: 2px solid var(--sce-accent, #f50); background: rgba(255,85,0,.12); border-radius: 3px; transition: all .06s; }
         .${NS}-box::after { content: attr(data-label); position: absolute; left: -2px; top: -22px; padding: 2px 6px; background: var(--sce-accent, #f50); color: #fff; font: 600 11px system-ui, sans-serif; border-radius: 2px; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
         .${NS}-toast { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); z-index: 2147483000; padding: 8px 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 3px; font: 12px system-ui, sans-serif; display: flex; gap: 10px; align-items: center; }
@@ -106,16 +118,16 @@
         patch({ hiddenCustom: currentList() });
         el.style.setProperty('display', 'none', 'important');          // effet immédiat, avant le retour des réglages
         box.style.display = 'none'; hover = null;
-        showToast(found);
+        showToast(found, el);
     }
-    function showToast(found) {
+    function showToast(found, hiddenElement) {
         toast?.remove();
         toast = document.createElement('div'); toast.className = `${NS}-toast`;
         toast.innerHTML = `<span>${L.hidden} : ${found.label.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</span><button type="button">${L.undo}</button>`;
         toast.querySelector('button').addEventListener('click', () => {
             session.delete(found.entry);
             patch({ hiddenCustom: currentList().filter((x) => x !== found.entry) });
-            document.querySelectorAll('[style*="display: none"]').forEach((el) => { if (entryFor(el)?.entry === found.entry) el.style.removeProperty('display'); });
+            hiddenElement.style.removeProperty('display');
             toast.remove(); toast = null;
         });
         document.body.appendChild(toast);
@@ -125,11 +137,12 @@
     function start() {
         if (active) return;
         active = true; ensureStyle();
-        bar = document.createElement('div'); bar.className = `${NS}-bar`;
-        bar.innerHTML = `<span>${L.hint}</span><button type="button">${L.done}</button>`;
-        bar.querySelector('button').addEventListener('click', () => stop(true));
+        done = document.createElement('button'); done.type = 'button'; done.className = `${NS}-done`;
+        done.innerHTML = `<span class="${NS}-done-icon" aria-hidden="true">✓</span><span>${L.done}</span>`;
+        done.title = L.done; done.setAttribute('aria-label', L.done);
+        done.addEventListener('click', () => stop(true));
         box = document.createElement('div'); box.className = `${NS}-box`; box.style.display = 'none';
-        document.body.append(bar, box); document.body.classList.add(`${NS}-on`);
+        document.body.append(done, box); document.body.classList.add(`${NS}-on`);
         document.addEventListener('mousemove', onMove, true);
         document.addEventListener('click', onClick, true);
         document.addEventListener('keydown', onKey, true);
@@ -137,7 +150,7 @@
     function stop(persist) {
         if (!active) return;
         active = false;
-        bar?.remove(); box?.remove(); toast?.remove(); bar = box = toast = null; hover = null;
+        done?.remove(); box?.remove(); toast?.remove(); done = box = toast = null; hover = null;
         document.body.classList.remove(`${NS}-on`);
         document.removeEventListener('mousemove', onMove, true);
         document.removeEventListener('click', onClick, true);

@@ -17,8 +17,9 @@
  */
 (() => {
     'use strict';
+    try { if (JSON.parse(localStorage.getItem('scsp:settings') || '{}').extensionDisabled === true) return; } catch {}
     const $ = (s) => document.querySelector(s);
-    const SEL = { play: '.playControl', title: '.playbackSoundBadge__titleLink' };
+    const SEL = { play: '.playControl', title: '.playbackSoundBadge__titleLink', repeat: '.repeatControl' };
     const L = (document.documentElement.lang || 'en').startsWith('fr')
         ? { to: 'Transition vers', off: 'Transition annulée' }
         : { to: 'Transition to', off: 'Transition cancelled' };
@@ -28,11 +29,12 @@
     const S = () => window.__scsp, A = () => window.__sceAudio;
     const currentUrl = () => $(SEL.title)?.getAttribute('href') || null;
     const isPlaying = () => !!$(SEL.play)?.classList.contains('playing');
+    const repeatsOne = () => !!$(SEL.repeat)?.classList.contains('m-one');   // le titre reprend au début : rien à enchaîner
     const PREPARE_AHEAD = 10;         // secondes avant le fondu pour résoudre et précharger le flux
     const SWAP_TIMEOUT = 8;           // secondes après le fondu pour que SoundCloud enchaîne, sinon abandon
     const POINTS = 64;
 
-    const state = { phase: 'idle', forUrl: null, track: null, el: null, src: null, low: null, gain: null, mixStart: 0, mixDur: 0, watcher: null };
+    const state = { phase: 'idle', forUrl: null, track: null, el: null, src: null, low: null, gain: null, mixStart: 0, mixDur: 0, watcher: null, stalled: 0 };
     const curve = (fn) => Float32Array.from({ length: POINTS }, (_, i) => fn(i / (POINTS - 1)));
     const EQUAL_OUT = curve((t) => Math.cos(t * Math.PI / 2)), EQUAL_IN = curve((t) => Math.sin(t * Math.PI / 2));
 
@@ -84,7 +86,7 @@
             state.track = next;
             state.el.src = next.stream; state.el.load();
             state.phase = 'ready';
-        });
+        }).catch((e) => { console.warn('[SCE] transitions : préparation', e); if (state.phase === 'preparing' && state.forUrl === url) state.phase = 'skip'; });
     }
     function begin(media) {
         const a = A(); if (!a?.xfade || !state.el) { reset(true); return; }
@@ -97,7 +99,7 @@
         // Basses : celles du nouveau titre coupées au départ, échange à mi-parcours
         state.low.gain.cancelScheduledValues(now); state.low.gain.setValueAtTime(-30, now); state.low.gain.setTargetAtTime(0, now + dur * 0.45, 0.4);
         a.eqLow.gain.cancelScheduledValues(now); a.eqLow.gain.setValueAtTime(0, now); a.eqLow.gain.setTargetAtTime(-30, now + dur * 0.45, 0.4);
-        state.phase = 'mixing'; state.mixStart = Date.now(); state.mixDur = dur;
+        state.phase = 'mixing'; state.mixStart = Date.now(); state.mixDur = dur; state.stalled = 0;
         S()?.toast?.(`${L.to} ${state.track.title}`);
         clearInterval(state.watcher); state.watcher = setInterval(watch, 200);
     }
@@ -105,8 +107,12 @@
     function watch() {
         if (state.phase !== 'mixing') { clearInterval(state.watcher); return; }
         const elapsed = (Date.now() - state.mixStart) / 1000;
-        const media = window.__sceMedia;
-        if (currentUrl() === state.track.url && media && !media.paused && media.readyState >= 2 && media.currentTime < 3) { swap(media); return; }
+        const media = window.__sceMedia, url = currentUrl();
+        // Autre titre choisi, ou pause prolongée pendant le fondu : le lecteur natif ne doit pas rester muet.
+        if (url !== state.forUrl && url !== state.track.url) { reset(true); return; }
+        state.stalled = isPlaying() ? 0 : state.stalled + 1;
+        if (state.stalled >= 5) { reset(true); return; }
+        if (url === state.track.url && media && !media.paused && media.readyState >= 2 && media.currentTime < 3) { swap(media); return; }
         if (elapsed > state.mixDur + SWAP_TIMEOUT) reset(false);
     }
     function swap(media) {
@@ -138,7 +144,7 @@
         const remaining = (media.duration - media.currentTime) / (media.playbackRate || 1);
         const dur = duration();
         if (state.phase === 'idle' && url && remaining <= dur + PREPARE_AHEAD && remaining > dur + 0.5) prepare(url);
-        else if (state.phase === 'ready' && remaining <= dur && remaining > 1 && isPlaying()) begin(media);
+        else if (state.phase === 'ready' && remaining <= dur && remaining > 1 && isPlaying() && !repeatsOne()) begin(media);
     }
     if (typeof window.__sceOnMedia === 'function') {
         window.__sceOnMedia((el) => { if (!el.__sceMixHooked) { el.__sceMixHooked = true; el.addEventListener('timeupdate', () => onTime(el)); } });
