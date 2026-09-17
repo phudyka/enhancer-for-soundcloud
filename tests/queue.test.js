@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 /* player-api.js avec une file d'attente virtualisée factice : 2 titres passés, l'actif, 3 à suivre. */
-function startPlayer(t) {
+function startPlayer(t, extra = {}) {
     t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
     const posted = [];
     const clicks = [];
@@ -47,7 +47,7 @@ function startPlayer(t) {
         body: {},
     };
     const listeners = {};
-    const window = { addEventListener: (name, cb) => { listeners[name] = cb; }, postMessage: (msg) => posted.push(msg), __sceOnMedia: () => {}, dispatchEvent() {} };
+    const window = { addEventListener: (name, cb) => { listeners[name] = cb; }, postMessage: (msg) => posted.push(msg), __sceOnMedia: () => {}, dispatchEvent() {}, ...extra };
     const context = { window, document, location: { origin: 'https://soundcloud.com' }, MutationObserver: class { observe() {} disconnect() {} }, requestAnimationFrame: (cb) => cb(), setTimeout, clearTimeout, setInterval, clearInterval, Date, Number, Math, Promise, CustomEvent: class {} };
     vm.runInNewContext(fs.readFileSync('content/player-api.js', 'utf8'), context);
     const command = async (command, value) => { listeners.message({ source: window, data: { sce: 'command', command, value } }); for (let i = 0; i < 12; i++) { t.mock.timers.tick(200); await Promise.resolve(); await Promise.resolve(); } };
@@ -86,4 +86,18 @@ test('playing or removing a queued track targets it by index, checked against it
     p.clicks.length = 0;
     await p.command('queue-remove', { index: 1, url: '/artist/track-6' });   // index périmé : l'url l'emporte
     assert.deepEqual(p.clicks, ['open', 'remove-6', 'close']);
+});
+
+test('queued tracks already analyzed carry their BPM, Camelot key and match with the current track', async (t) => {
+    const analyses = { '/artist/track-3': { bpm: 124, key: 'A', mode: 'minor' }, '/artist/track-4': { bpm: 126, key: 'E', mode: 'minor' }, '/artist/track-5': { bpm: 90, key: 'F♯', mode: 'major' } };
+    const stored = new Map(Object.entries(analyses).map(([path, value]) => [`sce:analysis:${path}`, JSON.stringify({ ...value, conf: 0.6, version: 3 })]));
+    const sharedWindow = {};
+    vm.runInNewContext(fs.readFileSync('content/shared.js', 'utf8'), {
+        window: sharedWindow, URL, localStorage: { getItem: (key) => stored.get(key) ?? null, get length() { return stored.size; }, key: (i) => [...stored.keys()][i] ?? null },
+        document: { querySelector: (sel) => sel === '.playbackSoundBadge__titleLink' ? { getAttribute: () => '/artist/track-3?in=artist/sets/mix' } : null },
+    });
+    const p = startPlayer(t, { __sceShared: sharedWindow.__sceShared });
+    await p.command('get-queue');
+    const reply = p.posted.find((m) => m.sce === 'queue');
+    assert.deepEqual(plain(reply.items.map((i) => [i.bpm ?? null, i.camelot ?? null, i.match == null ? null : Math.round(i.match * 100)])), [[126, '9A', 90], [90, '2B', 0], [null, null, null]]);
 });

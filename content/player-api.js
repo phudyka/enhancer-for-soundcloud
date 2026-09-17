@@ -190,7 +190,17 @@
         queueBusy = (queueBusy || Promise.resolve()).then(run, run);
         return queueBusy;
     }
-    const publishQueue = (items) => window.postMessage({ sce: 'queue', items: items.map((el, i) => queueItemData(el, i + 1)) }, location.origin);
+    /** Mix harmonique : BPM, code Camelot et compatibilité avec le titre en cours, pour les titres déjà analysés. */
+    function withMix(data, H, ref) {
+        const a = H?.read(data.url);
+        if (!a) return data;
+        const match = ref?.camelot || ref?.bpm ? H.match(ref, a) : null;
+        return { ...data, bpm: a.bpm, camelot: a.camelot, match };
+    }
+    const publishQueue = (items) => {
+        const H = window.__sceShared?.harmonic, ref = H?.current();
+        window.postMessage({ sce: 'queue', items: items.map((el, i) => withMix(queueItemData(el, i + 1), H, ref)) }, location.origin);
+    };
     function queueCommand(cmd, value) {
         const target = (items) => {
             const idx = Number(value?.index) - 1;

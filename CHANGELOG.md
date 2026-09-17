@@ -1,5 +1,10 @@
 # Journal des versions
 
+## 0.16.0 — 17/09/2026
+- Mix harmonique dans la Bibliothèque : tri par BPM ou par tonalité (ordre de la roue de Camelot), BPM et code Camelot affichés sur chaque titre analysé, menu « Mix harmonique » pour ne garder que les titres analysés ou ceux compatibles avec le titre en cours (même clé, clé voisine ou relative, tempo à 6 % près, demi et double tempo compris), les meilleurs enchaînements d'abord. La liste suit le titre en cours.
+- File « À suivre » du panneau latéral : BPM et code Camelot des titres déjà analysés, mis en couleur quand l'enchaînement avec le titre en cours est harmonique.
+- Les valeurs viennent de l'analyse en direct pendant l'écoute ; aucun flux n'est téléchargé pour analyser les autres titres.
+
 ## 0.15.3 — 17/09/2026
 - Installation : les réglages déjà synchronisés depuis un autre appareil ne sont plus écrasés par les valeurs par défaut.
 - Analyse audio, samples, transitions, statistiques : un titre lancé depuis une playlist (adresse en `?in=…`) est reconnu comme le même titre. L'analyse BPM/tonalité n'est plus refaite, les samples mémorisés sont regroupés et le classement des titres les plus écoutés ne compte plus le même titre en double.

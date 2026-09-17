@@ -2,8 +2,11 @@
  * Enhancer for SoundCloud™ — Bibliothèque des likes (monde principal)
  *
  * Sur /you/likes : recherche instantanée (titre, artiste, tag), tri (date
- * d'ajout, titre, artiste, durée, écoutes, année), filtre par genre, puis sur
- * les résultats : lire, Shuffle+ et sélectionner pour les actions groupées.
+ * d'ajout, titre, artiste, durée, écoutes, année, BPM, tonalité Camelot),
+ * filtre par genre et mix harmonique (titres analysés, compatibles avec le
+ * titre en cours), puis sur les résultats : lire, Shuffle+ et sélectionner
+ * pour les actions groupées. BPM et tonalité : analyses mémorisées pendant
+ * l'écoute (audio.js), voir __sceShared.harmonic.
  *
  * Données : identifiants des likes (cache de shuffle.js) + métadonnées par
  * /tracks?ids=… (50 par requête, 4 en parallèle, ~7 s pour 5 000 titres la
@@ -23,13 +26,16 @@
     const SEL = { top: '.collectionSection__top', list: '.collectionSection .lazyLoadingList, .collectionSection__list', section: '.collectionSection' };
     const $ = (s, r = document) => r.querySelector(s);
     const S = () => window.__scsp, D = () => window.__sceDialog;
+    const H = () => window.__sceShared?.harmonic;
 
     const T = {
-        fr: { search: 'Rechercher dans vos likes : titre, artiste, tag…', sort: 'Trier', added: "Date d'ajout", title: 'Titre', artist: 'Artiste', duration: 'Durée', plays: 'Écoutes', year: 'Année', genre: 'Tous les genres',
+        fr: { search: 'Rechercher dans vos likes : titre, artiste, tag…', sort: 'Trier', added: "Date d'ajout", title: 'Titre', artist: 'Artiste', duration: 'Durée', plays: 'Écoutes', year: 'Année', genre: 'Tous les genres', bpm: 'BPM', key: 'Tonalité',
+              mix: 'Mix harmonique', mixAll: 'Tous les titres', mixAnalyzed: 'Titres analysés', mixCompatible: 'Compatibles avec le titre en cours', mixNoRef: 'Le titre en cours n’est pas encore analysé : laissez-le jouer quelques secondes avec l’affichage BPM/tonalité activé.', mixNone: 'Aucun titre analysé compatible. Les BPM et tonalités sont mesurés pendant l’écoute.', mixFor: 'Compatibles {ref}',
               play: 'Lire', shuffle: 'Shuffle+', playlist: 'Créer une playlist', tracks: 'titres', indexing: 'Indexation des likes… {n} / {t}', indexed: 'Bibliothèque à jour : {n} titres',
               plName: 'Nom de la playlist', created: 'Playlist créée : {t}', tooMany: '{n} titres maximum par playlist. Réduisez la sélection.', none: 'Aucun titre ne correspond', reset: 'Réinitialiser', likes: 'Likes', filter: 'Filtre',
               select: 'Sélectionner des titres', selectAll: 'Tout sélectionner', selectResults: 'Sélectionner les résultats', clear: 'Effacer la sélection', selected: '{n} sélectionnés', add: 'Ajouter à une playlist', remove: 'Retirer des favoris', removePlaylist: 'Retirer d’une playlist', confirmRemove: 'Retirer {n} titres de vos favoris ? Cette action ne supprime pas les morceaux de SoundCloud.', confirmPlaylistRemove: 'Retirer les titres sélectionnés de « {title} » ? Cette action ne supprime pas les morceaux de SoundCloud.', removed: '{n} favoris retirés', partial: '{n} favoris retirés ; {f} échecs', addedTo: '{n} titres ajoutés à la playlist', removedFrom: '{n} titres retirés de la playlist', noPlaylists: 'Aucune playlist trouvée', actionError: 'Action impossible : {error}' },
-        en: { search: 'Search your likes: title, artist, tag…', sort: 'Sort', added: 'Date liked', title: 'Title', artist: 'Artist', duration: 'Duration', plays: 'Plays', year: 'Year', genre: 'All genres',
+        en: { search: 'Search your likes: title, artist, tag…', sort: 'Sort', added: 'Date liked', title: 'Title', artist: 'Artist', duration: 'Duration', plays: 'Plays', year: 'Year', genre: 'All genres', bpm: 'BPM', key: 'Key',
+              mix: 'Harmonic mix', mixAll: 'All tracks', mixAnalyzed: 'Analyzed tracks', mixCompatible: 'Compatible with the current track', mixNoRef: 'The current track is not analyzed yet: let it play a few seconds with the BPM/key display enabled.', mixNone: 'No compatible analyzed track. BPM and keys are measured while listening.', mixFor: 'Compatible {ref}',
               play: 'Play', shuffle: 'Shuffle+', playlist: 'Create playlist', tracks: 'tracks', indexing: 'Indexing likes… {n} / {t}', indexed: 'Library up to date: {n} tracks',
               plName: 'Playlist name', created: 'Playlist created: {t}', tooMany: '{n} tracks maximum per playlist. Reduce the selection.', none: 'No matching tracks', reset: 'Reset', likes: 'Likes', filter: 'Filter',
               select: 'Select tracks', selectAll: 'Select all', selectResults: 'Select results', clear: 'Clear selection', selected: '{n} selected', add: 'Add to playlist', remove: 'Remove from likes', removePlaylist: 'Remove from a playlist', confirmRemove: 'Remove {n} tracks from your likes? This will not delete the tracks from SoundCloud.', confirmPlaylistRemove: 'Remove selected tracks from “{title}”? This will not delete the tracks from SoundCloud.', removed: '{n} likes removed', partial: '{n} likes removed; {f} failed', addedTo: '{n} tracks added to playlist', removedFrom: '{n} tracks removed from playlist', noPlaylists: 'No playlists found', actionError: 'Action failed: {error}' },
@@ -97,12 +103,15 @@
     }
 
     // ── Sélection courante ───────────────────────────────────────
-    const state = { q: '', sort: 'added', dir: 'desc', genre: '' };
-    const active = () => !!(state.q || state.genre || state.sort !== 'added' || state.dir !== 'desc');
+    const state = { q: '', sort: 'added', dir: 'desc', genre: '', mix: '' };
+    const active = () => !!(state.q || state.genre || state.mix || state.sort !== 'added' || state.dir !== 'desc');
+    /** Analyses mémorisées (relues à chaque sélection : elles s'enrichissent pendant l'écoute) et titre de référence du mix. */
+    let analyses = new Map(), reference = null;
+    const analysis = (r) => analyses.get(keys(r).path) || null;
 
     /** Clés de tri et de recherche sans accents, calculées une fois par titre (et non à chaque comparaison). */
     const folded = new WeakMap();
-    const keys = (r) => { let k = folded.get(r); if (!k) { k = { title: fold(r.title), artist: fold(r.artist), all: fold(`${r.title} ${r.artist} ${r.genre} ${r.tags}`) }; folded.set(r, k); } return k; };
+    const keys = (r) => { let k = folded.get(r); if (!k) { k = { title: fold(r.title), artist: fold(r.artist), all: fold(`${r.title} ${r.artist} ${r.genre} ${r.tags}`), path: H()?.pathOf(r.url) || null }; folded.set(r, k); } return k; };
 
     function selection() {
         const q = fold(state.q).trim();
@@ -110,6 +119,28 @@
         let list = ids.map((id) => rows.get(id) || (!terms.length && !state.genre ? { id, title: `#${id}`, artist: '', dur: 0, genre: '', tags: '', plays: 0, year: 0 } : null)).filter(Boolean);
         if (state.genre) list = list.filter((r) => r.genre === state.genre);
         if (terms.length) list = list.filter((r) => { const h = keys(r).all; return terms.every((w) => h.includes(w)); });
+        analyses = H()?.all() || new Map();
+        reference = state.mix === 'compatible' ? H()?.current() || null : null;
+        const scores = new Map();
+        if (state.mix === 'analyzed') list = list.filter(analysis);
+        else if (state.mix === 'compatible') {
+            const ref = reference?.camelot || reference?.bpm ? reference : null;
+            list = !ref ? [] : list.filter((r) => {
+                const a = analysis(r); if (!a || keys(r).path === ref.path) return false;
+                const score = H().match(ref, a); if (!(score >= 0.5)) return false;   // accord de tonalité exigé : le tempo seul ne suffit pas
+                scores.set(r.id, score); return true;
+            });
+        }
+        // BPM et tonalité : titres sans analyse toujours en fin de liste, quel que soit le sens
+        if (state.sort === 'bpm' || state.sort === 'key') {
+            const value = state.sort === 'bpm' ? (r) => analysis(r)?.bpm || null : (r) => { const rank = H().rank(analysis(r)?.camelot); return Number.isFinite(rank) ? rank : null; };
+            const known = list.filter((r) => value(r) !== null), unknown = list.filter((r) => value(r) === null);
+            known.sort((a, b) => value(a) - value(b) || (analysis(a)?.bpm || 0) - (analysis(b)?.bpm || 0));
+            if (state.dir === 'desc') known.reverse();
+            return known.concat(unknown);
+        }
+        // Compatibles sans tri choisi : les meilleurs enchaînements d'abord
+        if (state.mix === 'compatible' && state.sort === 'added' && state.dir === 'desc') return list.sort((a, b) => scores.get(b.id) - scores.get(a.id));
         const cmp = {
             added:    null,                                              // `ids` est déjà dans l'ordre d'ajout
             title:    (a, b) => keys(a).title.localeCompare(keys(b).title),
@@ -173,7 +204,7 @@
         .${NS}-tile .${NS}-artist { font-size: 14px; }
         .${NS}-tile .${NS}-sub { color: #999; font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .${NS}-list.m-badges .${NS}-more, .${NS}-list.m-badges .${NS}-empty { grid-column: 1 / -1; }
-        .${NS}-row { display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) 120px 48px 56px; gap: 12px; align-items: center; height: 56px; padding: 0 8px; border-radius: 3px; cursor: pointer; color: #ccc; }
+        .${NS}-row { display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) 120px 72px 48px 56px; gap: 12px; align-items: center; height: 56px; padding: 0 8px; border-radius: 3px; cursor: pointer; color: #ccc; }
         .${NS}-row:hover { background: #262626; color: #fff; }
         .${NS}-art { width: 40px; height: 40px; border-radius: 2px; background: #333 center/cover no-repeat; position: relative; }
         .${NS}-row:hover .${NS}-art::after { content: ''; position: absolute; inset: 0; border-radius: 2px; background: rgba(0,0,0,.45) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3E%3Cpath d='M4 2v12l9-6z'/%3E%3C/svg%3E") center/16px no-repeat; }
@@ -184,10 +215,12 @@
         .${NS}-artist a { color: inherit; text-decoration: none; } .${NS}-artist a:hover { color: #fff; text-decoration: underline; }
         .${NS}-genre { color: #999; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; } .${NS}-genre:hover { color: var(--sce-accent, #f50); }
         .${NS}-num { color: #999; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+        .${NS}-mix { color: #999; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .${NS}-mix b, .${NS}-tile .${NS}-sub b { color: var(--sce-accent, #f50); font-weight: 500; }
         .${NS}-more { height: 8px; }
         .${NS}-empty { color: #999; padding: 40px 0; text-align: center; }
     `;
-    let sortMenu = null, genreMenu = null, search = null, nativeFilter = null, head = null, list = null, nativeList = null, sentinel = null, rendered = 0, current = [];
+    let sortMenu = null, genreMenu = null, mixMenu = null, search = null, nativeFilter = null, head = null, list = null, nativeList = null, sentinel = null, rendered = 0, current = [];
     let selecting = false, busy = false;
     const selectedIds = new Set();
 
@@ -205,7 +238,7 @@
     const closeMenus = () => document.querySelectorAll(`.${NS}-menu.m-open`).forEach((m) => m.classList.remove('m-open'));
     document.addEventListener('click', closeMenus);
 
-    const SORTS = ['added', 'title', 'artist', 'duration', 'plays', 'year'];
+    const SORTS = ['added', 'title', 'artist', 'duration', 'plays', 'year', 'bpm', 'key'];
     function renderSortMenu(box) {
         box.innerHTML = SORTS.map((k) => `<button type="button" data-k="${k}" class="${state.sort === k ? 'm-on' : ''}">${t(k)}<small>${state.sort === k ? (state.dir === 'asc' ? '↑' : '↓') : ''}</small></button>`).join('');
         box.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', (e) => {
@@ -224,6 +257,14 @@
             top.map(([g, n]) => `<button type="button" data-g="${esc(g)}" class="${state.genre === g ? 'm-on' : ''}">${esc(g)}<small>${n}</small></button>`).join('');
         box.querySelectorAll('[data-g]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); state.genre = b.dataset.g; closeMenus(); refresh(); }));
     }
+    function renderMixMenu(box) {
+        analyses = H()?.all() || new Map();
+        const analyzed = ids.reduce((n, id) => n + (rows.has(id) && analysis(rows.get(id)) ? 1 : 0), 0);
+        const ref = H()?.current();
+        const items = [['', t('mixAll'), ids.length.toLocaleString()], ['analyzed', t('mixAnalyzed'), analyzed.toLocaleString()], ['compatible', t('mixCompatible'), H()?.label(ref) || '–']];
+        box.innerHTML = items.map(([v, text, detail]) => `<button type="button" data-m="${v}" class="${state.mix === v ? 'm-on' : ''}">${esc(text)}<small>${esc(detail)}</small></button>`).join('');
+        box.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); state.mix = b.dataset.m; closeMenus(); refresh(); }));
+    }
     function syncMenuLabels() {
         const sb = sortMenu.firstElementChild;
         sb.textContent = state.sort === 'added' && state.dir === 'desc' ? t('added') : `${t(state.sort)} ${state.dir === 'asc' ? '↑' : '↓'}`;
@@ -232,6 +273,9 @@
         const gb = genreMenu.firstElementChild;
         gb.textContent = state.genre || t('genre');
         gb.classList.toggle('m-on', !!state.genre); genreMenu.classList.toggle('m-on', !!state.genre);
+        const mb = mixMenu.firstElementChild;
+        mb.textContent = state.mix === 'analyzed' ? t('mixAnalyzed') : state.mix === 'compatible' ? t('mixFor', { ref: H()?.label(reference) || '' }).trim() : t('mix');
+        mb.classList.toggle('m-on', !!state.mix); mixMenu.classList.toggle('m-on', !!state.mix);
     }
 
     function buildSearch() {
@@ -271,6 +315,7 @@
         const parts = [];
         if (state.genre) parts.push(state.genre);
         if (state.q.trim()) parts.push(`« ${state.q.trim()} »`);
+        if (state.mix === 'compatible' && H()?.label(reference)) parts.push(H().label(reference));
         return parts.length ? `${parts.join(' · ')} · ${t('likes')}` : t('likes');
     }
 
@@ -293,7 +338,10 @@
         for (const button of head.querySelectorAll('[data-a="create"], [data-a="add"], [data-a="remove"], [data-a="removePlaylist"]')) button.disabled = busy || !selectedIds.size;
         if (!on) return;
         list.innerHTML = ''; rendered = 0;
-        if (!current.length) { list.innerHTML = `<div class="${NS}-empty">${t('none')}</div>`; return; }
+        if (!current.length) {
+            const why = state.mix === 'compatible' ? (reference?.camelot || reference?.bpm ? t('mixNone') : t('mixNoRef')) : t('none');
+            list.innerHTML = `<div class="${NS}-empty">${esc(why)}</div>`; return;
+        }
         renderMore();
     }
 
@@ -305,13 +353,15 @@
             row.dataset.id = r.id;
             const pick = `<label class="${NS}-pick"><input type="checkbox" data-pick="${r.id}" ${selectedIds.has(r.id) ? 'checked' : ''} aria-label="${esc(r.title)}"></label>`;
             const art = (r.art || '').replace('-t120x120.', badges ? '-t200x200.' : '-t120x120.');
+            const a = analysis(r);
+            const mix = a ? [a.bpm ? `${a.bpm} BPM` : '', a.camelot ? `<b>${esc(a.camelot)}</b>` : ''].filter(Boolean).join(' · ') : '';
             if (badges) {
                 row.className = `${NS}-tile`;
                 row.innerHTML = `${pick}
                     <div class="${NS}-art" style="${art ? `background-image:url('${art}')` : ''}"><span class="${NS}-play"></span></div>
                     <div class="${NS}-title" title="${esc(r.title)}">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
                     <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div>
-                    <div class="${NS}-sub">${[r.genre, r.year || '', fmtDur(r.dur)].filter(Boolean).map(esc).join(' · ')}</div>`;
+                    <div class="${NS}-sub">${[mix, ...[r.genre, r.year || '', fmtDur(r.dur)].filter(Boolean).map(esc)].filter(Boolean).join(' · ')}</div>`;
             } else {
                 row.className = `${NS}-row`;
                 row.innerHTML = `${pick}
@@ -319,6 +369,7 @@
                     <div class="${NS}-meta"><div class="${NS}-title">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
                         <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div></div>
                     <div class="${NS}-genre" title="${esc(r.genre)}">${esc(r.genre)}</div>
+                    <div class="${NS}-mix">${mix}</div>
                     <div class="${NS}-num">${r.year || ''}</div>
                     <div class="${NS}-num">${fmtDur(r.dur)}</div>`;
             }
@@ -397,13 +448,14 @@
         nativeFilter = filters?.querySelector('input');
         sortMenu = menu('m-sort', renderSortMenu, () => { state.sort = 'added'; state.dir = 'desc'; });
         genreMenu = menu('m-genre', renderGenreMenu, () => { state.genre = ''; });
+        mixMenu = menu('m-mix', renderMixMenu, () => { state.mix = ''; });
         search = buildSearch();
         if (filters) {
-            filters.before(sortMenu, genreMenu);
+            filters.before(sortMenu, genreMenu, mixMenu);
             const field = nativeFilter?.closest('.textfield, .collectionSection__filterText') || filters;
             field.style.display = 'none';
             filters.appendChild(search);
-        } else { top.append(sortMenu, genreMenu, search); }
+        } else { top.append(sortMenu, genreMenu, mixMenu, search); }
         head = buildHead(); head.style.display = 'none';
         list = document.createElement('div'); list.className = `${NS}-list`; list.style.display = 'none';
         top.after(head); head.after(list);
@@ -431,10 +483,10 @@
     }
     function unmount() {
         if (!mounted) return;
-        for (const el of [sortMenu, genreMenu, search, head, list]) el?.remove();
+        for (const el of [sortMenu, genreMenu, mixMenu, search, head, list]) el?.remove();
         const field = nativeFilter?.closest('.textfield, .collectionSection__filterText'); if (field) field.style.display = '';
         if (nativeList) nativeList.style.display = '';
-        sortMenu = genreMenu = search = head = list = nativeList = nativeFilter = null; mounted = false;
+        sortMenu = genreMenu = mixMenu = search = head = list = nativeList = nativeFilter = null; mounted = false;
         selecting = false; selectedIds.clear();
     }
 
@@ -442,7 +494,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape' || !mounted || !active()) return;
         const el = document.activeElement; if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
-        state.q = ''; state.genre = ''; state.sort = 'added'; state.dir = 'desc'; if (search) search.value = ''; refresh();
+        state.q = ''; state.genre = ''; state.mix = ''; state.sort = 'added'; state.dir = 'desc'; if (search) search.value = ''; refresh();
     });
 
     let timer = null;
@@ -450,6 +502,14 @@
     window.addEventListener('sce:settings-change', schedule); // réglage « Bibliothèque » appliqué sans recharger
     for (const fn of ['pushState', 'replaceState']) { const o = history[fn]; history[fn] = function (...a) { const r = o.apply(this, a); schedule(); return r; }; }
     window.addEventListener('popstate', schedule);
+    // Mix « compatibles » : la liste suit le titre en cours, et son analyse dès qu'elle est acquise
+    let mixSig = null;
+    setInterval(() => {
+        if (!mounted || state.mix !== 'compatible' || document.hidden) { mixSig = null; return; }
+        const ref = H()?.current(), sig = `${ref?.path}|${ref?.camelot}|${ref?.bpm}`;
+        if (mixSig !== null && sig !== mixSig) refresh();
+        mixSig = sig;
+    }, 2000);
     const onLikes = () => location.pathname.startsWith('/you/likes');
     (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => { if (mounted ? !sortMenu?.isConnected : onLikes()) schedule(); });
     schedule();

@@ -99,6 +99,7 @@ function renderQueue() {
     $('#queue-list').innerHTML = queue.map((q) => `<li data-index="${q.index}" data-url="${esc(q.url || '')}" title="${esc(T('Lire ce titre'))}">
         <span class="qart" style="${q.artwork ? `background-image:url('${esc(q.artwork)}')` : ''}"></span>
         <span class="qmeta"><span class="qt">${esc(q.title)}</span><span class="qa">${esc(q.artist)}</span></span>
+        ${q.camelot || q.bpm ? `<span class="qk${q.match >= 0.5 ? ' m-match' : ''}" title="${esc(T(q.match >= 0.5 ? 'Enchaînement harmonique compatible' : 'BPM · tonalité Camelot'))}">${esc([q.bpm, q.camelot].filter(Boolean).join(' · '))}</span>` : ''}
         <span class="qd">${esc(q.duration)}</span>
         <button class="qx" data-remove title="${esc(T('Retirer de la file'))}"><svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></button></li>`).join('');
 }

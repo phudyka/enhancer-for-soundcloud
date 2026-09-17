@@ -6,6 +6,8 @@ const SCE_I18N = {
  "Options de son": "Audio options",
  "Fermer les options de son": "Close audio options",
  "Volume": "Volume",
+ "Enchaînement harmonique compatible": "Harmonically compatible next track",
+ "BPM · tonalité Camelot": "BPM · Camelot key",
  "Progression": "Progress",
  "Rechercher un réglage…": "Search settings…",
  "Rechercher un réglage": "Search settings",

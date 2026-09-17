@@ -36,3 +36,25 @@ test('the client id comes from the latest page request, then the cache, then the
     assert.equal(await window.__sceShared.clientId(true), scanned);
     assert.equal(JSON.parse(stored.get('scsp:client_id')), scanned);
 });
+
+test('the harmonic model follows the Camelot wheel and tolerates half and double tempo', () => {
+    const H = shared().harmonic;
+    assert.equal(H.camelot('A', 'minor'), '8A');
+    assert.equal(H.camelot('C', 'major'), '8B');
+    assert.equal(H.keyScore('8A', '8A'), 1);
+    assert.equal(H.keyScore('8A', '8B'), 0.85);      // relative
+    assert.equal(H.keyScore('12A', '1A'), 0.85);     // la roue boucle
+    assert.equal(H.keyScore('8A', '9B'), 0);
+    assert.equal(H.keyScore('8A', null), null);
+    assert.equal(H.tempoScore(124, 126), 1);
+    assert.equal(H.tempoScore(70, 140), 1);          // demi-tempo
+    assert.equal(H.tempoScore(121, 128), 0.6);
+    assert.equal(H.tempoScore(100, 128), 0);
+    assert.equal(H.match({ camelot: '8A', bpm: 124 }, { camelot: '9A', bpm: 100 }), 0);
+    assert.equal(H.match({ camelot: '8A' }, { camelot: '8A', bpm: 124 }), 0.8);
+    assert.equal(H.match({ bpm: 124 }, { bpm: 125 }), 0.6);
+    assert.equal(H.match({}, { camelot: '8A' }), null);
+    assert.deepEqual(['2A', '1B', '12B', '1A', 'x'].sort((a, b) => H.rank(a) - H.rank(b)), ['1A', '1B', '2A', '12B', 'x']);
+    assert.equal(H.pathOf('https://soundcloud.com/artist/track?in=artist/sets/mix'), '/artist/track');
+    assert.equal(H.label({ bpm: 124, camelot: '8A' }), '124 · 8A');
+});
