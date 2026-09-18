@@ -105,7 +105,7 @@
     }
     if (typeof document !== 'undefined') {
         const style = document.createElement('style');
-        style.textContent = '.sce-settings-button{float:left;display:grid;place-items:center;width:38px;height:46px;border:0;background:transparent;color:#ccc;cursor:pointer}.sce-settings-button:hover,.sce-settings-button:focus-visible{color:#fff;background:rgba(255,255,255,.12)}.sce-settings-button svg{width:16px;height:16px;fill:currentColor}.sce-player-pin{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483645;width:30px;height:48px;border:1px solid #555;border-right:0;border-radius:5px 0 0 5px;background:#252525;color:#ddd;box-shadow:0 2px 10px #0008;display:grid;place-items:center;cursor:pointer}.sce-player-pin[data-side=left]{left:0;right:auto;border-left:0;border-right:1px solid #555;border-radius:0 5px 5px 0}.sce-player-pin[data-side=left] svg{transform:scaleX(-1)}.sce-player-pin:hover,.sce-player-pin:focus-visible,.sce-player-pin[aria-expanded=true]{color:var(--sce-accent,#f50);border-color:currentColor}.sce-player-pin svg{width:20px;height:20px}.sce-settings-overlay{position:fixed;inset:0;z-index:2147483646}.sce-settings-panel{position:absolute;top:54px;right:12px;width:min(480px,calc(100vw - 24px));height:min(660px,calc(100vh - 66px));background:#141414;border:1px solid #444;border-radius:7px;box-shadow:0 12px 36px #0009;overflow:hidden}.sce-settings-frame{display:block;width:100%;height:100%;border:0}.sce-settings-close{position:absolute;top:9px;right:10px;width:28px;height:28px;border:0;border-radius:50%;background:#303030;color:#bbb;cursor:pointer;font:22px/26px Arial,sans-serif}.sce-settings-close:hover,.sce-settings-close:focus-visible{background:#444;color:#fff}';
+        style.textContent = '.sce-settings-button{float:left;display:grid;place-items:center;width:38px;height:46px;border:0;background:transparent;color:#ccc;cursor:pointer}.sce-settings-button:hover,.sce-settings-button:focus-visible{color:#fff;background:rgba(255,255,255,.12);outline:2px solid #699fff;outline-offset:-2px}.sce-settings-button svg{width:16px;height:16px;fill:currentColor}.sce-player-pin{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:2147483645;width:32px;height:52px;border:1px solid #555;border-right:0;border-radius:10px 0 0 10px;background:#1f1f1f;color:#ddd;box-shadow:0 8px 24px #0007;display:grid;place-items:center;cursor:pointer}.sce-player-pin[data-side=left]{left:0;right:auto;border-left:0;border-right:1px solid #555;border-radius:0 10px 10px 0}.sce-player-pin[data-side=left] svg{transform:scaleX(-1)}.sce-player-pin:hover,.sce-player-pin:focus-visible,.sce-player-pin[aria-expanded=true]{color:var(--sce-accent,#f50);border-color:currentColor}.sce-player-pin:focus-visible{outline:2px solid #699fff;outline-offset:2px}.sce-player-pin svg{width:20px;height:20px}.sce-settings-overlay{position:fixed;inset:0;z-index:2147483646}.sce-settings-panel{position:absolute;top:54px;right:12px;width:min(480px,calc(100vw - 24px));height:min(660px,calc(100vh - 66px));background:#121212;border:1px solid #333;border-radius:20px;box-shadow:0 12px 36px #0009;overflow:hidden}.sce-settings-frame{display:block;width:100%;height:100%;border:0}.sce-settings-close{position:absolute;top:9px;right:10px;width:32px;height:32px;border:0;border-radius:50%;background:#303030;color:#bbb;cursor:pointer;font:22px/30px Arial,sans-serif}.sce-settings-close:hover,.sce-settings-close:focus-visible{background:#444;color:#fff}.sce-settings-close:focus-visible{outline:2px solid #699fff;outline-offset:2px}';
         (document.head || document.documentElement).append(style);
         mountSettingsButton();
         mountPanelPin();
@@ -121,7 +121,8 @@
     }
 
     // 2. Commandes extension → page
-    chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        if (sender?.id && sender.id !== chrome.runtime.id) return false;
         if (msg?.type === 'panel-state-changed') { updatePanelPin(!!msg.open); return false; }
         if (msg?.type === 'command') {
             if (msg.command === 'shuffle') window.postMessage({ scsp: 'command', command: 'shuffle', force: !!msg.force }, location.origin);
@@ -129,7 +130,7 @@
             sendResponse({ ok: true });
         }
         // Requêtes avec réponse : la page répond par un message { sce: <reply> }
-        const REQUESTS = { 'get-state': { reply: 'state', timeout: 1500 }, 'get-queue': { reply: 'queue', timeout: 4000 }, 'get-audio': { reply: 'audio-state', timeout: 1500 }, 'download-client-id': { reply: 'download-client-id', timeout: 15000 } };
+        const REQUESTS = { 'get-state': { reply: 'state', timeout: 1500 }, 'get-queue': { reply: 'queue', timeout: 4000 }, 'get-audio': { reply: 'audio-state', timeout: 1500 } };
         if (Object.hasOwn(REQUESTS, msg?.type)) {
             const { reply, timeout } = REQUESTS[msg.type];
             let timer = null;
@@ -139,7 +140,7 @@
                 sendResponse(e.data);
             };
             window.addEventListener('message', once);
-            window.postMessage({ sce: 'command', command: msg.type, value: msg.type === 'download-client-id' ? { refresh: !!msg.refresh } : undefined }, location.origin);
+            window.postMessage({ sce: 'command', command: msg.type }, location.origin);
             timer = setTimeout(() => { window.removeEventListener('message', once); sendResponse({ ok: false, reason: 'timeout' }); }, timeout); // jamais de promesse en attente côté popup
             return true; // réponse asynchrone
         }
@@ -162,32 +163,89 @@
     let pendingPatch = Promise.resolve();
 
     // 3. Événements page → service worker
+    const text = (value, max) => typeof value === 'string' ? value.slice(0, max) : null;
+    const finite = (value, min, max) => Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : null;
+    function soundcloudPath(value) {
+        if (typeof value !== 'string' || !value) return null;
+        try {
+            const url = new URL(value || '', location.origin);
+            if (url.origin !== 'https://soundcloud.com') return null;
+            return url.pathname + url.search;
+        } catch { return null; }
+    }
+    function mediaUrl(value) {
+        if (typeof value !== 'string' || !value) return null;
+        try {
+            const url = new URL(value || '', location.href);
+            const host = url.hostname.toLowerCase();
+            if (url.protocol !== 'https:') return null;
+            if (host === 'soundcloud.com' || host.endsWith('.soundcloud.com') || host === 'sndcdn.com'
+                || host.endsWith('.sndcdn.com')) return url.href;
+        } catch {}
+        return null;
+    }
+    function cleanState(data) {
+        const title = text(data?.title, 300);
+        const url = soundcloudPath(data?.url);
+        if (!title || !url) {
+            return {
+                sce: 'state',
+                playing: false,
+                title: null,
+                artist: null,
+                url: null,
+                artwork: null,
+                position: 0,
+                duration: 0,
+                rate: 1,
+                repeat: 'off',
+                sleep: null,
+            };
+        }
+        const duration = finite(Number(data.duration), 0, 24 * 60 * 60);
+        const position = finite(Number(data.position), 0, 24 * 60 * 60);
+        const sleep = data.sleep === 'end' ? 'end' : finite(Number(data.sleep), 0, 24 * 60 * 60);
+        return {
+            sce: 'state',
+            playing: !!data.playing,
+            title,
+            artist: text(data.artist, 200),
+            url,
+            artwork: mediaUrl(data.artwork),
+            position: position ?? 0,
+            duration: duration ?? 0,
+            rate: finite(Number(data.rate), 0.1, 4) ?? 1,
+            repeat: ['off', 'one', 'all'].includes(data.repeat) ? data.repeat : 'off',
+            sleep: data.sleep == null ? null : sleep,
+        };
+    }
+    function cleanListen(entry) {
+        const url = soundcloudPath(entry?.url);
+        const title = text(entry?.title, 300);
+        if (!url || !title || typeof entry?.id !== 'string' || !Number.isFinite(entry.at)) return null;
+        return {
+            id: entry.id.slice(0, 64),
+            url,
+            title,
+            artist: text(entry.artist, 200),
+            artwork: mediaUrl(entry.artwork),
+            duration: entry.duration == null ? null : finite(Number(entry.duration), 0, 24 * 60 * 60),
+            at: Math.round(entry.at),
+            listened: finite(Number(entry.listened), 0, 24 * 60 * 60) ?? 0,
+        };
+    }
     window.addEventListener('message', (e) => {
         if (e.source !== window || !e.data) return;
-        if (e.data.scsp === 'event') chrome.runtime.sendMessage({ type: 'page-event', event: e.data }).catch(() => {});
-        if (e.data.sce === 'state')  chrome.runtime.sendMessage({ type: 'player-state', state: e.data }).catch(() => {});
-        if (e.data.sce === 'listen' && e.data.entry) chrome.runtime.sendMessage({ type: 'listen', entry: e.data.entry }).catch(() => {});
-        if (e.data.sce === 'settings-patch') pendingPatch = pendingPatch.catch(() => {}).then(() => applyPatch(e.data.patch));
-        if (e.data.sce === 'download-open' && typeof e.data.url === 'string') {
-            try {
-                const url = new URL(e.data.url, location.origin);
-                if (url.origin === 'https://soundcloud.com') {
-                    const source = e.data.preset;
-                    const values = {};
-                    if (source?.values && typeof source.values === 'object') {
-                        for (const key of ['rate', 'volume', 'bass', 'reverb', 'pitchSemitones']) {
-                            if (Number.isFinite(source.values[key])) values[key] = source.values[key];
-                        }
-                        for (const key of ['muted', 'preservePitch']) {
-                            if (typeof source.values[key] === 'boolean') values[key] = source.values[key];
-                        }
-                    }
-                    const preset = typeof source?.name === 'string' && Object.keys(values).length
-                        ? { name: source.name.slice(0, 40), values } : null;
-                    chrome.runtime.sendMessage({ type: 'open-download', url: url.href, preset }).catch(() => {});
-                }
-            } catch {}
+        if (e.data.scsp === 'event' && e.data.type === 'pip-fallback') chrome.runtime.sendMessage({ type: 'page-event', event: { type: 'pip-fallback' } }).catch(() => {});
+        if (e.data.sce === 'state') {
+            const state = cleanState(e.data);
+            if (state) chrome.runtime.sendMessage({ type: 'player-state', state }).catch(() => {});
         }
+        if (e.data.sce === 'listen') {
+            const entry = cleanListen(e.data.entry);
+            if (entry) chrome.runtime.sendMessage({ type: 'listen', entry }).catch(() => {});
+        }
+        if (e.data.sce === 'settings-patch') pendingPatch = pendingPatch.catch(() => {}).then(() => applyPatch(e.data.patch));
     });
     window.addEventListener('message', (event) => {
         const frame = settingsOverlay?.querySelector('.sce-settings-frame');

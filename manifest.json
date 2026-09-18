@@ -12,14 +12,10 @@
   },
   "minimum_chrome_version": "116",
   "host_permissions": [
-    "https://soundcloud.com/*",
-    "https://api-v2.soundcloud.com/*",
-    "https://*.sndcdn.com/*",
-    "https://*.soundcloud.cloud/*"
+    "https://soundcloud.com/*"
   ],
   "permissions": [
     "storage",
-    "downloads",
     "sidePanel",
     "declarativeNetRequest"
   ],
@@ -31,16 +27,14 @@
   ],
   "background": {
     "service_worker": "background/service-worker.js",
-    "scripts": [
-      "background/service-worker.js"
-    ],
     "type": "module"
   },
   "action": {
     "default_title": "Enhancer for SoundCloud™",
     "default_icon": {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png"
+      "16": "icons/action-16.png",
+      "24": "icons/action-24.png",
+      "32": "icons/action-32.png"
     }
   },
   "side_panel": {
@@ -104,10 +98,8 @@
         "content/audio.js",
         "content/scrub.js",
         "content/player-api.js",
-        "content/download-entry.js",
         "content/history.js",
         "content/customize.js",
-        "content/transitions.js",
         "content/sampler.js",
         "content/pip.js"
       ],

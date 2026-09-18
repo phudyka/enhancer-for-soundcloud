@@ -123,17 +123,30 @@ if (chrome.sidePanel?.setPanelBehavior) {
     });
 }
 
+const extensionPage = (sender, path) => sender?.url?.startsWith(chrome.runtime.getURL(path));
+const ownSender = (sender) => !chrome.runtime.id || !sender?.id || sender.id === chrome.runtime.id;
+const soundcloudSender = (sender) => ownSender(sender) && sender.tab?.url?.startsWith('https://soundcloud.com/');
+const popupSender = (sender) => ownSender(sender) && extensionPage(sender, 'popup/popup.html');
+const optionsSender = (sender) => ownSender(sender) && extensionPage(sender, 'options/options.html');
+const statsSender = (sender) => ownSender(sender) && extensionPage(sender, 'stats/stats.html');
+const popupOrOptionsSender = (sender) => popupSender(sender) || optionsSender(sender);
+
+function validPlayerState(state) {
+    return state && state.sce === 'state'
+        && (state.title == null || (typeof state.title === 'string' && state.title.length <= 300));
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Message destiné au panneau : ne pas répondre à notre propre diffusion.
     if (msg?.type === 'panel-request-close') return false;
     (async () => {
         switch (msg?.type) {
             case 'panel-state':
-                if (!sender.tab?.url?.startsWith('https://soundcloud.com/')) { sendResponse({ ok: false }); break; }
+                if (!soundcloudSender(sender)) { sendResponse({ ok: false }); break; }
                 sendResponse({ ok: true, open: openPanels.has(sender.tab.windowId) });
                 break;
             case 'panel-toggle': {
-                if (!sender.tab?.url?.startsWith('https://soundcloud.com/')) { sendResponse({ ok: false }); break; }
+                if (!soundcloudSender(sender)) { sendResponse({ ok: false }); break; }
                 const windowId = sender.tab.windowId;
                 const closing = openPanels.has(windowId) && !!(chrome.sidePanel?.close || chrome.sidebarAction?.toggle);
                 if (chrome.sidePanel?.open) {
@@ -155,7 +168,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
             case 'panel-opened':
             case 'panel-disposed': {
-                if (!sender.url?.startsWith(chrome.runtime.getURL('popup/popup.html'))) { sendResponse({ ok: false }); break; }
+                if (!popupSender(sender)) { sendResponse({ ok: false }); break; }
                 const windowId = Number(msg.windowId);
                 if (!Number.isInteger(windowId)) { sendResponse({ ok: false }); break; }
                 await notifyPanel(windowId, msg.type === 'panel-opened');
@@ -163,7 +176,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 break;
             }
             case 'panel-close': {
-                if (!sender.url?.startsWith(chrome.runtime.getURL('popup/popup.html'))) { sendResponse({ ok: false }); break; }
+                if (!popupSender(sender)) { sendResponse({ ok: false }); break; }
                 const windowId = Number(msg.windowId);
                 if (!Number.isInteger(windowId)) { sendResponse({ ok: false }); break; }
                 if (chrome.sidePanel?.close) await chrome.sidePanel.close({ windowId });
@@ -173,34 +186,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 sendResponse({ ok: true });
                 break;
             }
-            case 'open-download': {
-                if (sender.tab && !sender.tab.url?.startsWith('https://soundcloud.com/')) { sendResponse({ ok: false }); break; }
-                const url = new URL(msg.url || '', 'https://soundcloud.com');
-                if (url.origin !== 'https://soundcloud.com' || !/^\/[A-Za-z0-9_-]+\/(?:(?:sets|albums)\/)?[A-Za-z0-9_-]+/.test(url.pathname)) { sendResponse({ ok: false }); break; }
-                const params = new URLSearchParams({ url: url.href });
-                if (msg.preset && typeof msg.preset.name === 'string' && msg.preset.values && typeof msg.preset.values === 'object') {
-                    const values = {};
-                    for (const [key, min, max] of [['rate', 0.1, 3], ['volume', 0, 1], ['bass', 0, 12], ['reverb', 0, 1], ['pitchSemitones', -12, 12]]) {
-                        const value = msg.preset.values[key];
-                        if (Number.isFinite(value) && value >= min && value <= max) values[key] = value;
-                    }
-                    for (const key of ['muted', 'preservePitch']) {
-                        if (typeof msg.preset.values[key] === 'boolean') values[key] = msg.preset.values[key];
-                    }
-                    if (Object.keys(values).length) params.set('preset', JSON.stringify({ name: msg.preset.name.slice(0, 40), values }));
-                }
-                await chrome.tabs.create({ url: chrome.runtime.getURL(`downloads/downloads.html?${params}`) });
-                sendResponse({ ok: true });
-                break;
-            }
-            case 'download-client-id': {
-                const tab = await soundcloudTab();
-                if (!tab) { sendResponse({ ok: false, reason: 'no-tab' }); break; }
-                try { sendResponse(await chrome.tabs.sendMessage(tab.id, { type: 'download-client-id', refresh: !!msg.refresh })); }
-                catch (error) { sendResponse({ ok: false, reason: String(error) }); }
-                break;
-            }
             case 'page-event': {
+                if (!soundcloudSender(sender)) { sendResponse({ ok: false }); break; }
                 if (msg.event?.type === 'pip-fallback') {          // navigateur sans Document PiP : le lecteur popup dans une petite fenêtre
                     await chrome.windows.create({ url: chrome.runtime.getURL('popup/popup.html?window=1'), type: 'popup', width: 324, height: 560 });
                 }
@@ -208,42 +195,52 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 break;
             }
             case 'player-state':
+                if (!soundcloudSender(sender) || !validPlayerState(msg.state)) { sendResponse({ ok: false }); break; }
                 await chrome.storage.session.set({ playerState: { ...msg.state, tabId: sender.tab?.id, at: Date.now() } });
                 setBadge(!!msg.state?.playing);
                 sendResponse({ ok: true });
                 break;
             case 'popup-focus-tab': {
+                if (!popupOrOptionsSender(sender)) { sendResponse({ ok: false }); break; }
                 const tab = await ensureSoundcloudTab();
                 if (tab) { await chrome.tabs.update(tab.id, { active: true }); await chrome.windows.update(tab.windowId, { focused: true }); }
                 sendResponse({ ok: !!tab });
                 break;
             }
             case 'popup-ensure-tab': {
+                if (!popupSender(sender)) { sendResponse({ ok: false }); break; }
                 const tab = await ensureSoundcloudTab();
                 sendResponse({ ok: !!tab, tabId: tab?.id });
                 break;
             }
             case 'listen':
+                if (!soundcloudSender(sender)) { sendResponse({ ok: false }); break; }
                 sendResponse(await recordListen(msg.entry));
                 break;
             case 'history-get':
+                if (!statsSender(sender)) { sendResponse({ ok: false }); break; }
                 sendResponse({ ok: true, entries: await readHistory() });
                 break;
             case 'history-clear':
+                if (!statsSender(sender)) { sendResponse({ ok: false }); break; }
                 sendResponse(await clearHistory());
                 break;
             case 'set-ad-blocking':
+                if (!optionsSender(sender)) { sendResponse({ ok: false }); break; }
                 await chrome.declarativeNetRequest.updateEnabledRulesets(msg.enabled && !(await chrome.storage.sync.get('settings')).settings?.extensionDisabled ? { enableRulesetIds: ['ads'] } : { disableRulesetIds: ['ads'] });
                 sendResponse({ ok: true });
                 break;
             case 'popup-command':      // depuis le popup : relayer à la page
+                if (!popupSender(sender)) { sendResponse({ ok: false }); break; }
                 sendResponse(await sendToPage({ type: 'command', command: msg.command, value: msg.value, force: msg.force }));
                 break;
             case 'popup-get-queue':
             case 'popup-get-audio':
+                if (!popupSender(sender)) { sendResponse({ ok: false }); break; }
                 sendResponse(await sendToPage({ type: msg.type === 'popup-get-queue' ? 'get-queue' : 'get-audio' }) || { ok: false });
                 break;
             case 'popup-get-state': {
+                if (!popupSender(sender)) { sendResponse({ ok: false }); break; }
                 const tab = await soundcloudTab();
                 if (!tab) { setBadge(false); sendResponse({ ok: false, reason: 'no-tab' }); break; }
                 try { const st = await chrome.tabs.sendMessage(tab.id, { type: 'get-state' }); sendResponse(st ? { ...st, tabId: tab.id } : { ok: false }); }

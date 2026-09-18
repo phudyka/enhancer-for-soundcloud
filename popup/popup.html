@@ -4,9 +4,8 @@
 <meta charset="utf-8">
 <title>Enhancer for SoundCloud™</title>
 <style>
-  /* Design system SoundCloud : fond du lecteur, texte blanc / gris, accent #ff5500,
-     barre 2 px, icônes monochromes 16 px sans fond, angles 2 px, aucune ombre. */
-  :root { color-scheme: dark; --bg: #1a1a1a; --bg2: #262626; --line: #333; --text: #fff; --muted: #999; --accent: #f50; }
+  /* Proche du langage SoundCloud : toile sombre, actions neutres, orange en accent actif. */
+  :root { color-scheme: dark; --bg: #121212; --bg2: #1f1f1f; --control: #303030; --line: #333; --text: #fff; --muted: #aaa; --accent: #f50; --focus: #699fff; }
   * { box-sizing: border-box; }
   html { scrollbar-width: none; }
   html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
@@ -15,16 +14,17 @@
   button svg { width: 16px; height: 16px; fill: currentColor; display: block; }
   button:hover { color: #fff; }
   button:disabled { opacity: .35; cursor: default; }
+  button:focus-visible, input:focus-visible, select:focus-visible, .bar:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .panel-header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 10px; border-bottom:1px solid var(--line); }
-  .panel-header button { padding:5px; border-radius:2px; font-size:12px; }
+  .panel-header button { padding:5px; border-radius:4px; font-size:12px; }
   .panel-header button:hover { background:rgba(255,255,255,.07); }
   .panel-header #close-side-panel { font-size:18px; line-height:16px; }
   .panel-header #close-side-panel[hidden] { display:none; }
 
   .player { padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 10px; }
-  .art { position: relative; width: 100%; aspect-ratio: 1; border-radius: 2px; background: #333 center/cover no-repeat; }
-  .art::after { content: ''; position: absolute; inset: 0; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); pointer-events: none; }
-  .art .open { position: absolute; z-index: 1; right: 6px; top: 6px; width: 26px; height: 26px; border-radius: 2px; background: rgba(0,0,0,.55); color: #ddd; display: grid; place-items: center; opacity: 0; transition: opacity .12s; }
+  .art { position: relative; width: 100%; aspect-ratio: 1; border-radius: 16px; background: #333 center/cover no-repeat; overflow: hidden; }
+  .art::after { content: ''; position: absolute; inset: 0; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); pointer-events: none; }
+  .art .open { position: absolute; z-index: 1; right: 8px; top: 8px; width: 32px; height: 32px; border-radius: 4px; background: rgba(18,18,18,.76); color: #fff; display: grid; place-items: center; opacity: 0; transition: opacity .12s; }
   .art:hover .open { opacity: 1; }
   .art .open svg { width: 12px; height: 12px; }
   .meta { min-width: 0; }
@@ -37,7 +37,7 @@
   .fill { position: absolute; left: 0; top: 5px; height: 2px; background: var(--accent); width: 0; }
   .knob { position: absolute; top: 2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity .12s; }
   .bar:hover .knob, .bar:focus-visible .knob { opacity: 1; }
-  .bar:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  .bar:focus-visible { border-radius: 4px; }
   .times { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-top: -6px; }
   .times .cur { color: var(--accent); }
 
@@ -54,7 +54,7 @@
 
   .tools { display: flex; align-items: center; justify-content: space-between; padding-top: 6px; border-top: 1px solid var(--line); font-size: 12px; }
   .tools .left, .tools .right { display: flex; align-items: center; gap: 2px; }
-  .tools button { height: 28px; min-width: 28px; padding: 0 6px; border-radius: 2px; display: inline-flex; align-items: center; gap: 5px; color: #bbb; }
+  .tools button { height: 32px; min-width: 32px; padding: 0 6px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #bbb; }
   .tools button:hover { background: rgba(255,255,255,.06); color: #fff; }
   .tools button svg { width: 14px; height: 14px; }
   .tools .speed { font-variant-numeric: tabular-nums; font-weight: 500; }
@@ -77,44 +77,44 @@
 
   .sleep-wrap { position: relative; }
   .tools #sleep.on { color: var(--accent); }
-  .menu { position: absolute; bottom: 32px; left: 0; min-width: 170px; background: var(--bg2); border: 1px solid var(--line); border-radius: 3px; padding: 4px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
-  .menu button { display: block; width: 100%; height: 28px; text-align: left; padding: 0 8px; border-radius: 2px; color: #ddd; }
+  .menu { position: absolute; bottom: 36px; left: 0; min-width: 170px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 4px; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.34); }
+  .menu button { display: block; width: 100%; min-height: 32px; text-align: left; padding: 0 8px; border-radius: 4px; color: #ddd; }
   .menu button:hover { background: rgba(255,255,255,.08); color: #fff; }
   .menu[hidden] { display: none; }
   .queue { padding: 0 12px 12px; }
   .qhead { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-  .qhead button { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 2px; }
+  .qhead button { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 4px; }
   .qhead button svg { width: 13px; height: 13px; }
   .queue ol { list-style: none; margin: 0; padding: 0; }
-  .queue li { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 2px; min-width: 0; }
+  .queue li { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 4px; min-width: 0; }
   .queue li:hover { background: rgba(255,255,255,.05); }
-  .queue .qart { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 2px; background: #333 center/cover; }
+  .queue .qart { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 10px; background: #333 center/cover; }
   .queue .qmeta { flex: 1; min-width: 0; }
   .queue .qt, .queue .qa { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .queue .qt { font-size: 12px; }
   .queue .qa { color: var(--muted); font-size: 11px; }
   .queue .qd { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
-  .queue .qk { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; flex: 0 0 auto; padding: 1px 4px; border: 1px solid var(--line); border-radius: 2px; white-space: nowrap; }
+  .queue .qk { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; flex: 0 0 auto; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; white-space: nowrap; }
   .queue .qk.m-match { color: var(--accent); border-color: currentColor; }
-  .queue .qx { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 2px; opacity: 0; color: #aaa; }
+  .queue .qx { width: 32px; height: 32px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 4px; opacity: 0; color: #aaa; }
   .queue .qx svg { width: 10px; height: 10px; }
   .queue li:hover .qx { opacity: 1; }
   .queue .qx:hover { color: #fff; background: rgba(255,255,255,.1); }
   .qempty { color: var(--muted); font-size: 12px; padding: 6px 0; }
   .queue[hidden], .qempty[hidden] { display: none; }
   .empty { padding: 36px 20px 30px; text-align: center; color: var(--muted); }
-  .empty button { display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 3px; background: var(--accent); color: #fff; font-weight: 600; }
+  .empty button { display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 4px; background: #fff; color: #121212; font-weight: 600; }
   .player[hidden], .empty[hidden], .standalone[hidden], .standalone iframe[hidden] { display: none; }
   .standalone { padding: 16px 12px; }
   .standalone h1 { margin: 0 0 6px; font-size: 15px; }
   .standalone p { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
   .standalone form { display: flex; gap: 5px; margin-bottom: 12px; }
-  .standalone input { min-width: 0; flex: 1; padding: 8px; background: var(--bg2); border: 1px solid #555; border-radius: 2px; color: var(--text); font: inherit; }
-  .standalone form button { padding: 0 10px; background: var(--accent); border-radius: 2px; color: #111; font-weight: 600; }
+  .standalone input { min-width: 0; flex: 1; padding: 8px; background: var(--bg2); border: 1px solid #555; border-radius: 4px; color: var(--text); font: inherit; }
+  .standalone form button { padding: 0 10px; background: #fff; border-radius: 4px; color: #121212; font-weight: 600; }
   .standalone iframe { display: block; width: 100%; height: 390px; border: 0; }
   .standalone .error { color: #ff9a9a; }
   .standalone .links { margin-top: 12px; display: flex; gap: 14px; }
-  .standalone .links button { color: var(--accent); }
+  .standalone .links button { color: var(--focus); }
   .audio-panel { border-top: 1px solid var(--line); padding: 12px; background: var(--bg2); }
   .audio-panel[hidden] { display: none; }
   .audio-panel header { display: flex; justify-content: space-between; align-items: center; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; margin-bottom: 10px; }
@@ -124,33 +124,32 @@
   .audio-panel .checks label { display: flex; align-items: center; gap: 6px; }
   .audio-panel input[type="checkbox"] { accent-color: var(--accent); }
   .audio-panel .presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
-  .audio-panel .presets button { padding: 6px 8px; border-radius: 2px; background: #393939; font-size: 11px; }
+  .audio-panel .presets button { padding: 6px 8px; border-radius: 4px; background: #393939; font-size: 11px; }
   .audio-panel .presets button:hover { background: #555; }
-  .audio-panel select { width: 100%; margin-top: 8px; background: #393939; color: #fff; border: 1px solid #555; padding: 6px; }
+  .audio-panel select { width: 100%; margin-top: 8px; background: #393939; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 6px; }
 
 </style>
 </head>
 <body>
 <header class="panel-header"><button id="open-soundcloud" type="button">Ouvrir SoundCloud ↗</button><button id="close-side-panel" type="button" title="Fermer le lecteur latéral" aria-label="Fermer le lecteur latéral">×</button></header>
 <section class="player" id="player" hidden>
-  <div class="art" id="art"><button class="open" id="open-tab" title="Aller à l'onglet SoundCloud"><svg viewBox="0 0 16 16"><path d="M6 2h8v8h-2V5.4l-7.3 7.3-1.4-1.4L10.6 4H6z"/></svg></button></div>
+  <div class="art" id="art"><button class="open" id="open-tab" title="Aller à l'onglet SoundCloud" aria-label="Aller à l'onglet SoundCloud"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2h8v8h-2V5.4l-7.3 7.3-1.4-1.4L10.6 4H6z"/></svg></button></div>
   <div class="meta"><div class="title" id="title"></div><div class="artist" id="artist"></div></div>
-  <button id="download-track" type="button" style="align-self:flex-start;color:var(--accent);font-size:12px">↓ Télécharger le titre</button>
   <div class="bar" id="bar" role="slider" tabindex="0" aria-label="Progression" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div>
   <div class="times"><span class="cur" id="cur">0:00</span><span id="dur">0:00</span></div>
   <div class="ctl">
-    <button data-cmd="shuffle" id="shuffle" title="Lecture aléatoire (mode choisi dans les réglages)"><svg viewBox="0 0 16 16"><path d="M11.5 1.5l3 3-3 3V5.75h-1.2c-.5 0-.97.25-1.25.66L7.9 8l-1.15-1.6.6-.84A3 3 0 0 1 10.3 4.25h1.2V1.5zM1 4.25h2.3a3 3 0 0 1 2.45 1.27l3.3 4.62c.28.41.75.66 1.25.66h1.2V8.5l3 3-3 3v-2.25h-1.2a3 3 0 0 1-2.45-1.27L4.55 6.36a1.5 1.5 0 0 0-1.25-.61H1v-1.5zM1 10.25h2.3c.5 0 .97-.25 1.25-.66l.6-.84L6.3 10.35l-.55.77A3 3 0 0 1 3.3 12.4H1v-1.5z"/></svg></button>
-    <button data-cmd="prev-track" title="Précédent"><svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM13 2v12L5.5 8z"/></svg></button>
-    <button data-cmd="toggle-play" class="play" id="play" title="Lecture / pause"><svg viewBox="0 0 16 16"><path d="M4 2v12l9-6z"/></svg></button>
-    <button data-cmd="next-track" title="Suivant"><svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM3 2v12l7.5-6z"/></svg></button>
-    <button data-cmd="repeat" id="repeat" title="Répéter"><svg viewBox="0 0 16 16"><path d="M4 4.5h7V2.5l3 3-3 3v-2H5.5v3H4zM12 11.5H5v2l-3-3 3-3v2h5.5v-3H12z"/></svg><span class="n" id="repeat-n"></span></button>
+    <button data-cmd="shuffle" id="shuffle" title="Lecture aléatoire (mode choisi dans les réglages)" aria-label="Lecture aléatoire"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 1.5l3 3-3 3V5.75h-1.2c-.5 0-.97.25-1.25.66L7.9 8l-1.15-1.6.6-.84A3 3 0 0 1 10.3 4.25h1.2V1.5zM1 4.25h2.3a3 3 0 0 1 2.45 1.27l3.3 4.62c.28.41.75.66 1.25.66h1.2V8.5l3 3-3 3v-2.25h-1.2a3 3 0 0 1-2.45-1.27L4.55 6.36a1.5 1.5 0 0 0-1.25-.61H1v-1.5zM1 10.25h2.3c.5 0 .97-.25 1.25-.66l.6-.84L6.3 10.35l-.55.77A3 3 0 0 1 3.3 12.4H1v-1.5z"/></svg></button>
+    <button data-cmd="prev-track" title="Précédent" aria-label="Titre précédent"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h2v12H3zM13 2v12L5.5 8z"/></svg></button>
+    <button data-cmd="toggle-play" class="play" id="play" title="Lecture / pause" aria-label="Lecture ou pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2v12l9-6z"/></svg></button>
+    <button data-cmd="next-track" title="Suivant" aria-label="Titre suivant"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2h2v12h-2zM3 2v12l7.5-6z"/></svg></button>
+    <button data-cmd="repeat" id="repeat" title="Répéter" aria-label="Répéter"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4.5h7V2.5l3 3-3 3v-2H5.5v3H4zM12 11.5H5v2l-3-3 3-3v2h5.5v-3H12z"/></svg><span class="n" id="repeat-n"></span></button>
   </div>
   <div class="tools">
     <div class="left">
-      <button class="speed" id="speed" title="Vitesse de lecture (clic : suivante, Maj+clic : précédente)">1×</button>
-      <button id="audio-options" type="button" title="Options de son" aria-label="Options de son" aria-expanded="false" aria-controls="audio-panel"><svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="4" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="7" cy="12" r="1.6"/></svg></button>
+      <button class="speed" id="speed" title="Vitesse de lecture (clic : suivante, Maj+clic : précédente)" aria-label="Vitesse de lecture">1×</button>
+      <button id="audio-options" type="button" title="Options de son" aria-label="Options de son" aria-expanded="false" aria-controls="audio-panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="4" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="7" cy="12" r="1.6"/></svg></button>
       <span class="sleep-wrap">
-        <button id="sleep" title="Minuteur d'arrêt"><svg viewBox="0 0 16 16"><path d="M9.2 1.3a6.7 6.7 0 1 0 5.5 9.9 5.4 5.4 0 0 1-5.5-9.9z"/></svg><span id="sleep-left"></span></button>
+        <button id="sleep" title="Minuteur d'arrêt" aria-label="Minuteur d'arrêt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.2 1.3a6.7 6.7 0 1 0 5.5 9.9 5.4 5.4 0 0 1-5.5-9.9z"/></svg><span id="sleep-left"></span></button>
         <div class="menu" id="sleep-menu" hidden>
           <button data-sleep="15">Arrêter dans 15 min</button>
           <button data-sleep="30">Arrêter dans 30 min</button>
@@ -161,12 +160,12 @@
           <button data-sleep="0" id="sleep-cancel" hidden>Annuler le minuteur</button>
         </div>
       </span>
-      <button data-cmd="pip" title="Lecteur épinglable, toujours au premier plan"><svg viewBox="0 0 16 16"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7.25" width="5" height="3.75" rx=".5"/></svg></button>
+      <button data-cmd="pip" title="Lecteur épinglable, toujours au premier plan" aria-label="Lecteur épinglable"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7.25" width="5" height="3.75" rx=".5"/></svg></button>
     </div>
     <div class="right">
-      <button id="open-stats" title="Statistiques d'écoute"><svg viewBox="0 0 16 16"><path d="M1 13h14v1.5H1zM2.5 8h2.5v4H2.5zM6.75 4h2.5v8h-2.5zM11 1.5h2.5V12H11z"/></svg></button>
-      <button id="open-shortcuts" title="Raccourcis clavier"><svg viewBox="0 0 16 16"><path d="M1 4h14v8H1zm2 2v1h1V6zm2 0v1h1V6zm2 0v1h1V6zm2 0v1h1V6zm2 0v1h1V6zM3 8v1h1V8zm2 0v1h1V8zm2 0v1h1V8zm2 0v1h1V8zm2 0v1h1V8zM5 10v1h6v-1z"/></svg></button>
-      <button id="open-options" title="Réglages"><svg viewBox="0 0 16 16"><path d="M6.6 1h2.8l.4 1.9 1.3.7 1.8-.7 1.4 2.4-1.4 1.3v1.4l1.4 1.3-1.4 2.4-1.8-.7-1.3.7-.4 1.9H6.6l-.4-1.9-1.3-.7-1.8.7L1.7 9.3l1.4-1.3V6.6L1.7 5.3l1.4-2.4 1.8.7 1.3-.7zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg></button>
+      <button id="open-stats" title="Statistiques d'écoute" aria-label="Statistiques d'écoute"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 13h14v1.5H1zM2.5 8h2.5v4H2.5zM6.75 4h2.5v8h-2.5zM11 1.5h2.5V12H11z"/></svg></button>
+      <button id="open-shortcuts" title="Raccourcis clavier" aria-label="Raccourcis clavier"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 4h14v8H1zm2 2v1h1V6zm2 0v1h1V6zm2 0v1h1V6zm2 0v1h1V6zm2 0v1h1V6zM3 8v1h1V8zm2 0v1h1V8zm2 0v1h1V8zm2 0v1h1V8zm2 0v1h1V8zM5 10v1h6v-1z"/></svg></button>
+      <button id="open-options" title="Réglages" aria-label="Réglages"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.6 1h2.8l.4 1.9 1.3.7 1.8-.7 1.4 2.4-1.4 1.3v1.4l1.4 1.3-1.4 2.4-1.8-.7-1.3.7-.4 1.9H6.6l-.4-1.9-1.3-.7-1.8.7L1.7 9.3l1.4-1.3V6.6L1.7 5.3l1.4-2.4 1.8.7 1.3-.7zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg></button>
     </div>
   </div>
 </section>
@@ -184,7 +183,7 @@
 </section>
 
 <section class="queue" id="queue" hidden>
-  <div class="qhead"><span id="queue-title">À suivre</span><button id="queue-refresh" title="Actualiser la file"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9l1.1-1.1A4 4 0 1 0 4.2 6H6.5v1.5h-5V2.5H3v2.2A5.5 5.5 0 0 1 13.5 8z"/></svg></button></div>
+  <div class="qhead"><span id="queue-title">À suivre</span><button id="queue-refresh" title="Actualiser la file" aria-label="Actualiser la file"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9l1.1-1.1A4 4 0 1 0 4.2 6H6.5v1.5h-5V2.5H3v2.2A5.5 5.5 0 0 1 13.5 8z"/></svg></button></div>
   <ol id="queue-list"></ol>
   <div class="qempty" id="queue-empty">Rien à suivre pour l'instant.</div>
 </section>

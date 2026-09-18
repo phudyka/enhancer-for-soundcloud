@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+const plain = (value) => JSON.parse(JSON.stringify(value));
+
 test('settings changes reach the page immediately and supersede the initial read', async () => {
     const writes = [];
     const events = [];
@@ -106,4 +108,72 @@ test('the side panel pin follows the configured side', async () => {
 
     onChanged({ settings: { newValue: { panelPinSide: 'right' } } }, 'sync');
     assert.equal(pin.dataset.side, 'right');
+});
+
+test('page messages are reduced to the allowed bridge payloads', () => {
+    const sent = [];
+    const messageListeners = [];
+    const window = {
+        addEventListener(type, listener) {
+            if (type === 'message') messageListeners.push(listener);
+        },
+        dispatchEvent() {},
+    };
+    const chrome = {
+        storage: {
+            onChanged: { addListener() {} },
+            sync: { get: async () => ({ settings: {} }) },
+        },
+        runtime: {
+            id: 'test',
+            onMessage: { addListener() {} },
+            sendMessage(message) {
+                sent.push(message);
+                return Promise.resolve({ ok: true });
+            },
+        },
+    };
+    vm.runInNewContext(fs.readFileSync('content/bridge.js', 'utf8'), {
+        window,
+        chrome,
+        localStorage: { setItem() {} },
+        Event,
+        URL,
+        location: { origin: 'https://soundcloud.com', href: 'https://soundcloud.com/stream' },
+    });
+    const dispatchMessage = (event) => messageListeners.forEach((listener) => listener(event));
+
+    dispatchMessage({ source: {}, data: { sce: 'state', title: 'Ignored', url: '/ignored' } });
+    dispatchMessage({ source: window, data: { scsp: 'event', type: 'unknown', extra: '<x>' } });
+    assert.deepEqual(sent, []);
+
+    dispatchMessage({ source: window, data: { scsp: 'event', type: 'pip-fallback', extra: '<x>' } });
+    assert.deepEqual(plain(sent.at(-1)), { type: 'page-event', event: { type: 'pip-fallback' } });
+
+    dispatchMessage({
+        source: window,
+        data: {
+            sce: 'state',
+            playing: true,
+            title: 'A'.repeat(400),
+            artist: 'B'.repeat(300),
+            url: 'https://soundcloud.com/artist/track?utm=1',
+            artwork: 'javascript:alert(1)',
+            duration: 500,
+            position: 42,
+            rate: 99,
+            repeat: 'weird',
+        },
+    });
+    assert.equal(sent.at(-1).type, 'player-state');
+    assert.equal(sent.at(-1).state.title.length, 300);
+    assert.equal(sent.at(-1).state.artist.length, 200);
+    assert.equal(sent.at(-1).state.url, '/artist/track?utm=1');
+    assert.equal(sent.at(-1).state.artwork, null);
+    assert.equal(sent.at(-1).state.rate, 4);
+    assert.equal(sent.at(-1).state.repeat, 'off');
+
+    dispatchMessage({ source: window, data: { sce: 'listen', entry: { id: 'x', url: 'https://evil.example/t', title: 'Nope', at: Date.now(), listened: 30 } } });
+    assert.notEqual(sent.at(-1).type, 'listen');
+
 });

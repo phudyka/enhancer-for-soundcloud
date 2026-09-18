@@ -5,9 +5,8 @@
  * plan, même origine que la page, donc pilotée directement d'ici sans
  * messagerie. C'est une télécommande : le son reste dans l'onglet SoundCloud.
  *
- * Design system SoundCloud : fond du lecteur (#1a1a1a), texte #fff / #999,
- * accent #ff5500, barre de progression 2 px, icônes monochromes 16 px sans
- * fond, police système. Aucune dépendance.
+ * Esprit SoundCloud : toile sombre, actions neutres, orange pour actif/progression,
+ * police système. Aucune dépendance.
  *
  * Contenu : pochette · titre · artiste · progression + temps · contrôles
  * (précédent, lecture, suivant, Shuffle+, répéter). Un bouton « épingler » est
@@ -64,10 +63,10 @@
     const CSS = `
         :root { color-scheme: dark; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; height: 100%; background: #1a1a1a; color: #fff; font: 13px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; user-select: none; }
+        html, body { margin: 0; height: 100%; background: #121212; color: #fff; font: 13px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; user-select: none; }
         .${NS} { display: flex; flex-direction: column; height: 100%; padding: 12px 12px 10px; gap: 10px; }
-        .${NS}-art { position: relative; flex: 1 1 auto; min-height: 96px; border-radius: 2px; background: #333 center/cover no-repeat; }
-        .${NS}-art::after { content: ''; position: absolute; inset: 0; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+        .${NS}-art { position: relative; flex: 1 1 auto; min-height: 96px; border-radius: 16px; background: #333 center/cover no-repeat; overflow: hidden; }
+        .${NS}-art::after { content: ''; position: absolute; inset: 0; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
         .${NS}-meta { min-width: 0; }
         .${NS}-title { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .${NS}-artist { color: #999; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -83,6 +82,7 @@
         .${NS}-ctl button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #ccc; cursor: pointer; display: grid; place-items: center; padding: 0; position: relative; }
         .${NS}-ctl button svg { width: 16px; height: 16px; fill: currentColor; display: block; }
         .${NS}-ctl button:hover { color: #fff; background: rgba(255,255,255,.06); }
+        .${NS}-ctl button:focus-visible, .${NS}-presets button:focus-visible, .${NS}-bar:focus-visible, .${NS}-audio summary:focus-visible, .${NS}-audio input:focus-visible { outline: 2px solid #699fff; outline-offset: 2px; }
         .${NS}-ctl button.m-play { width: 40px; height: 40px; background: #fff; color: #111; margin: 0 6px; }
         .${NS}-ctl button.m-play:hover { background: #f2f2f2; color: #111; }
         .${NS}-ctl button.m-on { color: var(--sce-accent, #f50); }
@@ -95,7 +95,7 @@
         .${NS}-audio input[type=range] { width: 100%; accent-color: var(--sce-accent, #f50); }
         .${NS}-audio input[type=checkbox] { accent-color: var(--sce-accent, #f50); }
         .${NS}-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 8px; }
-        .${NS}-presets button { padding: 5px; border: 0; border-radius: 2px; background: #3a3a3a; color: #ddd; cursor: pointer; }
+        .${NS}-presets button { padding: 5px; border: 0; border-radius: 4px; background: #303030; color: #ddd; cursor: pointer; }
         .${NS}-presets button:hover { background: #555; }
         @keyframes ${NS}-spin { to { transform: rotate(360deg); } }
     `;
@@ -110,6 +110,7 @@
         ui.artist.textContent = s.artist;
         ui.play.innerHTML = s.playing ? I.pause : I.play;
         ui.play.title = s.playing ? L.pause : L.play;
+        ui.play.setAttribute('aria-label', s.playing ? L.pause : L.play);
         const pct = s.duration ? Math.min(100, (s.position / s.duration) * 100) : 0;
         ui.fill.style.width = `${pct}%`;
         ui.knob.style.left = `${pct}%`;
@@ -167,11 +168,11 @@
             <div class="${NS}-bar"><div class="${NS}-fill"></div><div class="${NS}-knob"></div></div>
             <div class="${NS}-times"><span class="cur">0:00</span><span class="dur">0:00</span></div>
             <div class="${NS}-ctl">
-                <button data-a="shuffle" title="${L.shuffle}">${I.shuffle}</button>
-                <button data-a="prev" title="${L.prev}">${I.prev}</button>
-                <button data-a="play" class="m-play">${I.play}</button>
-                <button data-a="next" title="${L.next}">${I.next}</button>
-                <button data-a="repeat" title="${L.repeat}">${I.repeat}<span class="n"></span></button>
+                <button data-a="shuffle" title="${L.shuffle}" aria-label="${L.shuffle}">${I.shuffle}</button>
+                <button data-a="prev" title="${L.prev}" aria-label="${L.prev}">${I.prev}</button>
+                <button data-a="play" class="m-play" aria-label="${L.play}">${I.play}</button>
+                <button data-a="next" title="${L.next}" aria-label="${L.next}">${I.next}</button>
+                <button data-a="repeat" title="${L.repeat}" aria-label="${L.repeat}">${I.repeat}<span class="n"></span></button>
             </div>
             <details class="${NS}-audio"><summary>${L.audio}</summary>
                 <label>${L.speed} <output data-value="rate">1×</output></label><input data-audio="rate" type="range" min="0.1" max="3" step="0.01">

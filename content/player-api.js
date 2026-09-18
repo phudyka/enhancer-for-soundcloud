@@ -221,7 +221,7 @@
         });
     }
 
-    /** Titres à suivre (données), pour les transitions automatiques. */
+    /** Titres à suivre (données), pour le panneau latéral. */
     window.__scePlayer = Object.freeze({ upcoming: () => withQueue(async (items) => items.map((el, i) => queueItemData(el, i + 1))) });
 
     function command(cmd, value) {

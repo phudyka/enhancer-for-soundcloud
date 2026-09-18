@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Enhancer for SoundCloud™ — Statistiques d'écoute</title>
 <style>
-  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --card: #1f1f1f; --text: #eee; --muted: #999; --line: #333; }
+  :root { color-scheme: dark; --accent: #ff5500; --bg: #121212; --card: #1f1f1f; --control: #303030; --text: #fff; --muted: #aaa; --line: #333; --link: #699fff; --focus: #699fff; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 20px 24px 40px; max-width: 980px; margin-inline: auto; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
@@ -13,20 +13,21 @@
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
   .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   p.lead { color: var(--muted); margin: 0 0 18px; }
-  select, .btn { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  select, .btn { background: var(--control); color: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  select:focus-visible, .btn:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .btn:hover { background: #3a3a3a; }
   .btn.danger { color: #ff8a80; }
   .btn.danger.armed { background: #a3271b; color: #fff; }
   .btn:disabled { opacity: .4; cursor: default; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 18px; }
-  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
   .tile .v { font-size: 22px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .tile .l { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
   @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
   .chart { display: flex; align-items: flex-end; gap: 2px; height: 96px; }
-  .chart .b { flex: 1; min-width: 0; background: var(--accent); opacity: .85; border-radius: 2px 2px 0 0; min-height: 1px; position: relative; }
+  .chart .b { flex: 1; min-width: 0; background: var(--accent); opacity: .85; border-radius: 4px 4px 0 0; min-height: 1px; position: relative; }
   .chart .b:hover { opacity: 1; }
   .chart .b.empty { background: #333; opacity: 1; }
   .labels { display: flex; gap: 2px; margin-top: 4px; color: var(--muted); font-size: 10px; }
@@ -35,7 +36,7 @@
   li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #2a2a2a; min-width: 0; }
   li:first-child { border-top: 0; }
   li .n { width: 18px; color: var(--muted); font-size: 12px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
-  li .art { width: 36px; height: 36px; border-radius: 3px; background: #333 center/cover; flex: 0 0 auto; }
+  li .art { width: 36px; height: 36px; border-radius: 10px; background: #333 center/cover; flex: 0 0 auto; }
   li .art.round { border-radius: 50%; }
   li .meta { flex: 1; min-width: 0; }
   li .t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -46,7 +47,7 @@
   li .r b { display: block; color: var(--text); font-weight: 500; }
   .empty { color: var(--muted); padding: 20px 0; text-align: center; }
   .note { color: var(--muted); font-size: 12px; margin: 18px 0 0; }
-  a { color: var(--accent); }
+  a { color: var(--link); }
   [hidden] { display: none !important; }
 </style>
 </head>

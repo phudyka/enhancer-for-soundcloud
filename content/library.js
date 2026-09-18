@@ -321,6 +321,33 @@
 
     /** Suit le choix natif « Afficher » : badges (grille) ou liste. */
     const mode = () => (document.querySelector('.listDisplayToggle__listToggle')?.classList.contains('sc-button-selected') ? 'list' : 'badges');
+    function soundcloudHref(value) {
+        try {
+            const url = new URL(value || '', 'https://soundcloud.com');
+            const host = url.hostname.toLowerCase();
+            if (url.protocol !== 'https:' || !['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com'].includes(host)) return '#';
+            url.hostname = 'soundcloud.com';
+            return url.href;
+        } catch { return '#'; }
+    }
+    function soundcloudPath(value) {
+        try {
+            const url = new URL(value || '', 'https://soundcloud.com');
+            if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'soundcloud.com') return null;
+            return url.pathname;
+        } catch { return null; }
+    }
+    function artworkUrl(value) {
+        if (!value) return '';
+        try {
+            const url = new URL(value, 'https://soundcloud.com');
+            const host = url.hostname.toLowerCase();
+            if (url.protocol !== 'https:') return '';
+            if (host === 'soundcloud.com' || host.endsWith('.soundcloud.com')
+                || host === 'sndcdn.com' || host.endsWith('.sndcdn.com')) return url.href;
+        } catch {}
+        return '';
+    }
 
     function refresh() {
         if (!mounted || !list) return;                                   // page quittée pendant une action ou l'indexation
@@ -353,26 +380,29 @@
             row.dataset.id = r.id;
             const pick = `<label class="${NS}-pick"><input type="checkbox" data-pick="${r.id}" ${selectedIds.has(r.id) ? 'checked' : ''} aria-label="${esc(r.title)}"></label>`;
             const art = (r.art || '').replace('-t120x120.', badges ? '-t200x200.' : '-t120x120.');
+            const safeArt = artworkUrl(art);
+            const artistHref = soundcloudHref(r.artistUrl);
             const a = analysis(r);
             const mix = a ? [a.bpm ? `${a.bpm} BPM` : '', a.camelot ? `<b>${esc(a.camelot)}</b>` : ''].filter(Boolean).join(' · ') : '';
             if (badges) {
                 row.className = `${NS}-tile`;
                 row.innerHTML = `${pick}
-                    <div class="${NS}-art" style="${art ? `background-image:url('${art}')` : ''}"><span class="${NS}-play"></span></div>
+                    <div class="${NS}-art"><span class="${NS}-play"></span></div>
                     <div class="${NS}-title" title="${esc(r.title)}">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
-                    <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div>
+                    <div class="${NS}-artist"><a href="${esc(artistHref)}">${esc(r.artist)}</a></div>
                     <div class="${NS}-sub">${[mix, ...[r.genre, r.year || '', fmtDur(r.dur)].filter(Boolean).map(esc)].filter(Boolean).join(' · ')}</div>`;
             } else {
                 row.className = `${NS}-row`;
                 row.innerHTML = `${pick}
-                    <div class="${NS}-art" style="${art ? `background-image:url('${art}')` : ''}"></div>
+                    <div class="${NS}-art"></div>
                     <div class="${NS}-meta"><div class="${NS}-title">${esc(r.title)}${r.snip ? '<span class="snip">GO+</span>' : ''}</div>
-                        <div class="${NS}-artist"><a href="${esc(r.artistUrl)}">${esc(r.artist)}</a></div></div>
+                        <div class="${NS}-artist"><a href="${esc(artistHref)}">${esc(r.artist)}</a></div></div>
                     <div class="${NS}-genre" title="${esc(r.genre)}">${esc(r.genre)}</div>
                     <div class="${NS}-mix">${mix}</div>
                     <div class="${NS}-num">${r.year || ''}</div>
                     <div class="${NS}-num">${fmtDur(r.dur)}</div>`;
             }
+            if (safeArt) row.querySelector(`.${NS}-art`).style.backgroundImage = `url("${safeArt}")`;
             frag.appendChild(row);
         }
         rendered += PAGE;
@@ -465,7 +495,7 @@
             if (e.target.closest('a')) return;
             const g = e.target.closest(`.${NS}-genre`); if (g) { state.genre = g.textContent; refresh(); return; }
             const row = e.target.closest(`.${NS}-row, .${NS}-tile`);
-            if (row) { const r = rows.get(Number(row.dataset.id)); if (r?.url) S().openAndPlay(new URL(r.url).pathname); }
+            if (row) { const r = rows.get(Number(row.dataset.id)); const path = soundcloudPath(r?.url); if (path) S().openAndPlay(path); }
         });
         list.addEventListener('change', (e) => {
             const box = e.target.closest('[data-pick]');

@@ -287,9 +287,6 @@ $('#close-side-panel').addEventListener('click', async () => {
 $('#open-tab').addEventListener('click', focusTab);
 $('#title').addEventListener('click', focusTab);
 $('#show-soundcloud').addEventListener('click', focusTab);
-$('#download-track').addEventListener('click', () => {
-    if (state?.url) send({ type: 'open-download', url: new URL(state.url, 'https://soundcloud.com').href });
-});
 $('#open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('#open-shortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
 $('#open-stats').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('stats/stats.html') }));

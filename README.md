@@ -12,7 +12,6 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 - **Bibliothèque des likes** sur `/you/likes` : recherche instantanée sur titre, artiste et tags, tri par date d'ajout, titre, artiste, durée, écoutes, année, BPM ou tonalité, filtre par genre. **Mix harmonique** : menu « Titres analysés » ou « Compatibles avec le titre en cours » (roue de Camelot : même clé, clé voisine ou relative ; tempo à 6 % près, demi et double tempo compris), meilleurs enchaînements d'abord, BPM et code Camelot affichés sur chaque titre. Les valeurs viennent de l'analyse en direct : seuls les titres déjà écoutés avec l'affichage BPM/tonalité sont connus, aucun flux n'est téléchargé pour les analyser. Résultats en badges ou en liste selon le choix natif « Afficher » ; un clic sur un titre le lit seul. Sélection individuelle ou de tous les résultats filtrés (ou de tous les favoris, même non chargés) pour créer une playlist, ajouter à une playlist existante, retirer des favoris ou retirer des titres d'une playlist personnelle après confirmation. Sur une playlist personnelle, « Gérer les titres » donne accès au retrait individuel et aux actions groupées ; les pochettes de playlists personnelles affichent aussi une suppression directe après confirmation. Les playlists sont limitées à 500 titres sans troncature silencieuse. Index local dans IndexedDB, construit en quelques secondes puis mis à jour incrémentalement. Confirmations, nom de playlist et choix de la playlist cible passent par des boîtes de dialogue intégrées (liste filtrable), sans fenêtre du navigateur.
 - **Sampler** : points A et B (touches `[` et `]`), boucle entre les deux (`\`), réglage fin ±0,1 s, boucles nommées mémorisées par titre dans la section « Samples » du panneau Audio, repères sur la barre du lecteur, liste copiable (horodatages + lien). Aucune extraction audio.
 - **Loupe de timeline** : molette sur la forme d'onde ou la barre du lecteur, zoom 2× à 32× avec la forme d'onde redessinée, règle de temps, placement au centième de seconde, flèches ±1 s / Maj ±0,1 s / Alt ±0,01 s.
-- **Transitions automatiques** (option) : à l'approche de la fin d'un titre, le suivant de la file démarre en fondu croisé à puissance constante (6 à 24 s) avec échange des basses à mi-parcours, même si la préparation du flux se termine après l'ouverture de la fenêtre de fondu ; SoundCloud enchaîne ensuite normalement, calé sur la position du fondu.
 - **Historique et statistiques d'écoute** : le temps réellement écouté par titre est mesuré sur le flux audio et conservé dans le navigateur (24 mois au plus, désactivable). Page Statistiques avec période au choix : temps d'écoute, écoutes, titres et artistes distincts, titres écoutés en entier, écoute par jour, par heure et par jour de semaine, top titres, top artistes, dernières écoutes, export CSV / JSON, effacement en deux clics. Ouverture depuis les réglages ou le panneau latéral.
 - **Personnalisation libre** : « Masquer des éléments à la souris » dans les réglages ouvre SoundCloud en mode personnalisation ; survolez, cliquez, l'élément est masqué durablement (sections de Découvrir, modules, onglets, boutons…). Chaque masquage est listé dans les réglages et réaffichable.
 - **Debloat et apparence** : réglages séparés pour les éléments du profil (boutons et onglets), les entrées du menu (latéral et déroulant de l'avatar), la lecture, le fil et les promotions. Chaque masquage est local et réversible ; aucun contenu du compte n'est supprimé. Fond noir OLED pour le thème sombre natif, couleur d'accent personnalisée avec saisie hexadécimale, page d'accueil au choix.
@@ -21,7 +20,6 @@ Extension navigateur (Manifest V3) qui améliore l'écoute sur soundcloud.com. T
 - **Guide intégré** (français / anglais) ouvert à l'installation, accessible depuis les réglages.
 - **Réglages** accessibles depuis l'en-tête SoundCloud ou le panneau latéral, synchronisés entre appareils. Packs recommandés ou complets, commande pour tout désactiver en conservant les choix et retour immédiat aux réglages par défaut. Un champ de recherche filtre les réglages par mot-clé.
 - **Lecteur latéral** : une épingle sur le bord de SoundCloud ouvre ou ferme le panneau sans passer par l'icône de l'extension. Le panneau possède aussi une fermeture et un accès permanent à l'onglet SoundCloud ; sans onglet, il peut afficher le lecteur intégré d'un titre ou d'une playlist publics.
-- **Téléchargements** : depuis le lecteur, le panneau latéral ou une playlist/un album, sélection de 10 titres maximum par lot avec progression. Les flux publics disponibles sont décodés et convertis localement en MP3 avec titre, artiste, album, genre et pochette ID3 ; la pochette peut aussi être enregistrée en JPG. Le choix de qualité dépend des transcodages proposés pour chaque titre.
 
 ## Installer en mode développeur
 
@@ -43,19 +41,17 @@ content/
   library.js      monde principal : bibliothèque des likes (recherche, tri, genres, sélection)
   library-bulk.js sélection et opérations groupées sur favoris et playlists
   playlist-manager.js  monde principal : gestion des titres et suppression des playlists personnelles
-  pitch-shifter.js  transposition en demi-tons (lecture et export)
+  pitch-shifter.js  transposition en demi-tons
   audio.js        monde principal : vitesse, effets, analyse BPM/tonalité (inséré dans le graphe SoundCloud)
   scrub.js        monde principal : loupe de timeline
-  transitions.js  monde principal : transitions automatiques (second flux en fondu croisé)
   sampler.js      monde principal : boucles A/B mémorisées par titre, section du panneau Audio
   player-api.js   monde principal : état et commandes du lecteur natif
-  download-entry.js  boutons de téléchargement sur SoundCloud
   history.js      monde principal : temps écouté par titre, remonté au service worker
   pip.js          monde principal : lecteur épinglable (Document Picture-in-Picture)
   bridge.js       monde isolé : seul accès à chrome.*, relais page ⇄ extension
 background/
   service-worker.js  raccourcis globaux, historique d'écoute (storage.local), état du lecteur
-popup/  options/  stats/ (statistiques d'écoute)  guide/ (guide intégré)  downloads/ (conversion locale MP3)  ui/i18n.js  icons/  rules/ads.json (blocage optionnel)
+popup/  options/  stats/ (statistiques d'écoute)  guide/ (guide intégré)  ui/i18n.js  icons/  rules/ads.json (blocage optionnel)
 scripts/package.sh  archive zip pour les boutiques  ·  PRIVACY.md  politique de confidentialité
 ```
 
@@ -67,10 +63,6 @@ Les scripts du **monde principal** voient la page comme un userscript `@grant no
 
 Faits : thème (SoundCloud gère clair / sombre nativement ; l'extension ajoute le fond OLED), historique et statistiques d'écoute locaux, guide intégré.
 
-Le téléchargement local utilise les flux publics que SoundCloud fournit au navigateur. Certains titres ou formats peuvent rester indisponibles. Respectez les droits des artistes et les conditions applicables à votre usage.
-
 ## Licence
 
 MIT.
-
-Le convertisseur MP3 embarque `lamejs` sous LGPL 2.1 ; sa licence figure dans `downloads/vendor/LAME-LICENSE.txt`.

@@ -4,25 +4,25 @@
 <meta charset="utf-8">
 <title>Enhancer for SoundCloud™ — Réglages</title>
 <style>
-  :root { color-scheme: dark; --accent: #ff5500; --bg: #141414; --card: #1f1f1f; --text: #eee; --muted: #999; --line: #333; }
+  :root { color-scheme: dark; --accent: #ff5500; --bg: #121212; --card: #1f1f1f; --control: #303030; --text: #fff; --muted: #aaa; --line: #333; --link: #699fff; --focus: #699fff; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 20px 24px 28px; min-width: 460px; max-width: 640px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; padding: 20px 24px 28px; min-width: 460px; max-width: 760px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   .embedded body { min-width: 0; max-width: none; padding: 20px 24px 28px; }
   .embedded h1 { padding-right: 28px; }
   @media (max-width: 440px) { .embedded body { padding: 16px; } .embedded .row { flex-wrap: wrap; } }
   h1 { font-size: 18px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
-  h1 .brand-icon { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 6px; background: var(--accent); color: var(--brand-mark, #fff); padding: 4px; }
+  h1 .brand-icon { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 10px; background: var(--accent); color: var(--brand-mark, #fff); padding: 4px; }
   p.lead { color: var(--muted); margin: 0 0 14px; }
   [hidden], .filtered { display: none !important; }
-  .settings-search { position: sticky; top: 0; z-index: 5; margin: 0 -4px 14px; padding: 6px 4px; background: var(--bg, #141414); }
-  .settings-search input { width: 100%; box-sizing: border-box; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: #202020; color: var(--text); font: inherit; }
-  .settings-search input:focus { outline: 1px solid var(--accent); }
+  .settings-search { position: sticky; top: 0; z-index: 5; margin: 0 -4px 14px; padding: 6px 4px; background: var(--bg, #121212); }
+  .settings-search input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--control); color: var(--text); font: inherit; }
+  .settings-search input:focus { outline: none; }
   .embedded .settings-search { margin-right: 18px; }   /* la croix de fermeture du cadre reste dégagée */
   .settings-empty { color: var(--muted); text-align: center; padding: 18px 0; }
-  fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 8px 16px 12px; margin: 0 0 14px; }
+  fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px 12px; margin: 0 0 14px; background: var(--card); }
   legend { padding: 0 6px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
   label { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; cursor: pointer; }
-  label + label { border-top: 1px solid #262626; }
+  label + label { border-top: 1px solid #2a2a2a; }
   label input[type=checkbox] { margin-top: 4px; accent-color: var(--accent); flex: 0 0 auto; }
   label small { display: block; color: var(--muted); }
   .row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
@@ -33,27 +33,29 @@
   .custom { position: relative; display: inline-block; flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; border: 2px solid transparent; background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
   .custom.on { border-color: #fff; }
   .custom input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
-  .hex { width: 82px; height: 28px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 3px; background: #303030; color: var(--text); font: 12px ui-monospace, monospace; text-transform: uppercase; }
-  .hex:focus { outline: 1px solid var(--accent); }
-  .block + .row, label + .block, label + .row { border-top: 1px solid #262626; }
-  select { background: #303030; color: #fff; border: 0; border-radius: 3px; padding: 6px 10px; font: inherit; }
+  .hex { width: 82px; height: 30px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--control); color: var(--text); font: 12px ui-monospace, monospace; text-transform: uppercase; }
+  .hex:focus { outline: none; }
+  .block + .row, label + .block, label + .row { border-top: 1px solid #2a2a2a; }
+  select { background: var(--control); color: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font: inherit; }
   input[type=color] { width: 36px; height: 28px; border: 0; padding: 0; background: transparent; cursor: pointer; }
   .swatches { display: flex; gap: 6px; }
   .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
   .swatches button.on { border-color: #fff; }
   .accent-default { width: 22px; height: 22px; flex: 0 0 22px; border: 2px solid transparent; border-radius: 50%; background: #ff5500; cursor: pointer; padding: 0; }
   .accent-default.on { border-color: #fff; }
-  .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
-  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 3px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; }
-  .custom-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid #262626; font-size: 13px; }
+  .link { background: none; border: 0; color: var(--link); cursor: pointer; padding: 0; font: inherit; }
+  .btn { background: #fff; color: #121212; border: 0; border-radius: 4px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: #f2f2f2; }
+  .custom-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid #2a2a2a; font-size: 13px; }
   .custom-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .custom-item code { color: var(--muted); font-size: 11px; }
   .saved { color: #2ecc71; font-size: 12px; height: 16px; margin-top: 4px; }
   .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
   .hide-group-actions { display: flex; gap: 12px; justify-content: flex-end; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
   .hide-group-actions button { color: var(--muted); font-size: 12px; }
-  .hide-group-actions button:hover, .hide-group-actions button:focus-visible { color: var(--accent); }
-  a { color: var(--accent); }
+  .hide-group-actions button:hover, .hide-group-actions button:focus-visible { color: var(--link); }
+  a { color: var(--link); }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -81,8 +83,6 @@
   <label><input type="checkbox" id="noRepeat" data-i18n="opt_noRepeat"><span>Shuffle+ sans répétition<small>Chaque shuffle tire parmi les titres pas encore joués, jusqu'à épuisement de la bibliothèque, puis nouveau tour.</small></span></label>
   <label><input type="checkbox" id="library"><span>Bibliothèque des likes : recherche, tri, genres, création de playlists<small>Sur la page Favoris. L'index local se construit en quelques secondes la première fois.</small></span></label>
   <div class="row"><span>Position de l’onglet du panneau latéral<br><small style="color:var(--muted)">Place le bouton d’ouverture du même côté que le panneau choisi dans le navigateur.</small></span><select id="panelPinSide"><option value="left">À gauche</option><option value="right">À droite</option></select></div>
-  <label><input type="checkbox" id="autoMix"><span>Transitions automatiques entre les titres<small>Fondu croisé avec le titre suivant de la file, basses échangées à mi-parcours. Le titre suivant doit être lisible en flux (pas d'extrait Go+).</small></span></label>
-  <div class="row"><span>Durée de la transition</span><select id="autoMixSeconds"><option value="6">6 s</option><option value="12">12 s</option><option value="18">18 s</option><option value="24">24 s</option></select></div>
   <label><input type="checkbox" id="sampler"><span>Sampler : boucles A/B mémorisées par titre<small>Touches [ et ] pour poser A et B, \ pour boucler ; section « Samples » dans le panneau Audio, repères sur la barre du lecteur, liste copiable. Aucune extraction audio.</small></span></label>
   <label><input type="checkbox" id="history"><span>Historique et statistiques d'écoute locaux<small>Temps écouté par titre, conservé dans le navigateur.</small></span></label>
   <div class="row"><span></span><button class="link" id="open-stats" type="button">Voir les statistiques</button></div>
@@ -217,7 +217,7 @@
   <p style="margin:4px 0">Shuffle+, lecture/pause, lecteur épinglable : fonctionnent même quand l'onglet n'a pas le focus. Modifiez-les dans <a href="#" id="shortcuts">chrome://extensions/shortcuts</a>.</p>
 </fieldset>
 
-<div class="saved" id="saved"></div>
+<div class="saved" id="saved" role="status" aria-live="polite" aria-atomic="true"></div>
 <p class="note">Enhancer for SoundCloud™ est un projet indépendant, sans lien avec SoundCloud. SoundCloud est une marque de SoundCloud Global Limited &amp; Co. KG.</p>
 <script src="../ui/i18n.js"></script>
 <script src="options.js"></script>

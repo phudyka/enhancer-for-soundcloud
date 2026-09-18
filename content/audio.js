@@ -42,10 +42,10 @@
     const T = {
         fr: { speed: 'Vitesse', pitch: 'Conserver la hauteur', bass: 'Bass boost', reverb: 'Réverb', normal: 'Normal', slowed: 'Slowed + Reverb', nightcore: 'Nightcore', bassp: 'Bass boost',
               tip: 'Volume, vitesse, effets et analyse audio', unavailable: 'Effets indisponibles sur ce titre', analysis: 'Analyse', listening: 'écoute…', key: 'tonalité', at: 'à',
-              volume: 'Volume', boost: 'Autoriser le volume jusqu’à 200 %', mute: 'Sourdine', muted: 'sourdine', typeRate: 'Cliquer pour saisir une valeur', keepNext: 'Conserver vitesse et effets au prochain titre', custom: 'Mes presets', presetName: 'Nom du preset', save: 'Enregistrer', remove: 'Supprimer', choose: 'Réglages à inclure', pitchPreset: 'Hauteur', pitchShift: 'Transposition', apply: 'Appliquer', downloadPreset: 'Télécharger le titre avec ce preset' },
+              volume: 'Volume', boost: 'Autoriser le volume jusqu’à 200 %', mute: 'Sourdine', muted: 'sourdine', typeRate: 'Cliquer pour saisir une valeur', keepNext: 'Conserver vitesse et effets au prochain titre', custom: 'Mes presets', presetName: 'Nom du preset', save: 'Enregistrer', remove: 'Supprimer', choose: 'Réglages à inclure', pitchPreset: 'Hauteur', pitchShift: 'Transposition', apply: 'Appliquer' },
         en: { speed: 'Speed', pitch: 'Preserve pitch', bass: 'Bass boost', reverb: 'Reverb', normal: 'Normal', slowed: 'Slowed + Reverb', nightcore: 'Nightcore', bassp: 'Bass boost',
               tip: 'Volume, speed, effects and audio analysis', unavailable: 'Effects unavailable for this track', analysis: 'Analysis', listening: 'listening…', key: 'key', at: 'at',
-              volume: 'Volume', boost: 'Allow volume up to 200%', mute: 'Mute', muted: 'muted', typeRate: 'Click to type a value', keepNext: 'Keep speed and effects on the next track', custom: 'My presets', presetName: 'Preset name', save: 'Save', remove: 'Delete', choose: 'Settings to include', pitchPreset: 'Pitch', pitchShift: 'Transpose', apply: 'Apply', downloadPreset: 'Download the track with this preset' },
+              volume: 'Volume', boost: 'Allow volume up to 200%', mute: 'Mute', muted: 'muted', typeRate: 'Click to type a value', keepNext: 'Keep speed and effects on the next track', custom: 'My presets', presetName: 'Preset name', save: 'Save', remove: 'Delete', choose: 'Settings to include', pitchPreset: 'Pitch', pitchShift: 'Transpose', apply: 'Apply' },
     };
     const L = T[(document.documentElement.lang || 'en').slice(0, 2)] || T.en;
 
@@ -114,10 +114,8 @@
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500;
         const conv = ctx.createConvolver(); conv.buffer = (graph.conv && graph.ctx === ctx) ? graph.conv.buffer : impulse(ctx);
         const an = ctx.createAnalyser(); an.fftSize = 8192; an.smoothingTimeConstant = 0;
-        // Étage transitions : égaliseur bas (échange des basses) et fondu du lecteur natif, puis volume de l'utilisateur
-        // (le second flux des transitions se branche sur `master`, après le fondu, pour suivre le même volume)
         const eqLow = ctx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 200; eqLow.gain.value = 0;
-        const xfade = ctx.createGain();                        // fondu sortant du lecteur natif (transitions.js)
+        const xfade = ctx.createGain();
         const master = ctx.createGain();                       // volume linéaire de l'utilisateur
         input.connect(bass); bass.connect(dry); dry.connect(eqLow);
         bass.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(eqLow);
@@ -351,7 +349,7 @@
         };
     })();
 
-    /** Exposé aux autres modules (transitions, lecteur épinglable) : graphe, analyse, réglages. */
+    /** Exposé aux autres modules (lecteur épinglable, panneau latéral) : graphe, analyse, réglages. */
     window.__sceAudio = Object.freeze({
         get ctx() { return graph.ctx; }, get master() { return graph.master; }, get eqLow() { return graph.eqLow; }, get xfade() { return graph.xfade; },
         get analysis() { return Analysis.result; }, ensure: () => ensureGraph(media), get media() { return media; },
@@ -585,15 +583,9 @@
             const applyButton = document.createElement('button'); applyButton.type = 'button'; applyButton.textContent = preset.name; applyButton.title = `${L.apply} : ${preset.name}`;
             applyButton.classList.toggle('m-on', Object.entries(preset.values).every(([key, value]) => cfg[key] === value));
             applyButton.addEventListener('click', () => applyPreset(preset.name));
-            const downloadButton = document.createElement('button'); downloadButton.type = 'button'; downloadButton.textContent = '↓';
-            downloadButton.title = `${L.downloadPreset} : ${preset.name}`; downloadButton.setAttribute('aria-label', downloadButton.title);
-            downloadButton.addEventListener('click', () => {
-                const url = document.querySelector('.playbackSoundBadge__titleLink')?.href;
-                if (url) window.postMessage({ sce: 'download-open', url, preset: { name: preset.name, values: preset.values } }, location.origin);
-            });
             const removeButton = document.createElement('button'); removeButton.type = 'button'; removeButton.textContent = '×'; removeButton.title = `${L.remove} : ${preset.name}`;
             removeButton.addEventListener('click', () => removePreset(preset.name));
-            row.append(applyButton, downloadButton, removeButton); list.appendChild(row);
+            row.append(applyButton, removeButton); list.appendChild(row);
         }
     }
     function syncPanel() {

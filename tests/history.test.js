@@ -80,7 +80,7 @@ function startWorker() {
         action: { setBadgeText() {}, setBadgeBackgroundColor() {} },
         commands: { onCommand: { addListener() {} } },
         sidePanel: { setPanelBehavior: async () => {} },
-        runtime: { onMessage: { addListener(listener) { onMessage = listener; } }, onInstalled: { addListener() {} } },
+        runtime: { getURL: (path) => `chrome-extension://test/${path}`, onMessage: { addListener(listener) { onMessage = listener; } }, onInstalled: { addListener() {} } },
         tabs: { async query() { return []; } },
         storage: {
             session: { async set() {} },
@@ -92,8 +92,10 @@ function startWorker() {
         },
     };
     vm.runInNewContext(fs.readFileSync('background/service-worker.js', 'utf8'), { chrome, console, Date });
-    const send = (message) => new Promise((resolve) => onMessage(message, {}, resolve));
-    return { send, local };
+    const soundcloudSender = { tab: { id: 4, windowId: 1, url: 'https://soundcloud.com/stream' } };
+    const statsSender = { url: 'chrome-extension://test/stats/stats.html' };
+    const send = (message, sender = soundcloudSender) => new Promise((resolve) => onMessage(message, sender, resolve));
+    return { send, local, statsSender };
 }
 
 test('the worker keeps one entry per listen, updated with the longest time', async () => {
@@ -105,13 +107,14 @@ test('the worker keeps one entry per listen, updated with the longest time', asy
     assert.deepEqual(plain(await w.send({ type: 'listen', entry: { id: 'x1', url: '/a/one', title: 'One', artist: 'A', at, listened: 42 } })), { ok: true, skipped: true });   // sans progression : mois non réécrit
     await w.send({ type: 'listen', entry: { id: 'x2', url: '/b/two', title: 'Two', at: at + 60000, listened: 9 } });
     assert.deepEqual(Object.keys(w.local), ['history:2026-09']);
-    const { entries } = await w.send({ type: 'history-get' });
+    const { entries } = await w.send({ type: 'history-get' }, w.statsSender);
     assert.equal(entries.length, 2);
     assert.equal(entries[0].listened, 42);
     assert.equal(entries[0].artist, 'A');
     assert.equal(entries[1].url, '/b/two');
     assert.deepEqual(plain(await w.send({ type: 'listen', entry: { url: '/x' } })), { ok: false });
-    await w.send({ type: 'history-clear' });
+    assert.deepEqual(plain(await w.send({ type: 'history-get' }, { url: 'chrome-extension://test/popup/popup.html' })), { ok: false });
+    await w.send({ type: 'history-clear' }, w.statsSender);
     assert.deepEqual(w.local, {});
 });
 

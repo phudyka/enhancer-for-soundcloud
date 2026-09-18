@@ -15,6 +15,14 @@
         url.searchParams.delete('client_id');
         return url.pathname + url.search;
     };
+    const soundcloudScript = (src) => {
+        try {
+            const url = new URL(src);
+            const host = url.hostname.toLowerCase();
+            return url.protocol === 'https:' && (host === 'soundcloud.com' || host.endsWith('.soundcloud.com')
+                || host === 'sndcdn.com' || host.endsWith('.sndcdn.com'));
+        } catch { return false; }
+    };
 
     /**
      * client_id de la page : dernier appel api-v2 observé, sinon cache, sinon scan des bundles JS.
@@ -31,7 +39,7 @@
                 if (/^[A-Za-z0-9]{20,}$/.test(cached)) return cached;
             } catch {}
         }
-        for (const src of [...document.scripts].map((script) => script.src).filter((src) => src.includes('sndcdn')).reverse()) {
+        for (const src of [...document.scripts].map((script) => script.src).filter(soundcloudScript).reverse()) {
             try {
                 const match = (await fetch(src).then((response) => response.text())).match(/client_id\s*[:=]\s*['"]([A-Za-z0-9]{20,})['"]/);
                 if (match) {

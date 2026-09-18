@@ -27,7 +27,8 @@ function startWorker(existingTabs = [], sidePanel = { setPanelBehavior: async ()
         storage: { session: { async set() {} } },
     };
     vm.runInNewContext(fs.readFileSync('background/service-worker.js', 'utf8'), { chrome, console, Date });
-    const send = (message, sender = {}) => Promise.race([
+    const popupSender = { url: 'chrome-extension://test/popup/popup.html' };
+    const send = (message, sender = popupSender) => Promise.race([
         new Promise((resolve) => onMessage(message, sender, resolve)),
         new Promise((_, reject) => setTimeout(() => reject(new Error('No worker response')), 100)),
     ]);
