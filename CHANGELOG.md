@@ -1,6 +1,8 @@
 # Journal des versions
 
 ## Non publié
+- Lecteur : la position du dernier titre en cours est mémorisée localement et restaurée après rechargement de SoundCloud, sauf si le titre était déjà quasiment terminé.
+- Lecteur : un bouton dans la barre de lecture retire immédiatement le titre en cours de la playlist personnelle ouverte ; Alt-clic permet de choisir une autre playlist personnelle.
 - Panneau latéral : l’onglet flottant d’ouverture se place à gauche par défaut, avec un réglage gauche/droite pour le caler sur le côté choisi dans le navigateur.
 - Les actions sur les pochettes de playlists sont alignées sur une même rangée. Les playlists personnelles peuvent aussi être supprimées depuis leur pochette, après confirmation.
 - Conformité boutiques : retrait des boutons de téléchargement, de la page de conversion MP3 locale, du vendor `lamejs`, de la permission `downloads` et des transitions qui rejouaient un flux séparé. Les contrôles natifs de SoundCloud restent inchangés.

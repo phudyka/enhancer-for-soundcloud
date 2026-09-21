@@ -16,6 +16,10 @@
         confirmUnlike: 'Retirer {n} titre(s) de vos likes ?', removed: '{n} titre(s) retiré(s) de la playlist',
         added: '{n} titre(s) ajouté(s)', created: 'Playlist créée : {title}', unliked: '{n} like(s) retiré(s), {f} échec(s)',
         error: 'Action impossible : {error}', limit: 'Une playlist est limitée à {n} titres.', loading: 'Chargement des titres…',
+        playerRemove: 'Retirer le titre en cours de la playlist actuelle',
+        playerRemoveTip: 'Retirer le titre en cours de la playlist actuelle · Alt-clic : choisir une autre playlist',
+        playerRemovePick: 'Retirer de quelle playlist ?', noCurrentTrack: 'Aucun titre en cours',
+        removedCurrent: 'Titre retiré de « {title} »', notInPlaylist: 'Ce titre n’est pas dans « {title} »',
     } : {
         manage: 'Manage tracks', close: 'Close', selectAll: 'Select all', clear: 'Clear selection',
         selected: 'selected', remove: 'Remove', add: 'Add to playlist', create: 'Create playlist',
@@ -26,6 +30,10 @@
         confirmUnlike: 'Remove {n} track(s) from your likes?', removed: '{n} track(s) removed from playlist',
         added: '{n} track(s) added', created: 'Playlist created: {title}', unliked: '{n} like(s) removed, {f} failed',
         error: 'Action failed: {error}', limit: 'A playlist is limited to {n} tracks.', loading: 'Loading tracks…',
+        playerRemove: 'Remove current track from the current playlist',
+        playerRemoveTip: 'Remove current track from the current playlist · Alt-click: choose another playlist',
+        playerRemovePick: 'Remove from which playlist?', noCurrentTrack: 'No track is playing',
+        removedCurrent: 'Track removed from “{title}”', notInPlaylist: 'This track is not in “{title}”',
     };
     const t = (key, vars = {}) => labels[key].replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
     const bulk = () => window.__sceLibraryBulk;
@@ -37,6 +45,7 @@
     const deleteIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5h3l.75 1H13V4H3V2.5h2.75l.75-1ZM4 5h8l-.5 8.5a1 1 0 0 1-1 .94h-5a1 1 0 0 1-1-.94L4 5Zm2 1.25.25 6h1.25l-.25-6H6Zm2.75 0-.25 6h1.25l.25-6H8.75Z" fill="currentColor"/></svg>';
 
     let current = null, sequence = 0, scheduled = null, mountingPath = null, unavailablePath = null, mePromise = null;
+    let playerButton = null, playerBusy = false;
 
     function unmount() {
         current?.button.remove();
@@ -247,6 +256,102 @@
         return /^\/[^/]+\/sets\/[^/]+/.test(path);
     }
 
+    function currentTrackPath() {
+        const href = $('.playbackSoundBadge__titleLink')?.getAttribute('href');
+        if (!href) return null;
+        try {
+            const url = new URL(href, location.origin);
+            return url.origin === location.origin ? url.pathname : null;
+        } catch { return null; }
+    }
+
+    async function currentTrack() {
+        const path = currentTrackPath();
+        if (!path) throw new Error(t('noCurrentTrack'));
+        const track = await S().api(`/resolve?url=${encodeURIComponent(location.origin + path)}`);
+        if (track?.kind !== 'track' || !track.id) throw new Error(t('noCurrentTrack'));
+        return track;
+    }
+
+    async function ownedCurrentPlaylist(me) {
+        if (!isPlaylistPath(location.pathname)) return null;
+        const playlist = await S().api(`/resolve?url=${encodeURIComponent(location.origin + location.pathname)}`);
+        if (playlist?.kind !== 'playlist' || String(playlist.user?.id) !== String(me.id)) return null;
+        return playlist;
+    }
+
+    async function pickPlaylist(me) {
+        const playlists = await bulk().ownPlaylists(S().api, me.id);
+        if (!playlists.length) throw new Error(t('noPlaylists'));
+        const index = await D().pick(t('playerRemovePick'), playlists.map((pl) => ({ label: pl.title, detail: pl.track_count ?? '' })));
+        return index < 0 ? null : playlists[index];
+    }
+
+    async function removePlayingTrack({ choose = false } = {}) {
+        if (playerBusy || !S() || !D() || !bulk()) return;
+        playerBusy = true;
+        playerButton?.classList.add('m-busy');
+        playerButton && (playerButton.disabled = true);
+        try {
+            const [track, me] = await Promise.all([
+                currentTrack(),
+                mePromise || (mePromise = S().me().catch((error) => { mePromise = null; throw error; })),
+            ]);
+            const playlist = (choose ? null : await ownedCurrentPlaylist(me)) || await pickPlaylist(me);
+            if (!playlist) return;
+            const count = await bulk().removeFromPlaylist(S().api, playlist.id, [track.id], me.id);
+            S().toast(t(count ? 'removedCurrent' : 'notInPlaylist', { title: playlist.title }), { error: !count });
+        } catch (error) {
+            S().toast(t('error', { error: error.message }), { error: true });
+        } finally {
+            playerBusy = false;
+            playerButton?.classList.remove('m-busy');
+            playerButton && (playerButton.disabled = false);
+        }
+    }
+
+    function injectPlayerButtonStyle() {
+        if ($(`#${NS}-player-style`)) return;
+        const style = document.createElement('style');
+        style.id = `${NS}-player-style`;
+        style.textContent = `
+            .${NS}-player-remove {
+                display: inline-grid !important; place-items: center; width: 32px; min-width: 32px; height: 32px;
+                margin-left: 4px; padding: 0 !important; border: 0 !important; border-radius: 3px;
+                background: transparent !important; color: #999 !important; cursor: pointer;
+                vertical-align: middle;
+            }
+            .${NS}-player-remove svg { width: 18px; height: 18px; pointer-events: none; }
+            .${NS}-player-remove:hover,
+            .${NS}-player-remove:focus-visible { color: #d00 !important; background: rgba(255,255,255,.08) !important; outline: 0; }
+            .${NS}-player-remove.m-busy { opacity: .55; cursor: progress; }
+        `;
+        (document.head || document.documentElement).append(style);
+    }
+
+    function mountPlayerButton() {
+        if (!S() || !D() || !bulk()) return;
+        if (playerButton?.isConnected) return;
+        const badge = $('.playControls__soundBadge, .playbackSoundBadge');
+        if (!badge) return;
+        injectPlayerButtonStyle();
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `${NS}-player-remove`;
+        button.title = t('playerRemoveTip');
+        button.setAttribute('aria-label', t('playerRemove'));
+        button.innerHTML = deleteIcon;
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            removePlayingTrack({ choose: event.altKey });
+        });
+        const queue = $('.playbackSoundBadge__showQueue');
+        if (queue?.parentElement === badge || queue?.parentElement?.closest('.playControls__soundBadge, .playbackSoundBadge') === badge) queue.before(button);
+        else badge.appendChild(button);
+        playerButton = button;
+    }
+
     async function mount() {
         const path = location.pathname;
         if (unavailablePath !== path) unavailablePath = null;      // autre page : nouvel essai au retour
@@ -300,9 +405,11 @@
     }
     window.addEventListener('popstate', schedule);
     (window.__sceShared?.onDom || ((fn) => new MutationObserver(fn).observe(document.body, { childList: true, subtree: true })))(() => {
+        mountPlayerButton();
         if (current && (!current.button.isConnected || current.path !== location.pathname)) schedule();
         else if (!current && isPlaylist() && $('.soundActions')) schedule();
     });
     setupPlaylistCardDelete();
+    mountPlayerButton();
     schedule();
 })();

@@ -3,27 +3,43 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-// Exercise the production analysis closure with spectra at the AnalyserNode boundary.
+function loadAudioAnalysis(context) {
+    vm.runInNewContext(fs.readFileSync('content/audio-analysis.js', 'utf8'), context);
+    return context.window.__sceAudioAnalysis;
+}
+
+// Exercise the production analysis module with spectra at the AnalyserNode boundary.
 function analyser({ sampleRate = 48000, rate = 1, preservePitch = true, pitchSemitones = 0, cache } = {}) {
-    const source = fs.readFileSync('content/audio.js', 'utf8');
-    const start = source.indexOf('    const Analysis = (() => {');
-    const end = source.indexOf('\n    /** Exposé', start);
     const values = new Map(cache ? [['sce:analysis:/artist/track', JSON.stringify(cache)]] : []);
     let spectrum, frame = 0;
-    const fftSize = Number(source.match(/an\.fftSize = (\d+)/)[1]);
+    const fftSize = 8192;
     const graph = { ctx: { sampleRate }, el: { paused: false, playbackRate: rate, preservesPitch: preservePitch }, an: {
         fftSize, frequencyBinCount: fftSize / 2, getFloatFrequencyData(out) { out.set(typeof spectrum === 'function' ? spectrum(frame++) : spectrum); },
     } };
     const cfg = { rate, preservePitch, pitchSemitones };
-    const context = { graph, cfg, document: { querySelector: () => ({ getAttribute: () => '/artist/track' }) },
-        localStorage: { getItem: (k) => values.get(k) || null, setItem: (k, v) => values.set(k, v), length: 0 },
-        analysisVisible: () => true, enabled: () => true, updateAnalysisBar() {}, updateBtn() {},
-        setInterval() {}, clearInterval() {}, Date, L: {} };
-    vm.runInNewContext(source.slice(start, end).replace('attach() {', 'tick, attach() {') + '\nglobalThis.analysis = Analysis;', context);
+    const storage = {
+        get length() { return values.size; },
+        key(index) { return Array.from(values.keys())[index] || null; },
+        getItem: (key) => values.get(key) || null,
+        setItem: (key, value) => values.set(key, value),
+        removeItem: (key) => values.delete(key),
+    };
+    const context = { window: {}, localStorage: storage, document: { querySelector: () => ({ getAttribute: () => '/artist/track' }) } };
+    const analysisModule = loadAudioAnalysis(context);
+    const analysis = analysisModule.create({
+        graph,
+        settings: () => cfg,
+        storage,
+        currentTrack: () => '/artist/track',
+        analysisVisible: () => true,
+        enabled: () => true,
+        render() {},
+        timers: { set() {}, clear() {} },
+    });
     return { cfg, graph, values, fftSize, sampleRate, run(data, frames = 350) {
         spectrum = data;
-        for (let i = 0; i < frames; i++) context.analysis.tick();
-        return context.analysis.result;
+        for (let i = 0; i < frames; i++) analysis.tick();
+        return analysis.result;
     } };
 }
 

@@ -210,144 +210,14 @@
     }
 
     // ── Analyse : BPM (flux spectral + autocorrélation) et tonalité (chroma + profils de Krumhansl) ──
-    const Analysis = (() => {
-        const IDLE_MS = 500, FRAME_MS = 20, HISTORY_S = 40, BPM_MIN = 60, BPM_MAX = 200, DB_TO_AMP = Math.LN10 / 20;
-        const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
-        const CAMELOT = { major: { C: '8B', 'C♯': '3B', D: '10B', 'E♭': '5B', E: '12B', F: '7B', 'F♯': '2B', G: '9B', 'A♭': '4B', A: '11B', 'B♭': '6B', B: '1B' },
-                          minor: { C: '5A', 'C♯': '12A', D: '7A', 'E♭': '2A', E: '9A', F: '4A', 'F♯': '11A', G: '6A', 'A♭': '1A', A: '8A', 'B♭': '3A', B: '10A' } };
-        const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-        const MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        let timer = null, prevMag = null, spareMag = null, flux = [], chroma = new Float64Array(12), frames = 0, tonalFrames = 0, trackKey = null, result = null, liveTrack = null, lastTrackCheck = 0, pace = 0;
-        /** 50 Hz seulement pendant l'analyse ; deux réveils par seconde le reste du temps. */
-        const setPace = (ms) => { if (pace === ms) return; pace = ms; clearInterval(timer); timer = setInterval(tick, ms); };
-
-        // Clé sans le contexte de lecture (?in=playlist) : un titre n'est analysé qu'une fois
-        const currentTrack = () => document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('href')?.split('?')[0] || null;
-        try {                                                   // entrées rangées avec leur contexte avant la 0.15.3
-            for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k?.startsWith('sce:analysis:') && k.includes('?')) localStorage.removeItem(k); }
-        } catch {}
-        const cacheGet = (k) => { try { const value = JSON.parse(localStorage.getItem(`sce:analysis:${k}`)); return value?.version === 4 ? value : null; } catch { return null; } };
-        const cacheSet = (k, v) => { try { localStorage.setItem(`sce:analysis:${k}`, JSON.stringify({ ...v, version: 4 })); } catch {} };
-
-        function reset() { prevMag = null; flux = []; chroma = new Float64Array(12); frames = 0; tonalFrames = 0; result = null; }
-        // Retenir les pics : le bruit large bande ne doit pas favoriser les notes
-        // dont les plages de fréquences contiennent davantage de bandes FFT.
-        const frameChroma = new Float64Array(12);
-        function collectChroma(mag) {
-            frameChroma.fill(0);
-            const hz = graph.ctx.sampleRate / graph.an.fftSize;
-            const speed = graph.el.preservesPitch === false ? graph.el.playbackRate : 1;
-            const lo = Math.max(3, Math.ceil(110 * speed / hz));
-            const hi = Math.min(mag.length - 4, Math.floor(1800 * speed / hz));
-            let peak = -Infinity, power = 0, logPower = 0, count = 0;
-            for (let i = lo; i <= hi; i++) {
-                const db = Number.isFinite(mag[i]) ? mag[i] : -120;
-                peak = Math.max(peak, db);
-                power += Math.exp(db * 2 * DB_TO_AMP);
-                logPower += db * 2 * DB_TO_AMP;
-                count++;
-            }
-            // Écarter le silence et les spectres bruités avant de chercher une tonalité.
-            if (!count || peak < -80 || Math.exp(logPower / count) / (power / count) > 0.35) return;
-            for (let i = lo; i <= hi; i++) {
-                const left = mag[i - 1], db = mag[i], right = mag[i + 1];
-                if (!Number.isFinite(db) || db < peak - 35 || db <= left || db < right) continue;
-                if (db - Math.max(mag[i - 3], mag[i + 3]) < 6) continue;
-                // Interpolation parabolique en dB : ne pas arrondir au centre de la bande FFT.
-                const den = left - 2 * db + right;
-                const offset = Number.isFinite(den) && den ? Math.max(-0.5, Math.min(0.5, 0.5 * (left - right) / den)) : 0;
-                const midi = 69 + 12 * Math.log2((i + offset) * hz / speed / 440);
-                const note = Math.round(midi);
-                const weight = Math.exp((db - peak) * DB_TO_AMP / 2);
-                frameChroma[((note % 12) + 12) % 12] += weight;
-            }
-            const total = frameChroma.reduce((a, b) => a + b, 0);
-            if (total) {
-                tonalFrames++;
-                for (let i = 0; i < 12; i++) chroma[i] += frameChroma[i] / total;
-            }
-        }
-        function tick() {
-            const el = graph.el;
-            if (!el || el.paused || !analysisVisible() || !enabled()) { setPace(IDLE_MS); return; }   // en pause ou affichage désactivé : aucune analyse
-            const now = Date.now();
-            if (now - lastTrackCheck >= 480 || trackKey === null) { lastTrackCheck = now; liveTrack = currentTrack(); }   // deux lectures du DOM par seconde, pas cinquante
-            const tk = liveTrack;
-            if (tk !== trackKey) { trackKey = tk; reset(); const c = tk && cacheGet(tk); if (c) result = { ...c, cached: true }; render(); }
-            if (result?.cached) { setPace(IDLE_MS); return; }               // résultat connu : simple veille du changement de titre
-            setPace(FRAME_MS);
-            const an = graph.an, n = an.frequencyBinCount;
-            const mag = spareMag && spareMag.length === n ? spareMag : new Float32Array(n); // deux tampons en alternance : aucune allocation à 50 Hz
-            an.getFloatFrequencyData(mag);
-            collectChroma(mag);
-            // Flux spectral pour les attaques ; le chroma utilise les pics ci-dessus.
-            let fl = 0;
-            for (let i = 1; i < n; i++) {
-                const m = Math.exp(mag[i] * DB_TO_AMP); // dB → amplitude
-                if (prevMag) { const d = m - prevMag[i]; if (d > 0) fl += d; }
-                mag[i] = m;
-            }
-            spareMag = prevMag; prevMag = mag;
-            flux.push(fl); if (flux.length > HISTORY_S * 1000 / FRAME_MS) flux.shift();
-            frames++;
-            if (frames % 50 === 0 && flux.length >= 300) {
-                const next = estimate();
-                // Une fenêtre peu rythmée ne doit pas effacer le dernier tempo fiable du même titre.
-                result = { ...next, bpm: next.bpm ?? result?.bpm ?? null };
-                render();
-                if (frames >= 1500 && next.conf > 0.35 && next.bpm && next.key && tk) { cacheSet(tk, { bpm: next.bpm, key: next.key, mode: next.mode, conf: next.conf, keyConf: next.keyConf }); result.cached = true; prevMag = spareMag = null; flux = []; }   // acquis : plus d'analyse jusqu'au titre suivant
-            }
-        }
-        function estimate() {
-            // Autocorrélation du flux (moyenne retirée) sur les périodes 60–200 BPM, interpolation parabolique
-            const N = flux.length, mean = flux.reduce((a, b) => a + b, 0) / N, x = flux.map((v) => v - mean);
-            const fps = 1000 / FRAME_MS, lagMin = Math.floor(fps * 60 / BPM_MAX), lagMax = Math.ceil(fps * 60 / BPM_MIN);
-            const ac = new Float64Array(lagMax + 2);
-            for (let lag = lagMin; lag <= lagMax + 1; lag++) { let s = 0; for (let i = lag; i < N; i++) s += x[i] * x[i - lag]; ac[lag] = s / (N - lag); }
-            let best = lagMin, bv = -Infinity;
-            for (let lag = lagMin; lag <= lagMax; lag++) { const w = ac[lag] * (1 - 0.15 * Math.abs(Math.log2((fps * 60 / lag) / 128))); if (w > bv) { bv = w; best = lag; } } // léger a priori vers 128 BPM
-            const y0 = ac[best - 1] || 0, y1 = ac[best], y2 = ac[best + 1] || 0, den = (y0 - 2 * y1 + y2);
-            const lag = best + (den ? 0.5 * (y0 - y2) / den : 0);
-            let bpm = fps * 60 / lag;
-            // L'autocorrélation favorise souvent la mi-cadence (70 au lieu de 140 BPM).
-            if (bpm < 90) bpm *= 2;
-            else if (bpm < 100) {
-                const doubleLag = Math.round(lag / 2);
-                if (doubleLag >= lagMin && ac[doubleLag] >= y1 * 0.82) bpm = fps * 60 / doubleLag;
-            }
-            const ac0 = x.reduce((a, v) => a + v * v, 0) / N;
-            const conf = Math.max(0, Math.min(1, ac0 ? y1 / ac0 : 0));
-            // Tonalité : corrélation du chroma avec les 24 profils
-            const c = Array.from(chroma), cm = c.reduce((a, b) => a + b, 0) / 12;
-            let bestKey = 0, bestMode = 'major', bestR = -Infinity, second = -Infinity;
-            for (const [mode, prof] of [['major', MAJ], ['minor', MIN]]) {
-                const pm = prof.reduce((a, b) => a + b, 0) / 12;
-                for (let k = 0; k < 12; k++) {
-                    let num = 0, d1 = 0, d2 = 0;
-                    for (let i = 0; i < 12; i++) { const a = c[(i + k) % 12] - cm, b = prof[i] - pm; num += a * b; d1 += a * a; d2 += b * b; }
-                    const r = num / Math.sqrt(d1 * d2 || 1);
-                    if (r > bestR) { second = bestR; bestR = r; bestKey = k; bestMode = mode; } else if (r > second) second = r;
-                }
-            }
-            // La vitesse change le tempo mesuré.
-            bpm = bpm / cfg.rate;
-            // Le chroma corrige déjà la vitesse réelle avant l’arrondi des notes.
-            // L’analyseur précède notre transposition : mémoriser la tonalité originale.
-            const peakChroma = Math.max(...c);
-            const tonalNotes = c.filter((value) => value > peakChroma * 0.15).length;
-            return { bpm: conf >= 0.2 ? Math.round(bpm) : null, key: tonalFrames >= 150 && tonalNotes >= 3 && bestR >= 0.6 && bestR - second >= 0.05 ? NOTES[bestKey] : null, mode: bestMode, conf, keyConf: Math.max(0, bestR - second) };
-        }
-        function label(r = result) {
-            if (!r) return L.listening;
-            const cam = r.key ? CAMELOT[r.mode][r.key] : '–';
-            return `${r.bpm ?? '–'} BPM · ${r.key ? r.key + (r.mode === 'minor' ? 'm' : '') : '–'} · ${cam}`;
-        }
-        function render() { updateAnalysisBar(); updateBtn(); }
-        return {
-            attach() { pace = 0; setPace(IDLE_MS); },
-            label, camelot: (r) => CAMELOT[r.mode][r.key], get result() { return result; },
-        };
-    })();
+    const Analysis = window.__sceAudioAnalysis.create({
+        graph,
+        settings: () => cfg,
+        analysisVisible: () => analysisVisible(),
+        enabled: () => enabled(),
+        render: () => { updateAnalysisBar(); updateBtn(); },
+        listeningLabel: L.listening,
+    });
 
     /** Exposé aux autres modules (lecteur épinglable, panneau latéral) : graphe, analyse, réglages. */
     window.__sceAudio = Object.freeze({
@@ -477,7 +347,7 @@
     }
     function mountAnalysisBar() {
         if (!analysisVisible()) { document.querySelectorAll(`.${NS}-analysis-bar`).forEach((el) => el.remove()); return; }
-        const badge = document.querySelector('.playControls__soundBadge');
+        const badge = document.querySelector('.playControls__soundBadge, .playbackSoundBadge');
         if (!badge || !badge.parentElement || badge.previousElementSibling?.classList.contains(`${NS}-analysis-bar`)) return;
         document.querySelectorAll(`.${NS}-analysis-bar`).forEach((el) => el.remove());
         const bar = document.createElement('div'); bar.className = `${NS}-analysis-bar`;

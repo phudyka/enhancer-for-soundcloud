@@ -95,6 +95,7 @@
         "content/library.js",
         "content/playlist-manager.js",
         "content/pitch-shifter.js",
+        "content/audio-analysis.js",
         "content/audio.js",
         "content/scrub.js",
         "content/player-api.js",

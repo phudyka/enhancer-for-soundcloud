@@ -74,6 +74,89 @@
     // The pinned player reads the same snapshot as the popup and service worker.
     window.__scePlayerState = state;
 
+    /* ── Reprise après rechargement ───────────────────────────────── */
+    const RESUME_KEY = 'sce:last-position';
+    const RESUME_SAVE_EVERY = 3000;
+    const RESUME_MIN_POSITION = 5;
+    const RESUME_END_MARGIN = 8;
+    let resumeSavedAt = 0;
+    let resumeRestoredUrl = null;
+
+    function readResume() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null');
+            if (!saved || typeof saved.url !== 'string' || !Number.isFinite(saved.position)) return null;
+            return {
+                url: saved.url,
+                title: typeof saved.title === 'string' ? saved.title : null,
+                position: Math.max(0, Number(saved.position)),
+                duration: Number.isFinite(saved.duration) && saved.duration > 0 ? Number(saved.duration) : null,
+                at: Number.isFinite(saved.at) ? saved.at : 0,
+            };
+        } catch { return null; }
+    }
+
+    function writeResume(entry) {
+        try { localStorage.setItem(RESUME_KEY, JSON.stringify(entry)); } catch {}
+    }
+
+    function finiteDuration(media) {
+        return media && Number.isFinite(media.duration) && media.duration > 0 ? media.duration : null;
+    }
+
+    function saveResume(media, force = false) {
+        const now = Date.now();
+        if (!force && now - resumeSavedAt < RESUME_SAVE_EVERY) return;
+        const s = state();
+        if (!s.url || !media || !Number.isFinite(media.currentTime)) return;
+        resumeSavedAt = now;
+        const duration = finiteDuration(media);
+        writeResume({
+            url: s.url,
+            title: s.title || null,
+            position: Math.max(0, Math.round(media.currentTime * 10) / 10),
+            duration: duration == null ? null : Math.round(duration * 10) / 10,
+            at: now,
+        });
+    }
+
+    function resumeTarget(saved, media) {
+        const duration = finiteDuration(media) ?? saved.duration;
+        if (saved.position < RESUME_MIN_POSITION) return null;
+        if (duration && saved.position >= duration - RESUME_END_MARGIN) return null;
+        return duration ? Math.min(saved.position, Math.max(0, duration - RESUME_END_MARGIN)) : saved.position;
+    }
+
+    function restoreResume(media = window.__sceMedia) {
+        const saved = readResume();
+        const currentUrl = $(SEL.title)?.getAttribute('href') || null;
+        if (!media || !saved || !currentUrl || saved.url !== currentUrl || resumeRestoredUrl === currentUrl) return;
+        const target = resumeTarget(saved, media);
+        if (target == null) { resumeRestoredUrl = currentUrl; return; }
+        try {
+            media.currentTime = target;
+            resumeRestoredUrl = currentUrl;
+            saveResume(media, true);
+            window.postMessage(state(), location.origin);
+        } catch {}
+    }
+
+    function hookResume(media) {
+        if (!media || media.__sceResumeHooked) return;
+        media.__sceResumeHooked = true;
+        const restore = () => restoreResume(media);
+        const save = () => saveResume(media, true);
+        media.addEventListener('loadedmetadata', restore);
+        media.addEventListener('durationchange', restore);
+        media.addEventListener('canplay', restore);
+        media.addEventListener('play', restore);
+        media.addEventListener('timeupdate', () => { restore(); saveResume(media); });
+        media.addEventListener('seeking', save);
+        media.addEventListener('pause', save);
+        media.addEventListener('ended', save);
+        restore();
+    }
+
     /* ── Minuteur d'arrêt ─────────────────────────────────────────── */
     const sleep = { at: null, endOfTrack: false, timer: null, fading: false };
     const FADE_SECONDS = 8;
@@ -230,7 +313,7 @@
             case 'toggle-play': $(SEL.play)?.click(); break;
             case 'next-track':  $(SEL.next)?.click(); break;
             case 'prev-track':  $(SEL.prev)?.click(); break;
-            case 'seek':        if (window.__sceMedia && Number.isFinite(value)) window.__sceMedia.currentTime = value; break;
+            case 'seek':        if (window.__sceMedia && Number.isFinite(value)) { window.__sceMedia.currentTime = value; saveResume(window.__sceMedia, true); } break;
             case 'repeat':      $(SEL.repeat)?.click(); break;
             case 'speed':       window.dispatchEvent(new CustomEvent('sce:speed', { detail: { rate: value } })); break;
             case 'sleep':       setSleep(value); return;
@@ -251,9 +334,9 @@
     const publish = () => {
         if (!queued) return;
         queued = false;
-        const s = state();
+        let s = state();
         const sig = `${s.playing}|${s.title}|${s.url}`;
-        if (sig !== last) { last = sig; window.postMessage(s, location.origin); }
+        if (sig !== last) { last = sig; restoreResume(); s = state(); window.postMessage(s, location.origin); }
     };
     // requestAnimationFrame ne tourne pas onglet masqué : l'état (titre suivant, pause) doit quand même partir vers l'historique et le panneau.
     // Le minuteur prend le relais de l'image suivante, qui n'arrive jamais dans un onglet masqué.
@@ -268,5 +351,5 @@
     }
     new MutationObserver(() => { if (!bar?.isConnected) attach(); }).observe(document.body, { childList: true, subtree: true });
     attach();
-    if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { el.addEventListener('play', schedule); el.addEventListener('pause', schedule); el.addEventListener('ended', onTrackEnded); });
+    if (typeof window.__sceOnMedia === 'function') window.__sceOnMedia((el) => { hookResume(el); el.addEventListener('play', schedule); el.addEventListener('pause', schedule); el.addEventListener('ended', onTrackEnded); });
 })();
